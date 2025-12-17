@@ -1,0 +1,56 @@
+# ===== ANDROID =====
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# Build folders
+/build
+*/build/
+
+# Local config
+local.properties
+
+# Gradle
+.gradle/
+.gradle/*
+gradlew
+gradlew.bat
+
+# Android Studio
+.idea/
+.idea/*
+*.iml
+*.ipr
+*.iws
+
+# Logs
+*.log
+
+# Keystore
+*.jks
+*.keystore
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Generated files
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Hilt / KSP / KAPT
+kapt/
+ksp/
+
+# Firebase / secrets (si usas después)
+google-services.json
+
+# Network / certs (muy importante en tu caso)
+*.cer
+*.pem
+*.crt
+
+# Env files
+.env
