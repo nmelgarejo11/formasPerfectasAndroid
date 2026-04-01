@@ -15,20 +15,12 @@ import com.spa.appointments.ui.splash.SplashScreen
 fun AppNav() {
     val nav = rememberNavController()
 
-    // startDestination ahora es el splash, no el login
-    // El splash decide a dónde ir después
-    NavHost(
-        navController = nav,
-        startDestination = Routes.SPLASH
-    ) {
+    NavHost(navController = nav, startDestination = Routes.SPLASH) {
 
-        // Splash — pantalla inicial
         composable(Routes.SPLASH) {
             SplashScreen(
                 onGoLogin = {
                     nav.navigate(Routes.LOGIN) {
-                        // Eliminamos el splash del back stack para que el usuario
-                        // no pueda volver al splash presionando "atrás"
                         popUpTo(Routes.SPLASH) { inclusive = true }
                     }
                 },
@@ -40,21 +32,28 @@ fun AppNav() {
             )
         }
 
-        // Login
         composable(Routes.LOGIN) {
             val vm = hiltViewModel<LoginViewModel>()
             LoginScreen(vm) {
                 nav.navigate(Routes.HOME) {
-                    // Eliminamos el login del back stack — el usuario NO debe
-                    // poder volver al login presionando "atrás" desde el Home
                     popUpTo(Routes.LOGIN) { inclusive = true }
                 }
             }
         }
 
-        // Home — aquí irán los demás módulos en fases siguientes
         composable(Routes.HOME) {
-            HomeScreen()
+            HomeScreen(
+                onLogout = {
+                    nav.navigate(Routes.LOGIN) {
+                        popUpTo(Routes.HOME) { inclusive = true }
+                    }
+                },
+                onNavigate = { ruta ->
+                    // Por ahora solo navegamos si la ruta está registrada
+                    // En fases siguientes agregas aquí cada pantalla nueva
+                    try { nav.navigate(ruta) } catch (e: Exception) { }
+                }
+            )
         }
     }
 }
