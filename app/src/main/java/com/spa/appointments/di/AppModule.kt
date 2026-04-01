@@ -22,7 +22,7 @@ import javax.inject.Named
 @InstallIn(SingletonComponent::class)
 object AppModule {
 
-    private const val BASE_URL = "http://192.168.40.76:5005/api/"
+    private const val BASE_URL = "http://192.168.1.6:5005/api/"
 
     // ---------- Moshi ----------
     @Provides
