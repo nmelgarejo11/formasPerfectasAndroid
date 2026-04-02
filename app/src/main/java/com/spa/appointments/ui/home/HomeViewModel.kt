@@ -14,9 +14,11 @@ import javax.inject.Inject
 // Estado de la pantalla Home
 // Usamos sealed class para representar los 3 estados posibles
 sealed class HomeUiState {
-    object Loading : HomeUiState()
-    data class Success(val modulos: List<Modulo>, val userName: String) : HomeUiState()
-    data class Error(val mensaje: String) : HomeUiState()
+    object Loading                                          : HomeUiState()
+    object Empty                                            : HomeUiState() // ← nuevo
+    data class Success(val modulos: List<Modulo>,
+                       val userName: String)                : HomeUiState()
+    data class Error(val mensaje: String)                   : HomeUiState()
 }
 
 @HiltViewModel
@@ -37,11 +39,19 @@ class HomeViewModel @Inject constructor(
             try {
                 val response = menuRepository.obtenerMenu()
                 val userName = tokenStorage.getUser() ?: "Usuario"
+                val modulos  = response.menu?.filter {
+                    // Filtramos módulos que tengan al menos un submódulo
+                    !it.submodulos.isNullOrEmpty()
+                } ?: emptyList()
 
-                _uiState.value = HomeUiState.Success(
-                    modulos = response.menu,
-                    userName = userName
-                )
+                if (modulos.isEmpty()) {
+                    _uiState.value = HomeUiState.Empty
+                } else {
+                    _uiState.value = HomeUiState.Success(
+                        modulos  = modulos,
+                        userName = userName
+                    )
+                }
             } catch (e: Exception) {
                 _uiState.value = HomeUiState.Error(
                     mensaje = e.localizedMessage ?: "Error al cargar el menú"
@@ -49,6 +59,7 @@ class HomeViewModel @Inject constructor(
             }
         }
     }
+
 
     // Logout: limpia la sesión y notifica a la UI
     fun logout() {

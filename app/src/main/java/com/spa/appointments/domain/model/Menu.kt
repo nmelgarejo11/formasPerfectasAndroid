@@ -18,11 +18,11 @@ data class SubModulo(
 data class Modulo(
     @Json(name = "modulo")     val modulo: String,
     @Json(name = "icono")      val icono: String?,
-    @Json(name = "submodulos") val submodulos: List<SubModulo>
+    @Json(name = "submodulos") val submodulos: List<SubModulo>?
 )
 
 // Wrapper raíz del JSON: { "menu": [ ... ] }
 @JsonClass(generateAdapter = true)
 data class MenuResponse(
-    @Json(name = "menu") val menu: List<Modulo>
+    @Json(name = "menu") val menu: List<Modulo>?
 )

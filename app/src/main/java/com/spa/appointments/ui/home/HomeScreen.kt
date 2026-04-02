@@ -5,11 +5,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.spa.appointments.core.utils.mapIcon
@@ -18,8 +20,8 @@ import com.spa.appointments.domain.model.Modulo
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    onLogout: () -> Unit,             // Navega al login al cerrar sesión
-    onNavigate: (String) -> Unit,     // Navega a una ruta del submodulo
+    onLogout: () -> Unit,
+    onNavigate: (String) -> Unit,
     vm: HomeViewModel = hiltViewModel()
 ) {
     val uiState by vm.uiState.collectAsState()
@@ -29,13 +31,11 @@ fun HomeScreen(
             TopAppBar(
                 title = {
                     when (val s = uiState) {
-                        is HomeUiState.Success ->
-                            Text("Hola, ${s.userName}")
+                        is HomeUiState.Success -> Text("Hola, ${s.userName}")
                         else -> Text("Dashboard")
                     }
                 },
                 actions = {
-                    // Botón de cerrar sesión
                     IconButton(onClick = {
                         vm.logout()
                         onLogout()
@@ -63,9 +63,46 @@ fun HomeScreen(
                     )
                 }
 
+                is HomeUiState.Empty -> {
+                    Column(
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .padding(32.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.secondary,
+                            modifier = Modifier.size(48.dp)
+                        )
+                        Spacer(Modifier.height(16.dp))
+                        Text(
+                            text = "Sin acceso",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            text = "Tu usuario no tiene módulos asignados.\nContacta al administrador.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(Modifier.height(24.dp))
+                        OutlinedButton(onClick = {
+                            vm.logout()
+                            onLogout()
+                        }) {
+                            Text("Cerrar sesión")
+                        }
+                    }
+                }
+
                 is HomeUiState.Error -> {
                     Column(
-                        modifier = Modifier.align(Alignment.Center),
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .padding(32.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
@@ -76,10 +113,14 @@ fun HomeScreen(
                         Text(
                             text = state.mensaje,
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error
+                            color = MaterialTheme.colorScheme.error,
+                            textAlign = TextAlign.Center
                         )
                         Spacer(Modifier.height(16.dp))
-                        Button(onClick = { vm.logout(); onLogout() }) {
+                        Button(onClick = {
+                            vm.logout()
+                            onLogout()
+                        }) {
                             Text("Volver al login")
                         }
                     }
@@ -122,7 +163,6 @@ private fun ModuloCard(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
 
-            // Cabecera del módulo
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     imageVector = mapIcon(modulo.icono),
@@ -141,8 +181,8 @@ private fun ModuloCard(
             HorizontalDivider()
             Spacer(Modifier.height(8.dp))
 
-            // Submódulos como botones de texto
-            modulo.submodulos.forEach { sub ->
+            // submodulos es nullable ahora, usamos ?: emptyList() para protegernos
+            modulo.submodulos?.forEach { sub ->
                 TextButton(
                     onClick = { onNavigate(sub.ruta) },
                     modifier = Modifier.fillMaxWidth(),
