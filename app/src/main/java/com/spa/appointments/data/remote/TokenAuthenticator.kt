@@ -2,6 +2,7 @@ package com.spa.appointments.data.remote
 
 import com.spa.appointments.core.security.TokenStorage
 import com.spa.appointments.domain.model.RefreshRequest
+import com.spa.appointments.core.utils.JwtUtils
 import kotlinx.coroutines.runBlocking
 import okhttp3.Authenticator
 import okhttp3.Request
@@ -27,10 +28,13 @@ class TokenAuthenticator(
                 authApi.refresh(RefreshRequest(refreshToken))
             }
 
+            val idEmpresa = JwtUtils.getIdEmpresa(refreshResponse.accessToken)
+
             tokenStorage.saveSession(
                 accessToken = refreshResponse.accessToken,
                 refreshToken = refreshToken,
-                user = tokenStorage.getUser() ?: ""
+                user = tokenStorage.getUser() ?: "",
+                idEmpresa    = idEmpresa
             )
 
             response.request.newBuilder()

@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.spa.appointments.data.repository.AuthRepository
 import com.spa.appointments.core.security.TokenStorage
+import com.spa.appointments.core.utils.JwtUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -25,10 +26,13 @@ class LoginViewModel @Inject constructor(
 
                 val response = repo.login(user, pass)
 
+                val idEmpresa = JwtUtils.getIdEmpresa(response.accessToken)
+
                 tokenStorage.saveSession(
                     accessToken = response.accessToken,
                     refreshToken = response.refreshToken,
-                    user = user
+                    user = user,
+                    idEmpresa    = idEmpresa
                 )
 
                 state = state.copy(loading = false, error = null)

@@ -13,6 +13,7 @@ class TokenStorage(context: Context) {
         private const val ACCESS_TOKEN_KEY  = "access_token"
         private const val REFRESH_TOKEN_KEY = "refresh_token"
         private const val USER_KEY          = "logged_user"
+        private const val ID_EMPRESA_KEY    = "id_empresa"
         private const val TAG = "TokenStorage"
     }
 
@@ -66,18 +67,21 @@ class TokenStorage(context: Context) {
     fun saveSession(
         accessToken: String,
         refreshToken: String,
-        user: String
+        user: String,
+        idEmpresa:    Int
     ) {
         prefs.edit()
             .putString(ACCESS_TOKEN_KEY, accessToken)
             .putString(REFRESH_TOKEN_KEY, refreshToken)
             .putString(USER_KEY, user)
+            .putInt(ID_EMPRESA_KEY,       idEmpresa)
             .apply()
     }
 
     fun getAccessToken(): String?  = prefs.getString(ACCESS_TOKEN_KEY, null)
     fun getRefreshToken(): String? = prefs.getString(REFRESH_TOKEN_KEY, null)
     fun getUser(): String?         = prefs.getString(USER_KEY, null)
+    fun getIdEmpresa():    Int     = prefs.getInt(ID_EMPRESA_KEY,       0)
 
     fun clearSession() {
         prefs.edit().clear().apply()
