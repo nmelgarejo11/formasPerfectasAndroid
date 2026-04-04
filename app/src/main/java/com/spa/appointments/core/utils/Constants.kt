@@ -6,7 +6,7 @@ object Constants {
     const val SPLASH_DELAY_MS = 1500L
 
     // Nombre de la app (se puede leer desde strings.xml también)
-    const val APP_NAME = "SPA Appointments"
+    const val APP_NAME = "SPA Formas Perfectas"
 
     // Rutas de navegación — todas las pantallas de la app
     // Usamos un objeto anidado para agruparlas y evitar errores de tipeo
