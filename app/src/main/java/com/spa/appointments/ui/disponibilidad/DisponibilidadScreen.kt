@@ -353,49 +353,63 @@ private fun SlotsGrid(
             modifier   = Modifier.padding(bottom = 8.dp)
         )
 
-        if (slots.none { it.disponible }) {
+        val slotsDisponibles = slots.filter { it.disponible }
+
+        if (slotsDisponibles.isEmpty()) {
             Text(
-                text  = "No hay horarios disponibles para este día.",
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                text     = "No hay horarios disponibles para este día.",
+                color    = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(vertical = 16.dp)
             )
             return
         }
 
-        // Grid de 3 columnas
-        LazyVerticalGrid(
-            columns             = GridCells.Fixed(3),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement   = Arrangement.spacedBy(8.dp),
-            modifier            = Modifier.height(240.dp), // altura fija para el scroll externo
-            userScrollEnabled   = false
-        ) {
-            items(slots.filter { it.disponible }) { slot ->
-                val seleccionado = slot == slotSeleccionado
+        // Dividimos los slots en filas de 3 columnas manualmente
+        // Así el Column crece según el contenido sin altura fija
+        val filas = slotsDisponibles.chunked(3)
 
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(
-                            if (seleccionado) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.surfaceVariant
-                        )
-                        .border(
-                            width = if (seleccionado) 0.dp else 1.dp,
-                            color = MaterialTheme.colorScheme.outline,
-                            shape = RoundedCornerShape(8.dp)
-                        )
-                        .clickable { onSlotClick(slot) }
-                        .padding(vertical = 12.dp)
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            filas.forEach { fila ->
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(
-                        text      = slot.horaInicio.substring(0, 5), // HH:mm
-                        textAlign = TextAlign.Center,
-                        fontWeight = if (seleccionado) FontWeight.Bold else FontWeight.Normal,
-                        color     = if (seleccionado) MaterialTheme.colorScheme.onPrimary
-                        else MaterialTheme.colorScheme.onSurface
-                    )
+                    fila.forEach { slot ->
+                        val seleccionado = slot == slotSeleccionado
+
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(
+                                    if (seleccionado) MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.surfaceVariant
+                                )
+                                .border(
+                                    width = if (seleccionado) 0.dp else 1.dp,
+                                    color = MaterialTheme.colorScheme.outline,
+                                    shape = RoundedCornerShape(8.dp)
+                                )
+                                .clickable { onSlotClick(slot) }
+                                .padding(vertical = 12.dp)
+                        ) {
+                            Text(
+                                text       = slot.horaInicio.substring(0, 5),
+                                textAlign  = TextAlign.Center,
+                                fontWeight = if (seleccionado) FontWeight.Bold
+                                else FontWeight.Normal,
+                                color      = if (seleccionado) MaterialTheme.colorScheme.onPrimary
+                                else MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+
+                    // Si la fila tiene menos de 3 slots, rellenamos con espacios
+                    // para que los slots existentes mantengan el mismo ancho
+                    repeat(3 - fila.size) {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
                 }
             }
         }
