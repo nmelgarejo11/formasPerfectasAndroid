@@ -2,18 +2,21 @@ package com.spa.appointments.core.utils
 
 object Constants {
 
-    // Tiempo que se muestra el splash antes de navegar (en milisegundos)
     const val SPLASH_DELAY_MS = 1500L
+    const val APP_NAME        = "SPA Formas Perfectas"
 
-    // Nombre de la app (se puede leer desde strings.xml también)
-    const val APP_NAME = "SPA Formas Perfectas"
-
-    // Rutas de navegación — todas las pantallas de la app
-    // Usamos un objeto anidado para agruparlas y evitar errores de tipeo
     object Routes {
-        const val SPLASH = "splash"
-        const val LOGIN  = "login"
-        const val HOME   = "home"
-        // Aquí irás agregando más rutas: "appointments", "services", etc.
+        const val SPLASH      = "splash"
+        const val LOGIN       = "login"
+        const val HOME        = "home"
+        // Citas
+        const val SERVICIOS       = "servicios"
+        const val PROFESIONALES   = "profesionales"
+        const val DISPONIBILIDAD  = "disponibilidad"
+        const val MIS_CITAS       = "mis_citas"
+        const val HISTORIAL       = "historial"
     }
+
+    // ID de sede por defecto (puedes hacerlo dinámico después)
+    const val ID_SEDE_DEFAULT = 1
 }
