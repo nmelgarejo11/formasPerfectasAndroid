@@ -16,6 +16,8 @@ import com.spa.appointments.ui.profesionales.ProfesionalesScreen
 import com.spa.appointments.ui.reserva.ReservaSharedViewModel
 import com.spa.appointments.ui.servicios.ServiciosScreen
 import com.spa.appointments.ui.splash.SplashScreen
+import com.spa.appointments.ui.citas.MisCitasScreen
+import com.spa.appointments.ui.citas.HistorialScreen
 
 @Composable
 fun AppNav() {
@@ -113,11 +115,16 @@ fun AppNav() {
         }
 
         composable(Routes.MIS_CITAS) {
-            // Próximo paso
+            MisCitasScreen(
+                onBack = { nav.popBackStack() },
+                onVerHistorial = { nav.navigate(Routes.HISTORIAL) }
+            )
         }
 
         composable(Routes.HISTORIAL) {
-            // Próximo paso
+            HistorialScreen(
+                onBack = { nav.popBackStack() }
+            )
         }
     }
 }
