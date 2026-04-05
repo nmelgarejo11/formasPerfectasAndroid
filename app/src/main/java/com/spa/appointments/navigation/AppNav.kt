@@ -9,22 +9,38 @@ import androidx.navigation.compose.rememberNavController
 import com.spa.appointments.core.utils.Constants.Routes
 import com.spa.appointments.ui.auth.LoginScreen
 import com.spa.appointments.ui.auth.LoginViewModel
+import com.spa.appointments.ui.citas.HistorialScreen
+import com.spa.appointments.ui.citas.MisCitasScreen
 import com.spa.appointments.ui.disponibilidad.DisponibilidadScreen
 import com.spa.appointments.ui.disponibilidad.DisponibilidadViewModel
+import com.spa.appointments.ui.financiero.FinancieroScreen
 import com.spa.appointments.ui.home.HomeScreen
+import com.spa.appointments.ui.home.HomeViewModel
+import com.spa.appointments.ui.perfil.PerfilScreen
 import com.spa.appointments.ui.profesionales.ProfesionalesScreen
 import com.spa.appointments.ui.reserva.ReservaSharedViewModel
 import com.spa.appointments.ui.servicios.ServiciosScreen
 import com.spa.appointments.ui.splash.SplashScreen
-import com.spa.appointments.ui.citas.MisCitasScreen
-import com.spa.appointments.ui.citas.HistorialScreen
 
 @Composable
 fun AppNav() {
     val nav = rememberNavController()
 
+    // Rutas conocidas — se navega solo si están aquí
+    val rutasConocidas = setOf(
+        Routes.SERVICIOS,
+        Routes.PROFESIONALES,
+        Routes.DISPONIBILIDAD,
+        Routes.MIS_CITAS,
+        Routes.HISTORIAL,
+        Routes.FINANCIERO,
+        Routes.PERFIL,
+        "logout"
+    )
+
     NavHost(navController = nav, startDestination = Routes.SPLASH) {
 
+        // ── Splash ───────────────────────────────────────────────────────────
         composable(Routes.SPLASH) {
             SplashScreen(
                 onGoLogin = {
@@ -40,6 +56,7 @@ fun AppNav() {
             )
         }
 
+        // ── Login ────────────────────────────────────────────────────────────
         composable(Routes.LOGIN) {
             val vm = hiltViewModel<LoginViewModel>()
             LoginScreen(vm) {
@@ -49,23 +66,36 @@ fun AppNav() {
             }
         }
 
+        // ── Home ─────────────────────────────────────────────────────────────
         composable(Routes.HOME) {
+            val homeVm = hiltViewModel<HomeViewModel>()
             HomeScreen(
                 onLogout = {
+                    homeVm.logout()
                     nav.navigate(Routes.LOGIN) {
                         popUpTo(Routes.HOME) { inclusive = true }
                     }
                 },
                 onNavigate = { ruta ->
-                    try { nav.navigate(ruta) } catch (e: Exception) { }
-                }
+                    when {
+                        // Logout es una acción especial, no una pantalla
+                        ruta == "logout" -> {
+                            homeVm.logout()
+                            nav.navigate(Routes.LOGIN) {
+                                popUpTo(Routes.HOME) { inclusive = true }
+                            }
+                        }
+                        ruta in rutasConocidas -> nav.navigate(ruta)
+                        // Ruta no implementada — no hace nada por ahora
+                    }
+                },
+                vm = homeVm
             )
         }
 
-        // ── Flujo de reserva ──────────────────────────────────────────────
+        // ── Flujo de reserva ─────────────────────────────────────────────────
 
         composable(Routes.SERVICIOS) {
-            // remember envuelve el getBackStackEntry para que sea seguro en composición
             val backEntry = remember(it) { nav.getBackStackEntry(Routes.SERVICIOS) }
             val sharedVm  = hiltViewModel<ReservaSharedViewModel>(backEntry)
 
@@ -114,16 +144,35 @@ fun AppNav() {
             }
         }
 
+        // ── Citas ────────────────────────────────────────────────────────────
+
         composable(Routes.MIS_CITAS) {
             MisCitasScreen(
-                onBack = { nav.popBackStack() },
+                onBack         = { nav.popBackStack() },
                 onVerHistorial = { nav.navigate(Routes.HISTORIAL) }
             )
         }
 
         composable(Routes.HISTORIAL) {
-            HistorialScreen(
-                onBack = { nav.popBackStack() }
+            HistorialScreen(onBack = { nav.popBackStack() })
+        }
+
+        // ── Financiero ───────────────────────────────────────────────────────
+
+        composable(Routes.FINANCIERO) {
+            FinancieroScreen(onBack = { nav.popBackStack() })
+        }
+
+        // ── Perfil ───────────────────────────────────────────────────────────
+
+        composable(Routes.PERFIL) {
+            PerfilScreen(
+                onBack   = { nav.popBackStack() },
+                onLogout = {
+                    nav.navigate(Routes.LOGIN) {
+                        popUpTo(Routes.HOME) { inclusive = true }
+                    }
+                }
             )
         }
     }

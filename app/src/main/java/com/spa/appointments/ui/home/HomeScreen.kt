@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.spa.appointments.core.utils.mapIcon
 import com.spa.appointments.domain.model.Modulo
+import androidx.compose.material.icons.filled.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -26,7 +27,11 @@ fun HomeScreen(
 ) {
     val uiState by vm.uiState.collectAsState()
 
+    val snackbarHost = remember { SnackbarHostState() }
+    val scope        = rememberCoroutineScope()
+
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHost) },
         topBar = {
             TopAppBar(
                 title = {
@@ -182,6 +187,7 @@ private fun ModuloCard(
             Spacer(Modifier.height(8.dp))
 
             // submodulos es nullable ahora, usamos ?: emptyList() para protegernos
+            // En ModuloCard, reemplaza el TextButton así:
             modulo.submodulos?.forEach { sub ->
                 TextButton(
                     onClick = { onNavigate(sub.ruta) },
@@ -197,6 +203,12 @@ private fun ModuloCard(
                     Text(
                         text = sub.nombre,
                         modifier = Modifier.weight(1f)
+                    )
+                    Icon(
+                        imageVector = Icons.Default.KeyboardArrowRight,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }

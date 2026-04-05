@@ -15,6 +15,8 @@ object Constants {
         const val DISPONIBILIDAD  = "disponibilidad"
         const val MIS_CITAS       = "mis_citas"
         const val HISTORIAL       = "historial"
+        const val FINANCIERO      = "financiero"
+        const val PERFIL          = "perfil"
     }
 
     // ID de sede por defecto (puedes hacerlo dinámico después)
