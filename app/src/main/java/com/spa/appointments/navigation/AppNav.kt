@@ -21,6 +21,7 @@ import com.spa.appointments.ui.profesionales.ProfesionalesScreen
 import com.spa.appointments.ui.reserva.ReservaSharedViewModel
 import com.spa.appointments.ui.servicios.ServiciosScreen
 import com.spa.appointments.ui.splash.SplashScreen
+import androidx.compose.runtime.LaunchedEffect
 
 @Composable
 fun AppNav() {
@@ -109,22 +110,44 @@ fun AppNav() {
         }
 
         composable(Routes.PROFESIONALES) {
-            val backEntry = remember(it) { nav.getBackStackEntry(Routes.SERVICIOS) }
-            val sharedVm  = hiltViewModel<ReservaSharedViewModel>(backEntry)
+            // Intentamos obtener el backEntry de SERVICIOS de forma segura
+            // Si no existe (vinimos directo del menú) usamos el entry actual
+            val backEntry = remember(it) {
+                try {
+                    nav.getBackStackEntry(Routes.SERVICIOS)
+                } catch (e: Exception) {
+                    // No venimos del flujo de reserva — usamos entry actual
+                    it
+                }
+            }
+            val sharedVm = hiltViewModel<ReservaSharedViewModel>(backEntry)
 
             ProfesionalesScreen(
                 onBack = { nav.popBackStack() },
                 onSeleccionarProfesional = { profesional ->
                     sharedVm.profesionalSeleccionado = profesional
-                    nav.navigate(Routes.DISPONIBILIDAD)
+                    // Solo navegamos a disponibilidad si tenemos servicio seleccionado
+                    if (sharedVm.servicioSeleccionado != null) {
+                        nav.navigate(Routes.DISPONIBILIDAD)
+                    } else {
+                        // Vinimos directo del menú sin servicio
+                        // Primero seleccionamos servicio
+                        nav.navigate(Routes.SERVICIOS)
+                    }
                 }
             )
         }
 
         composable(Routes.DISPONIBILIDAD) {
-            val backEntry = remember(it) { nav.getBackStackEntry(Routes.SERVICIOS) }
-            val sharedVm  = hiltViewModel<ReservaSharedViewModel>(backEntry)
-            val dispVm    = hiltViewModel<DisponibilidadViewModel>()
+            val backEntry = remember(it) {
+                try {
+                    nav.getBackStackEntry(Routes.SERVICIOS)
+                } catch (e: Exception) {
+                    it
+                }
+            }
+            val sharedVm = hiltViewModel<ReservaSharedViewModel>(backEntry)
+            val dispVm   = hiltViewModel<DisponibilidadViewModel>()
 
             val servicio    = sharedVm.servicioSeleccionado
             val profesional = sharedVm.profesionalSeleccionado
@@ -141,6 +164,13 @@ fun AppNav() {
                     },
                     vm = dispVm
                 )
+            } else {
+                // Datos incompletos — volvemos al inicio del flujo
+                LaunchedEffect(Unit) {
+                    nav.navigate(Routes.SERVICIOS) {
+                        popUpTo(Routes.DISPONIBILIDAD) { inclusive = true }
+                    }
+                }
             }
         }
 
