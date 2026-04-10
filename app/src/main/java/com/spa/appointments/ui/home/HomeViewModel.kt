@@ -11,28 +11,27 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-// Estado de la pantalla Home
-// Usamos sealed class para representar los 3 estados posibles
 sealed class HomeUiState {
-    object Loading                                          : HomeUiState()
-    object Empty                                            : HomeUiState() // ← nuevo
-    data class Success(val modulos: List<Modulo>,
-                       val userName: String)                : HomeUiState()
-    data class Error(val mensaje: String)                   : HomeUiState()
+    object Loading                                                       : HomeUiState()
+    object Empty                                                         : HomeUiState()
+    data class Success(val modulos: List<Modulo>, val userName: String)  : HomeUiState()
+    data class Error(val mensaje: String)                                : HomeUiState()
 }
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val menuRepository: MenuRepository,
-    private val tokenStorage: TokenStorage
+    private val tokenStorage:   TokenStorage
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Loading)
     val uiState: StateFlow<HomeUiState> = _uiState
 
-    init {
-        cargarMenu()
-    }
+    // Propiedades de licencia leídas desde TokenStorage
+    val licenciaEstado:  String get() = tokenStorage.getLicenciaEstado()
+    val licenciaMensaje: String get() = tokenStorage.getLicenciaMensaje()
+
+    init { cargarMenu() }
 
     private fun cargarMenu() {
         viewModelScope.launch {
@@ -40,7 +39,6 @@ class HomeViewModel @Inject constructor(
                 val response = menuRepository.obtenerMenu()
                 val userName = tokenStorage.getUser() ?: "Usuario"
                 val modulos  = response.menu?.filter {
-                    // Filtramos módulos que tengan al menos un submódulo
                     !it.submodulos.isNullOrEmpty()
                 } ?: emptyList()
 
@@ -60,8 +58,6 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-
-    // Logout: limpia la sesión y notifica a la UI
     fun logout() {
         tokenStorage.clearSession()
     }

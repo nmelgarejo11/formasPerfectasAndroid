@@ -22,6 +22,7 @@ fun SplashScreen(
     // El splash no sabe nada de navegación, solo avisa a quién lo llama
     onGoLogin: () -> Unit,
     onGoHome:  () -> Unit,
+    onGoExpired: () -> Unit,
     vm: SplashViewModel = hiltViewModel()
 ) {
     // Observamos el estado del ViewModel
@@ -40,11 +41,14 @@ fun SplashScreen(
     // Activamos la animación al entrar a la pantalla
     LaunchedEffect(Unit) { visible = true }
 
+
+
     // Reaccionamos cuando el ViewModel decide a dónde ir
     LaunchedEffect(destination) {
         when (destination) {
             is SplashDestination.GoLogin -> onGoLogin()
             is SplashDestination.GoHome  -> onGoHome()
+            is SplashDestination.GoExpired -> onGoExpired()
             else -> Unit // Loading: no hacemos nada, esperamos
         }
     }

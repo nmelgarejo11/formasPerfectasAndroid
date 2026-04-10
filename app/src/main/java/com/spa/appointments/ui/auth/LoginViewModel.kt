@@ -8,18 +8,21 @@ import com.spa.appointments.core.utils.JwtUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.spa.appointments.domain.model.EstadoLicencia
+import com.spa.appointments.data.repository.LicenciaRepository
 import androidx.compose.runtime.*
 
 @HiltViewModel
 class LoginViewModel @Inject constructor(
     private val repo: AuthRepository,
-    private val tokenStorage: TokenStorage
+    private val tokenStorage: TokenStorage,
+    private val licenciaRepository: LicenciaRepository
 ) : ViewModel() {
 
     var state by mutableStateOf(LoginState())
         private set
 
-    fun login(user: String, pass: String, onSuccess: () -> Unit) {
+    fun login(user: String, pass: String, onSuccess: () -> Unit, onExpired: () -> Unit) {
         viewModelScope.launch {
             try {
                 state = state.copy(loading = true)
@@ -35,21 +38,47 @@ class LoginViewModel @Inject constructor(
                     idEmpresa    = idEmpresa
                 )
 
-                state = state.copy(loading = false, error = null)
-                onSuccess()
+                try {
+                    val licencia = licenciaRepository.validarLicencia()
+                    tokenStorage.saveLicencia(
+                        estado        = licencia.estado,
+                        mensaje       = licencia.mensaje,
+                        diasRestantes = licencia.diasRestantes
+                    )
+
+                    state = state.copy(loading = false, error = null)
+
+                    if (licencia.estado == EstadoLicencia.EXPIRADO ||
+                        licencia.estado == EstadoLicencia.INACTIVA) {
+                        onExpired()
+                    } else {
+                        onSuccess()
+                    }
+
+                } catch (e: retrofit2.HttpException) {
+                    state = state.copy(loading = false, error = null)
+                    if (e.code() == 403) {
+                        onExpired()
+                    } else {
+                        onSuccess() // otro error HTTP → dejamos pasar
+                    }
+                } catch (e: Exception) {
+                    // Sin internet → dejamos pasar
+                    state = state.copy(loading = false, error = null)
+                    onSuccess()
+                }
 
             } catch (e: Exception) {
                 state = state.copy(
                     loading = false,
-                    error = e.localizedMessage ?: "Error de autenticación"
+                    error   = e.localizedMessage ?: "Error de autenticación"
                 )
             }
         }
     }
 
-}
-
 data class LoginState(
     val loading: Boolean = false,
     val error: String? = null
 )
+}

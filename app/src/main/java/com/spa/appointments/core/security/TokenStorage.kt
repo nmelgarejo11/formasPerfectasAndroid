@@ -15,7 +15,22 @@ class TokenStorage(context: Context) {
         private const val USER_KEY          = "logged_user"
         private const val ID_EMPRESA_KEY    = "id_empresa"
         private const val TAG = "TokenStorage"
+        private const val LICENCIA_ESTADO_KEY  = "licencia_estado"
+        private const val LICENCIA_MENSAJE_KEY = "licencia_mensaje"
+        private const val LICENCIA_DIAS_KEY    = "licencia_dias"
     }
+
+    fun saveLicencia(estado: String, mensaje: String, diasRestantes: Int) {
+        prefs.edit()
+            .putString(LICENCIA_ESTADO_KEY,  estado)
+            .putString(LICENCIA_MENSAJE_KEY, mensaje)
+            .putInt(LICENCIA_DIAS_KEY,       diasRestantes)
+            .apply()
+    }
+
+    fun getLicenciaEstado():  String = prefs.getString(LICENCIA_ESTADO_KEY,  "") ?: ""
+    fun getLicenciaMensaje(): String = prefs.getString(LICENCIA_MENSAJE_KEY, "") ?: ""
+    fun getLicenciaDias():    Int    = prefs.getInt(LICENCIA_DIAS_KEY,       0)
 
     // Guardamos el contexto para poder recrear las prefs si fallan
     private val appContext = context.applicationContext

@@ -17,12 +17,13 @@ import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
 import javax.inject.Singleton
 import javax.inject.Named
+import com.spa.appointments.BuildConfig
 
 @Module
 @InstallIn(SingletonComponent::class)
 object AppModule {
 
-    private const val BASE_URL = "http://192.168.1.61:5005/api/"
+    private const val BASE_URL = BuildConfig.BASE_URL
 
     // ---------- Moshi ----------
     @Provides

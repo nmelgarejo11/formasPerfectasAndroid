@@ -34,7 +34,25 @@ android {
     }
 
     buildFeatures {
-        compose = true
+        compose     = true
+        buildConfig = true  // ← habilita BuildConfig para usar las URLs
+    }
+
+    buildTypes {
+        debug {
+            // ← cambia esta IP por la de tu PC (ipconfig en CMD)
+            buildConfigField("String", "BASE_URL", "\"http://192.168.40.76:5005/api/\"")
+            isDebuggable = true
+        }
+        release {
+            // ← aquí irá tu dominio de producción cuando lo tengas
+            buildConfigField("String", "BASE_URL", "\"https://tu-dominio.com/api/\"")
+            isMinifyEnabled = false
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
     }
 
     composeOptions {

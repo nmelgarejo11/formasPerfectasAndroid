@@ -11,7 +11,8 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun LoginScreen(
     vm: LoginViewModel,
-    onLoginSuccess: () -> Unit
+    onLoginSuccess: () -> Unit,
+    onLoginExpired: () -> Unit
 ) {
     var user by remember { mutableStateOf("") }
     var pass by remember { mutableStateOf("") }
@@ -50,7 +51,8 @@ fun LoginScreen(
 
             Button(
                 onClick = {
-                    vm.login(user, pass, onLoginSuccess)
+                    vm.login(user, pass, onLoginSuccess,
+                        onExpired = onLoginExpired)
                 },
                 enabled = !st.loading
             ) {

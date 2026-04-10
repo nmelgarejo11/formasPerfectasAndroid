@@ -17,6 +17,7 @@ object Constants {
         const val HISTORIAL       = "historial"
         const val FINANCIERO      = "financiero"
         const val PERFIL          = "perfil"
+        const val DEMO_EXPIRADO  = "demo_expirado"
     }
 
     // ID de sede por defecto (puedes hacerlo dinámico después)

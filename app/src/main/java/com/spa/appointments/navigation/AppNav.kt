@@ -16,18 +16,17 @@ import com.spa.appointments.ui.disponibilidad.DisponibilidadViewModel
 import com.spa.appointments.ui.financiero.FinancieroScreen
 import com.spa.appointments.ui.home.HomeScreen
 import com.spa.appointments.ui.home.HomeViewModel
+import com.spa.appointments.ui.licencia.DemoExpiradoScreen
 import com.spa.appointments.ui.perfil.PerfilScreen
 import com.spa.appointments.ui.profesionales.ProfesionalesScreen
 import com.spa.appointments.ui.reserva.ReservaSharedViewModel
 import com.spa.appointments.ui.servicios.ServiciosScreen
 import com.spa.appointments.ui.splash.SplashScreen
-import androidx.compose.runtime.LaunchedEffect
 
 @Composable
 fun AppNav() {
     val nav = rememberNavController()
 
-    // Rutas conocidas — se navega solo si están aquí
     val rutasConocidas = setOf(
         Routes.SERVICIOS,
         Routes.PROFESIONALES,
@@ -46,12 +45,17 @@ fun AppNav() {
             SplashScreen(
                 onGoLogin = {
                     nav.navigate(Routes.LOGIN) {
-                        popUpTo(Routes.SPLASH) { inclusive = true }
+                        popUpTo(Routes.SPLASH) { this.inclusive = true }
                     }
                 },
                 onGoHome = {
                     nav.navigate(Routes.HOME) {
-                        popUpTo(Routes.SPLASH) { inclusive = true }
+                        popUpTo(Routes.SPLASH) { this.inclusive = true }
+                    }
+                },
+                onGoExpired = {
+                    nav.navigate(Routes.DEMO_EXPIRADO) {
+                        popUpTo(Routes.SPLASH) { this.inclusive = true }
                     }
                 }
             )
@@ -60,11 +64,19 @@ fun AppNav() {
         // ── Login ────────────────────────────────────────────────────────────
         composable(Routes.LOGIN) {
             val vm = hiltViewModel<LoginViewModel>()
-            LoginScreen(vm) {
-                nav.navigate(Routes.HOME) {
-                    popUpTo(Routes.LOGIN) { inclusive = true }
+            LoginScreen(
+                vm             = vm,
+                onLoginSuccess = {
+                    nav.navigate(Routes.HOME) {
+                        popUpTo(Routes.LOGIN) { this.inclusive = true }
+                    }
+                },
+                onLoginExpired = {
+                    nav.navigate(Routes.DEMO_EXPIRADO) {
+                        popUpTo(Routes.LOGIN) { this.inclusive = true }
+                    }
                 }
-            }
+            )
         }
 
         // ── Home ─────────────────────────────────────────────────────────────
@@ -74,20 +86,19 @@ fun AppNav() {
                 onLogout = {
                     homeVm.logout()
                     nav.navigate(Routes.LOGIN) {
-                        popUpTo(Routes.HOME) { inclusive = true }
+                        popUpTo(Routes.HOME) { this.inclusive = true }
                     }
                 },
                 onNavigate = { ruta ->
-                    when {
-                        // Logout es una acción especial, no una pantalla
-                        ruta == "logout" -> {
+                    when (ruta) {
+                        "logout" -> {
                             homeVm.logout()
                             nav.navigate(Routes.LOGIN) {
-                                popUpTo(Routes.HOME) { inclusive = true }
+                                popUpTo(Routes.HOME) { this.inclusive = true }
                             }
                         }
-                        ruta in rutasConocidas -> nav.navigate(ruta)
-                        // Ruta no implementada — no hace nada por ahora
+                        in rutasConocidas -> nav.navigate(ruta)
+                        else -> Unit
                     }
                 },
                 vm = homeVm
@@ -110,15 +121,9 @@ fun AppNav() {
         }
 
         composable(Routes.PROFESIONALES) {
-            // Intentamos obtener el backEntry de SERVICIOS de forma segura
-            // Si no existe (vinimos directo del menú) usamos el entry actual
             val backEntry = remember(it) {
-                try {
-                    nav.getBackStackEntry(Routes.SERVICIOS)
-                } catch (e: Exception) {
-                    // No venimos del flujo de reserva — usamos entry actual
-                    it
-                }
+                try { nav.getBackStackEntry(Routes.SERVICIOS) }
+                catch (e: Exception) { it }
             }
             val sharedVm = hiltViewModel<ReservaSharedViewModel>(backEntry)
 
@@ -126,12 +131,9 @@ fun AppNav() {
                 onBack = { nav.popBackStack() },
                 onSeleccionarProfesional = { profesional ->
                     sharedVm.profesionalSeleccionado = profesional
-                    // Solo navegamos a disponibilidad si tenemos servicio seleccionado
                     if (sharedVm.servicioSeleccionado != null) {
                         nav.navigate(Routes.DISPONIBILIDAD)
                     } else {
-                        // Vinimos directo del menú sin servicio
-                        // Primero seleccionamos servicio
                         nav.navigate(Routes.SERVICIOS)
                     }
                 }
@@ -140,11 +142,8 @@ fun AppNav() {
 
         composable(Routes.DISPONIBILIDAD) {
             val backEntry = remember(it) {
-                try {
-                    nav.getBackStackEntry(Routes.SERVICIOS)
-                } catch (e: Exception) {
-                    it
-                }
+                try { nav.getBackStackEntry(Routes.SERVICIOS) }
+                catch (e: Exception) { it }
             }
             val sharedVm = hiltViewModel<ReservaSharedViewModel>(backEntry)
             val dispVm   = hiltViewModel<DisponibilidadViewModel>()
@@ -159,18 +158,11 @@ fun AppNav() {
                     onBack       = { nav.popBackStack() },
                     onCitaCreada = {
                         nav.navigate(Routes.MIS_CITAS) {
-                            popUpTo(Routes.SERVICIOS) { inclusive = true }
+                            popUpTo(Routes.SERVICIOS) { this.inclusive = true }
                         }
                     },
                     vm = dispVm
                 )
-            } else {
-                // Datos incompletos — volvemos al inicio del flujo
-                LaunchedEffect(Unit) {
-                    nav.navigate(Routes.SERVICIOS) {
-                        popUpTo(Routes.DISPONIBILIDAD) { inclusive = true }
-                    }
-                }
             }
         }
 
@@ -191,7 +183,6 @@ fun AppNav() {
 
         composable(Routes.FINANCIERO) {
             FinancieroScreen(onBack = { nav.popBackStack() })
-            // El hiltViewModel() dentro de FinancieroScreen se encarga del resto
         }
 
         // ── Perfil ───────────────────────────────────────────────────────────
@@ -202,6 +193,23 @@ fun AppNav() {
                 onLogout = {
                     nav.navigate(Routes.LOGIN) {
                         popUpTo(Routes.HOME) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        // ── Demo Expirado ────────────────────────────────────────────────────
+
+        composable(Routes.DEMO_EXPIRADO) {
+            DemoExpiradoScreen(
+                onContactar = {
+                    nav.navigate(Routes.LOGIN) {
+                        popUpTo(Routes.DEMO_EXPIRADO) { inclusive = true }
+                    }
+                },
+                onCerrarSesion = {
+                    nav.navigate(Routes.LOGIN) {
+                        popUpTo(Routes.DEMO_EXPIRADO) { inclusive = true }
                     }
                 }
             )

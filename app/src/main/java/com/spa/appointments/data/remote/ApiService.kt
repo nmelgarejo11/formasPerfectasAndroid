@@ -84,4 +84,8 @@ interface ApiService {
         @Query("fechaHasta") fechaHasta: String,
         @Query("top")        top: Int = 5
     ): List<ProfesionalRanking>
+
+    // ── Licencia ──────────────────────────────────
+    @GET("Licencia/validar")
+    suspend fun validarLicencia(): LicenciaResponse
 }
