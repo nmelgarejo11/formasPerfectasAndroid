@@ -191,6 +191,7 @@ fun AppNav() {
 
         composable(Routes.FINANCIERO) {
             FinancieroScreen(onBack = { nav.popBackStack() })
+            // El hiltViewModel() dentro de FinancieroScreen se encarga del resto
         }
 
         // ── Perfil ───────────────────────────────────────────────────────────

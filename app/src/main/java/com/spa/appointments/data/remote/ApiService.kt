@@ -52,4 +52,36 @@ interface ApiService {
 
     @PUT("Citas/reagendar")
     suspend fun reagendarCita(@Body request: AccionCitaReagendarRequest): AccionCitaResponse
+
+    // ── Financiero ────────────────────────────────
+    @GET("Financiero/resumen")
+    suspend fun getResumenFinanciero(
+        @Query("fechaDesde") fechaDesde: String,
+        @Query("fechaHasta") fechaHasta: String
+    ): ResumenFinanciero
+
+    @GET("Financiero/ingresos-dia")
+    suspend fun getIngresosPorDia(
+        @Query("fechaDesde") fechaDesde: String,
+        @Query("fechaHasta") fechaHasta: String
+    ): List<IngresoDia>
+
+    @GET("Financiero/ingresos-mes")
+    suspend fun getIngresosPorMes(
+        @Query("anio") anio: Int
+    ): List<IngresoMes>
+
+    @GET("Financiero/servicios-vendidos")
+    suspend fun getServiciosVendidos(
+        @Query("fechaDesde") fechaDesde: String,
+        @Query("fechaHasta") fechaHasta: String,
+        @Query("top")        top: Int = 5
+    ): List<ServicioVendido>
+
+    @GET("Financiero/profesionales-ranking")
+    suspend fun getProfesionalesRanking(
+        @Query("fechaDesde") fechaDesde: String,
+        @Query("fechaHasta") fechaHasta: String,
+        @Query("top")        top: Int = 5
+    ): List<ProfesionalRanking>
 }

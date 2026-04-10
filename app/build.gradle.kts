@@ -48,6 +48,8 @@ android {
 
 dependencies {
 
+    implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
+
     // Desugaring — permite usar java.time en Android < 26
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
 
