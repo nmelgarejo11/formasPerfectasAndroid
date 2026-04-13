@@ -92,4 +92,8 @@ interface ApiService {
     // Sin token — endpoint público
     @GET("Contacto")
     suspend fun getContactoSoporte(): ContactoSoporte
+
+    // ── Tema ──────────────────────────────────────
+    @GET("Tema")
+    suspend fun getTemaEmpresa(): TemaEmpresa
 }

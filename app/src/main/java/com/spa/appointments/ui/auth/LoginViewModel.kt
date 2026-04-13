@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.spa.appointments.data.repository.AuthRepository
 import com.spa.appointments.core.security.TokenStorage
 import com.spa.appointments.core.utils.JwtUtils
+import com.spa.appointments.core.theme.TemaStore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -22,7 +23,11 @@ class LoginViewModel @Inject constructor(
     var state by mutableStateOf(LoginState())
         private set
 
+
     fun login(user: String, pass: String, onSuccess: () -> Unit, onExpired: () -> Unit) {
+
+        TemaStore.limpiar()
+
         viewModelScope.launch {
             try {
                 state = state.copy(loading = true)

@@ -10,72 +10,83 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.spa.appointments.core.utils.Constants
+import coil.compose.AsyncImage
+import com.spa.appointments.core.theme.TemaStore
 
 @Composable
 fun SplashScreen(
-    // Estas dos funciones las recibe desde AppNav
-    // El splash no sabe nada de navegación, solo avisa a quién lo llama
-    onGoLogin: () -> Unit,
-    onGoHome:  () -> Unit,
+    onGoLogin:   () -> Unit,
+    onGoHome:    () -> Unit,
     onGoExpired: () -> Unit,
     vm: SplashViewModel = hiltViewModel()
 ) {
-    // Observamos el estado del ViewModel
-    // "collectAsState" convierte el StateFlow en algo que Compose entiende
     val destination by vm.destination.collectAsState()
+    val tema        by TemaStore.tema.collectAsState()
 
-    // Animación de aparición del logo (fade-in)
-    // Empieza en 0 (invisible) y sube a 1 (visible) en 800ms
     var visible by remember { mutableStateOf(false) }
-    val alpha by animateFloatAsState(
-        targetValue = if (visible) 1f else 0f,
+    val alpha   by animateFloatAsState(
+        targetValue   = if (visible) 1f else 0f,
         animationSpec = tween(durationMillis = 800),
-        label = "splash_fade"
+        label         = "splash_fade"
     )
 
-    // Activamos la animación al entrar a la pantalla
     LaunchedEffect(Unit) { visible = true }
 
-
-
-    // Reaccionamos cuando el ViewModel decide a dónde ir
     LaunchedEffect(destination) {
         when (destination) {
-            is SplashDestination.GoLogin -> onGoLogin()
-            is SplashDestination.GoHome  -> onGoHome()
+            is SplashDestination.GoLogin   -> onGoLogin()
+            is SplashDestination.GoHome    -> onGoHome()
             is SplashDestination.GoExpired -> onGoExpired()
-            else -> Unit // Loading: no hacemos nada, esperamos
+            else                           -> Unit
         }
     }
 
-    // UI del splash
     Box(
-        modifier = Modifier
+        modifier         = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.primary),
         contentAlignment = Alignment.Center
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.alpha(alpha) // Aplicamos el fade-in
+            modifier            = Modifier
+                .alpha(alpha)
+                .padding(32.dp)
         ) {
-            // Aquí puedes reemplazar este Text por un Image con tu logo
+            // Logo si existe
+            if (tema?.logoUrl != null) {
+                AsyncImage(
+                    model              = tema!!.logoUrl,
+                    contentDescription = tema!!.nombreApp,
+                    modifier           = Modifier
+                        .size(120.dp)
+                        .clip(MaterialTheme.shapes.medium),
+                    contentScale       = ContentScale.Fit
+                )
+                Spacer(Modifier.height(16.dp))
+            }
+
+            // Nombre de la app
             Text(
-                text = Constants.APP_NAME,
-                color = MaterialTheme.colorScheme.onPrimary,
-                fontSize = 32.sp,
+                text       = tema?.nombreApp ?: "Gestión de Servicios",
+                color      = MaterialTheme.colorScheme.onPrimary,
+                fontSize   = 32.sp,
                 fontWeight = FontWeight.Bold
             )
-            Spacer(modifier = Modifier.height(8.dp))
+
+            Spacer(Modifier.height(8.dp))
+
+            // Slogan
             Text(
-                text = "Gestión de citas",
-                color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
-                fontSize = 16.sp
+                text     = tema?.slogan ?: "Sistema de gestión de citas",
+                color    = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f),
+                fontSize = 15.sp
             )
         }
     }

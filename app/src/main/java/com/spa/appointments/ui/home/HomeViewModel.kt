@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.spa.appointments.core.security.TokenStorage
 import com.spa.appointments.data.repository.MenuRepository
 import com.spa.appointments.domain.model.Modulo
+import com.spa.appointments.core.theme.TemaStore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -60,5 +61,6 @@ class HomeViewModel @Inject constructor(
 
     fun logout() {
         tokenStorage.clearSession()
+        TemaStore.limpiar()  // ← limpiar tema al cerrar sesión
     }
 }
