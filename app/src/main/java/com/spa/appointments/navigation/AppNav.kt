@@ -202,14 +202,9 @@ fun AppNav() {
 
         composable(Routes.DEMO_EXPIRADO) {
             DemoExpiradoScreen(
-                onContactar = {
-                    nav.navigate(Routes.LOGIN) {
-                        popUpTo(Routes.DEMO_EXPIRADO) { inclusive = true }
-                    }
-                },
                 onCerrarSesion = {
                     nav.navigate(Routes.LOGIN) {
-                        popUpTo(Routes.DEMO_EXPIRADO) { inclusive = true }
+                        popUpTo(Routes.DEMO_EXPIRADO) { this.inclusive = true }
                     }
                 }
             )

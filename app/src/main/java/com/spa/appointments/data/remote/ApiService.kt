@@ -88,4 +88,8 @@ interface ApiService {
     // ── Licencia ──────────────────────────────────
     @GET("Licencia/validar")
     suspend fun validarLicencia(): LicenciaResponse
+
+    // Sin token — endpoint público
+    @GET("Contacto")
+    suspend fun getContactoSoporte(): ContactoSoporte
 }

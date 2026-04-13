@@ -86,4 +86,19 @@ object AppModule {
             .addConverterFactory(MoshiConverterFactory.create(moshi))
             .build()
             .create(ApiService::class.java)
+
+    // API pública (sin token) — para contacto y otros endpoints públicos
+    @Provides
+    @Singleton
+    @Named("publicApi")
+    fun providePublicApi(
+        @Named("noAuth") okHttp: OkHttpClient,
+        moshi: Moshi
+    ): ApiService =
+        Retrofit.Builder()
+            .baseUrl(BASE_URL)
+            .client(okHttp)
+            .addConverterFactory(MoshiConverterFactory.create(moshi))
+            .build()
+            .create(ApiService::class.java)
 }
