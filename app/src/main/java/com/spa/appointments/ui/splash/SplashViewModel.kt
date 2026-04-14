@@ -10,11 +10,11 @@ import com.spa.appointments.data.repository.TemaRepository
 import com.spa.appointments.domain.model.EstadoLicencia
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
-import kotlinx.coroutines.delay
 import javax.inject.Inject
 
 sealed class SplashDestination {
@@ -34,39 +34,41 @@ class SplashViewModel @Inject constructor(
     private val _destination = MutableStateFlow<SplashDestination>(SplashDestination.Loading)
     val destination: StateFlow<SplashDestination> = _destination
 
-    // temaListo arranca en true — el splash se muestra de inmediato
-    // con los valores por defecto si el tema no llega
-    private val _temaListo = MutableStateFlow(true)
-    val temaListo: StateFlow<Boolean> = _temaListo
+    // Controla si el contenido del splash está listo para mostrarse
+    private val _contenidoListo = MutableStateFlow(false)
+    val contenidoListo: StateFlow<Boolean> = _contenidoListo
 
     init { checkSession() }
 
     private fun checkSession() {
         viewModelScope.launch {
-            delay(Constants.SPLASH_DELAY_MS)
-
             val token = tokenStorage.getAccessToken()
 
-            // Sin token → Login directo
+            // Sin token → Login directo sin mostrar splash
             if (token.isNullOrBlank()) {
                 _destination.value = SplashDestination.GoLogin
                 return@launch
             }
 
-            // Con token → cargar tema y validar licencia
+            // Con token → cargar tema primero, luego mostrar splash
             try {
-                // Primero cargamos el tema en segundo plano
-                val temaDeferred = async {
+                // Cargamos tema y licencia en paralelo
+                val temaDeferred     = async {
                     try { temaRepository.getTema() } catch (e: Exception) { null }
                 }
+                val licenciaDeferred = async { licenciaRepository.validarLicencia() }
 
-                // Validamos licencia
-                val licencia = licenciaRepository.validarLicencia()
+                // Esperamos mínimo el delay del splash y que el tema cargue
+                val temaResult = temaDeferred.await()
+                temaResult?.let { TemaStore.setTema(it) }
 
-                // Aplicamos el tema si llegó
-                temaDeferred.await()?.let { TemaStore.setTema(it) }
+                // Ahora sí mostramos el contenido — el tema ya está aplicado
+                _contenidoListo.value = true
 
-                // Guardamos estado de licencia
+                // Esperamos el delay antes de navegar
+                delay(Constants.SPLASH_DELAY_MS)
+
+                val licencia = licenciaDeferred.await()
                 tokenStorage.saveLicencia(
                     estado        = licencia.estado,
                     mensaje       = licencia.mensaje,
@@ -82,12 +84,16 @@ class SplashViewModel @Inject constructor(
                 }
 
             } catch (e: HttpException) {
+                _contenidoListo.value = true
+                delay(Constants.SPLASH_DELAY_MS)
                 if (e.code() == 403) {
                     _destination.value = SplashDestination.GoExpired
                 } else {
                     _destination.value = SplashDestination.GoHome
                 }
             } catch (e: Exception) {
+                _contenidoListo.value = true
+                delay(Constants.SPLASH_DELAY_MS)
                 _destination.value = SplashDestination.GoHome
             }
         }
