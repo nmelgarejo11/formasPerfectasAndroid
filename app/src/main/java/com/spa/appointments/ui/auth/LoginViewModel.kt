@@ -12,12 +12,14 @@ import javax.inject.Inject
 import com.spa.appointments.domain.model.EstadoLicencia
 import com.spa.appointments.data.repository.LicenciaRepository
 import androidx.compose.runtime.*
+import com.spa.appointments.data.repository.TemaRepository
 
 @HiltViewModel
 class LoginViewModel @Inject constructor(
     private val repo: AuthRepository,
     private val tokenStorage: TokenStorage,
-    private val licenciaRepository: LicenciaRepository
+    private val licenciaRepository: LicenciaRepository,
+    private val temaRepository: TemaRepository
 ) : ViewModel() {
 
     var state by mutableStateOf(LoginState())
@@ -42,6 +44,14 @@ class LoginViewModel @Inject constructor(
                     user = user,
                     idEmpresa    = idEmpresa
                 )
+
+                // Cargar tema después del login
+                try {
+                    val tema = temaRepository.getTema()
+                    TemaStore.setTema(tema)
+                } catch (e: Exception) {
+                    // Si falla el tema igual continuamos
+                }
 
                 try {
                     val licencia = licenciaRepository.validarLicencia()

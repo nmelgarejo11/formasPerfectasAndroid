@@ -21,6 +21,7 @@ import com.spa.appointments.ui.perfil.PerfilScreen
 import com.spa.appointments.ui.profesionales.ProfesionalesScreen
 import com.spa.appointments.ui.reserva.ReservaSharedViewModel
 import com.spa.appointments.ui.servicios.ServiciosScreen
+import com.spa.appointments.ui.splash.SplashEmpresaScreen
 import com.spa.appointments.ui.splash.SplashScreen
 
 @Composable
@@ -67,13 +68,23 @@ fun AppNav() {
             LoginScreen(
                 vm             = vm,
                 onLoginSuccess = {
-                    nav.navigate(Routes.HOME) {
+                    nav.navigate(Routes.SPLASH_EMPRESA) {
                         popUpTo(Routes.LOGIN) { this.inclusive = true }
                     }
                 },
                 onLoginExpired = {
                     nav.navigate(Routes.DEMO_EXPIRADO) {
                         popUpTo(Routes.LOGIN) { this.inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable(Routes.SPLASH_EMPRESA) {
+            SplashEmpresaScreen(
+                onContinuar = {
+                    nav.navigate(Routes.HOME) {
+                        popUpTo(Routes.SPLASH_EMPRESA) { this.inclusive = true }
                     }
                 }
             )

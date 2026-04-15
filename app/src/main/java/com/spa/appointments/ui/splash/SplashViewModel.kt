@@ -24,6 +24,9 @@ sealed class SplashDestination {
     object GoExpired : SplashDestination()
 }
 
+// Modo del splash — genérico o con datos de empresa
+enum class SplashModo { GENERICO, EMPRESA }
+
 @HiltViewModel
 class SplashViewModel @Inject constructor(
     private val tokenStorage:       TokenStorage,
@@ -34,9 +37,8 @@ class SplashViewModel @Inject constructor(
     private val _destination = MutableStateFlow<SplashDestination>(SplashDestination.Loading)
     val destination: StateFlow<SplashDestination> = _destination
 
-    // Controla si el contenido del splash está listo para mostrarse
-    private val _contenidoListo = MutableStateFlow(false)
-    val contenidoListo: StateFlow<Boolean> = _contenidoListo
+    private val _modo = MutableStateFlow(SplashModo.GENERICO)
+    val modo: StateFlow<SplashModo> = _modo
 
     init { checkSession() }
 
@@ -44,28 +46,31 @@ class SplashViewModel @Inject constructor(
         viewModelScope.launch {
             val token = tokenStorage.getAccessToken()
 
-            // Sin token → Login directo sin mostrar splash
             if (token.isNullOrBlank()) {
+                // Sin token → splash genérico → login
+                _modo.value = SplashModo.GENERICO
+                delay(Constants.SPLASH_DELAY_MS)
                 _destination.value = SplashDestination.GoLogin
                 return@launch
             }
 
-            // Con token → cargar tema primero, luego mostrar splash
+            // Con token → splash genérico mientras carga el tema
+            _modo.value = SplashModo.GENERICO
+
             try {
-                // Cargamos tema y licencia en paralelo
                 val temaDeferred     = async {
                     try { temaRepository.getTema() } catch (e: Exception) { null }
                 }
                 val licenciaDeferred = async { licenciaRepository.validarLicencia() }
 
-                // Esperamos mínimo el delay del splash y que el tema cargue
+                // Cargamos el tema
                 val temaResult = temaDeferred.await()
                 temaResult?.let { TemaStore.setTema(it) }
 
-                // Ahora sí mostramos el contenido — el tema ya está aplicado
-                _contenidoListo.value = true
+                // Cambiamos al modo empresa con fade
+                _modo.value = SplashModo.EMPRESA
 
-                // Esperamos el delay antes de navegar
+                // Mostramos el splash de empresa el tiempo configurado
                 delay(Constants.SPLASH_DELAY_MS)
 
                 val licencia = licenciaDeferred.await()
@@ -84,7 +89,7 @@ class SplashViewModel @Inject constructor(
                 }
 
             } catch (e: HttpException) {
-                _contenidoListo.value = true
+                _modo.value = SplashModo.EMPRESA
                 delay(Constants.SPLASH_DELAY_MS)
                 if (e.code() == 403) {
                     _destination.value = SplashDestination.GoExpired
@@ -92,7 +97,7 @@ class SplashViewModel @Inject constructor(
                     _destination.value = SplashDestination.GoHome
                 }
             } catch (e: Exception) {
-                _contenidoListo.value = true
+                _modo.value = SplashModo.EMPRESA
                 delay(Constants.SPLASH_DELAY_MS)
                 _destination.value = SplashDestination.GoHome
             }
