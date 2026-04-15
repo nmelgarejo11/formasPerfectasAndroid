@@ -2,7 +2,7 @@ package com.spa.appointments.core.utils
 
 object Constants {
 
-    const val SPLASH_DELAY_MS = 1500L
+    const val SPLASH_DELAY_MS = 2500L
     const val APP_NAME        = "SPA Formas Perfectas"
 
     object Routes {

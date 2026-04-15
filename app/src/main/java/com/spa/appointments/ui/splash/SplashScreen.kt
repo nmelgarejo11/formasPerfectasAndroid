@@ -52,7 +52,7 @@ fun SplashScreen(
         // AnimatedContent hace el fade entre modo genérico y modo empresa
         AnimatedContent(
             targetState   = modo,
-            transitionSpec = { fadeIn(tween(600)) togetherWith fadeOut(tween(400)) },
+            transitionSpec = { fadeIn(tween(800)) togetherWith fadeOut(tween(400)) },
             label         = "splash_content"
         ) { modoActual ->
             when (modoActual) {
