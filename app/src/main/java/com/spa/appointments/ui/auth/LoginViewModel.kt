@@ -13,6 +13,7 @@ import com.spa.appointments.domain.model.EstadoLicencia
 import com.spa.appointments.data.repository.LicenciaRepository
 import androidx.compose.runtime.*
 import com.spa.appointments.data.repository.TemaRepository
+import com.spa.appointments.domain.model.FcmTokenRequest
 
 @HiltViewModel
 class LoginViewModel @Inject constructor(
@@ -44,6 +45,16 @@ class LoginViewModel @Inject constructor(
                     user = user,
                     idEmpresa    = idEmpresa
                 )
+
+                // Registrar token FCM en la API
+                try {
+                    val fcmToken = tokenStorage.getFcmToken()
+                    if (!fcmToken.isNullOrBlank()) {
+                        repo.registrarFcmToken(FcmTokenRequest(token = fcmToken))
+                    }
+                } catch (e: Exception) {
+                    // Si falla el registro de FCM no bloqueamos el login
+                }
 
                 // Cargar tema después del login
                 try {

@@ -96,4 +96,8 @@ interface ApiService {
     // ── Tema ──────────────────────────────────────
     @GET("Tema")
     suspend fun getTemaEmpresa(): TemaEmpresa
+
+    // ── Notificaciones ────────────────────────────
+    @POST("Notificaciones/registrar-token")
+    suspend fun registrarFcmToken(@Body request: FcmTokenRequest)
 }

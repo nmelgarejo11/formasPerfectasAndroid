@@ -2,6 +2,7 @@ package com.spa.appointments.data.repository
 
 import com.spa.appointments.data.remote.ApiService
 import com.spa.appointments.domain.model.LoginRequest
+import com.spa.appointments.domain.model.FcmTokenRequest
 import javax.inject.Inject
 
 class AuthRepository @Inject constructor(
@@ -15,4 +16,7 @@ class AuthRepository @Inject constructor(
                 clave = pass
             )
         )
+
+    suspend fun registrarFcmToken(request: FcmTokenRequest) =
+        api.registrarFcmToken(request)
 }
