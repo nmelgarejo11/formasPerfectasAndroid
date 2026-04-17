@@ -3,6 +3,7 @@ plugins {
     id("org.jetbrains.kotlin.android") version "1.9.10"
     id("org.jetbrains.kotlin.kapt") version "1.9.10"
     id("com.google.dagger.hilt.android")
+    id("com.google.gms.google-services")
 }
 
 android {

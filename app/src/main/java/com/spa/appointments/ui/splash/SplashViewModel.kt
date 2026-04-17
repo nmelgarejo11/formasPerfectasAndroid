@@ -8,6 +8,7 @@ import com.spa.appointments.core.utils.Constants
 import com.spa.appointments.data.repository.LicenciaRepository
 import com.spa.appointments.data.repository.TemaRepository
 import com.spa.appointments.domain.model.EstadoLicencia
+import com.spa.appointments.core.notifications.FcmService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
@@ -40,7 +41,7 @@ class SplashViewModel @Inject constructor(
     private val _modo = MutableStateFlow(SplashModo.GENERICO)
     val modo: StateFlow<SplashModo> = _modo
 
-    init { checkSession() }
+    init {checkSession()}
 
     private fun checkSession() {
         viewModelScope.launch {

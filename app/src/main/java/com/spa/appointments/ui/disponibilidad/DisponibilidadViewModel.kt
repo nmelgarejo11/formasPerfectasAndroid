@@ -88,7 +88,8 @@ class DisponibilidadViewModel @Inject constructor(
             _uiState.value = DisponibilidadUiState.CreandoCita
             try {
                 // Construir fechas completas combinando fecha + hora del slot
-                val formatter   = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+
+                val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")
                 val fechaInicio = LocalDateTime.parse(
                     "${fecha} ${slot.horaInicio}", DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
                 )
@@ -115,7 +116,7 @@ class DisponibilidadViewModel @Inject constructor(
                         )
                     )
                 )
-
+                android.util.Log.d("DisponibilidadVM", "Request: idSede=${request.idSede}, idCliente=${request.idCliente}, idProfesional=${request.idProfesional}, fechaInicio=${request.fechaInicio}, fechaFin=${request.fechaFin}, servicios=${request.servicios}")
                 val response = repo.crearCita(request)
 
                 if (response.idCita > 0) {

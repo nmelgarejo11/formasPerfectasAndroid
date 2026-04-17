@@ -8,6 +8,7 @@ import android.content.Intent
 import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import com.spa.appointments.MainActivity
@@ -23,6 +24,7 @@ class FcmService : FirebaseMessagingService() {
     lateinit var tokenStorage: TokenStorage
 
     companion object {
+
         const val CHANNEL_ID = "citas_channel"
         const val CHANNEL_NAME = "Citas"
     }

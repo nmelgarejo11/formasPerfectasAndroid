@@ -1,5 +1,6 @@
 package com.spa.appointments.ui.auth
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.spa.appointments.data.repository.AuthRepository
@@ -53,7 +54,7 @@ class LoginViewModel @Inject constructor(
                         repo.registrarFcmToken(FcmTokenRequest(token = fcmToken))
                     }
                 } catch (e: Exception) {
-                    // Si falla el registro de FCM no bloqueamos el login
+                    Log.e("LoginViewModel", "Error registrando FCM token: ${e.message}")
                 }
 
                 // Cargar tema después del login
