@@ -23,11 +23,45 @@ import com.spa.appointments.core.security.TokenStorage
 fun HomeScreen(
     onLogout:   () -> Unit,
     onNavigate: (String) -> Unit,
+    pendingDestination: MutableState<String?> = mutableStateOf(null),
     vm: HomeViewModel = hiltViewModel()
 ) {
     val uiState by vm.uiState.collectAsState()
 
-
+    val destino = pendingDestination.value
+    if (destino != null) {
+        AlertDialog(
+            onDismissRequest = { pendingDestination.value = null },
+            icon = {
+                Icon(
+                    Icons.Default.Notifications,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            },
+            title = { Text("Tienes una actualización") },
+            text  = {
+                Text(
+                    when (destino) {
+                        "mis_citas" -> "Hay novedades en tus citas. ¿Deseas verlas ahora?"
+                        "historial" -> "Hay novedades en tu historial. ¿Deseas verlo ahora?"
+                        else        -> "Tienes una nueva notificación."
+                    }
+                )
+            },
+            confirmButton = {
+                Button(onClick = {
+                    pendingDestination.value = null
+                    onNavigate(destino)
+                }) { Text("Ver ahora") }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { pendingDestination.value = null }) {
+                    Text("Después")
+                }
+            }
+        )
+    }
     Scaffold(
         topBar = {
             TopAppBar(

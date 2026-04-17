@@ -25,7 +25,7 @@ import com.spa.appointments.ui.splash.SplashEmpresaScreen
 import com.spa.appointments.ui.splash.SplashScreen
 
 @Composable
-fun AppNav() {
+fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
     val nav = rememberNavController()
 
     val rutasConocidas = setOf(
@@ -112,6 +112,7 @@ fun AppNav() {
                         else -> Unit
                     }
                 },
+                pendingDestination = pendingDestination,
                 vm = homeVm
             )
         }
