@@ -13,7 +13,7 @@ data class SubModulo(
 )
 
 // Representa un módulo (grupo del menú)
-// Ejemplo: "Citas", "Financiero", "Perfil"
+// Ejemplo: "Citas", "Financiero", "com.spa.appointments.domain.model.Perfil"
 @JsonClass(generateAdapter = true)
 data class Modulo(
     @Json(name = "modulo")     val modulo: String,

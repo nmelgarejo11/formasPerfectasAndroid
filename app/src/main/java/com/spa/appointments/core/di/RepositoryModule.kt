@@ -1,19 +1,20 @@
 package com.spa.appointments.core.di
 
-import com.spa.appointments.data.repository.AppointmentsRepositoryImpl
-import com.spa.appointments.domain.repository.AppointmentsRepository
+import com.spa.appointments.data.repository.PerfilRepositoryImpl
+import com.spa.appointments.domain.repository.PerfilRepository
+import dagger.Binds
 import dagger.Module
-import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
-object RepositoryModule {
+abstract class RepositoryModule {
 
-    @Provides
+    @Binds
     @Singleton
-    fun provideAppointmentsRepository(): AppointmentsRepository =
-        AppointmentsRepositoryImpl()
+    abstract fun bindPerfilRepository(
+        impl: PerfilRepositoryImpl
+    ): PerfilRepository
 }

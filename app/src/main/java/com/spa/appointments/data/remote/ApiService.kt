@@ -2,6 +2,8 @@ package com.spa.appointments.data.remote
 
 import com.spa.appointments.domain.model.*
 import retrofit2.http.*
+import retrofit2.Response
+import okhttp3.MultipartBody
 
 interface ApiService {
 
@@ -109,4 +111,17 @@ interface ApiService {
 
     @POST("Clientes")
     suspend fun crearCliente(@Body request: CrearClienteRequest): Cliente
+
+    // ── Perfil ──────────────────────────────────────
+    @GET("Perfil")
+    suspend fun obtenerPerfil(): Response<Perfil>
+
+    @PUT("Perfil")
+    suspend fun actualizarPerfil(@Body request: ActualizarPerfilRequest): Response<Unit>
+
+    @Multipart
+    @POST("Perfil/foto")
+    suspend fun subirFoto(
+        @Part foto: MultipartBody.Part
+    ): Response<FotoResponse>
 }

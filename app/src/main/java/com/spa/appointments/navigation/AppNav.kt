@@ -219,7 +219,7 @@ fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
             FinancieroScreen(onBack = { nav.popBackStack() })
         }
 
-        // ── Perfil ───────────────────────────────────────────────────────────
+        // ── com.spa.appointments.domain.model.Perfil ───────────────────────────────────────────────────────────
 
         composable(Routes.PERFIL) {
             PerfilScreen(
