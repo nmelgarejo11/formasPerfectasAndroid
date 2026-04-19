@@ -37,6 +37,7 @@ class DisponibilidadViewModel @Inject constructor(
     // Datos que llegan de las pantallas anteriores
     var servicio: Servicio?      = null
     var profesional: Profesional? = null
+    var clienteSeleccionado: Cliente? = null
 
     // Fecha seleccionada por el usuario
     private val _fechaSeleccionada = MutableStateFlow(LocalDate.now())
@@ -96,10 +97,11 @@ class DisponibilidadViewModel @Inject constructor(
                 val fechaFin = LocalDateTime.parse(
                     "${fecha} ${slot.horaFin}", DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
                 )
-
-                // IdCliente — por ahora usamos el IdUsuario del token
-                // En el futuro habrá un flujo para seleccionar/crear cliente
-                val idCliente = tokenStorage.getIdEmpresa() // temporal
+                // selecciona cliente
+                val idCliente = clienteSeleccionado?.id ?: run {
+                    _uiState.value = DisponibilidadUiState.Error("Debe seleccionar un cliente")
+                    return@launch
+                }
 
                 val request = CrearCitaRequest(
                     idSede        = prof.idSede,

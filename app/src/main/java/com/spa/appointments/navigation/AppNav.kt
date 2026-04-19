@@ -23,12 +23,14 @@ import com.spa.appointments.ui.reserva.ReservaSharedViewModel
 import com.spa.appointments.ui.servicios.ServiciosScreen
 import com.spa.appointments.ui.splash.SplashEmpresaScreen
 import com.spa.appointments.ui.splash.SplashScreen
+import com.spa.appointments.ui.clientes.SeleccionarClienteScreen
 
 @Composable
 fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
     val nav = rememberNavController()
 
     val rutasConocidas = setOf(
+        Routes.SELECCIONAR_CLIENTE,
         Routes.SERVICIOS,
         Routes.PROFESIONALES,
         Routes.DISPONIBILIDAD,
@@ -119,9 +121,28 @@ fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
 
         // ── Flujo de reserva ─────────────────────────────────────────────────
 
+        composable(Routes.SELECCIONAR_CLIENTE) {
+            val backEntry = remember(it) {
+                try { nav.getBackStackEntry(Routes.SELECCIONAR_CLIENTE) }
+                catch (e: Exception) { it }
+            }
+            val sharedVm = hiltViewModel<ReservaSharedViewModel>(backEntry)
+
+            SeleccionarClienteScreen(
+                onBack = { nav.popBackStack() },
+                onClienteSeleccionado = { cliente ->
+                    sharedVm.clienteSeleccionado = cliente
+                    nav.navigate(Routes.SERVICIOS)
+                }
+            )
+        }
+
         composable(Routes.SERVICIOS) {
-            val backEntry = remember(it) { nav.getBackStackEntry(Routes.SERVICIOS) }
-            val sharedVm  = hiltViewModel<ReservaSharedViewModel>(backEntry)
+            val backEntry = remember(it) {
+                try { nav.getBackStackEntry(Routes.SELECCIONAR_CLIENTE) }
+                catch (e: Exception) { it }
+            }
+            val sharedVm = hiltViewModel<ReservaSharedViewModel>(backEntry)
 
             ServiciosScreen(
                 onBack = { nav.popBackStack() },
@@ -134,7 +155,7 @@ fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
 
         composable(Routes.PROFESIONALES) {
             val backEntry = remember(it) {
-                try { nav.getBackStackEntry(Routes.SERVICIOS) }
+                try { nav.getBackStackEntry(Routes.SELECCIONAR_CLIENTE) }
                 catch (e: Exception) { it }
             }
             val sharedVm = hiltViewModel<ReservaSharedViewModel>(backEntry)
@@ -154,11 +175,12 @@ fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
 
         composable(Routes.DISPONIBILIDAD) {
             val backEntry = remember(it) {
-                try { nav.getBackStackEntry(Routes.SERVICIOS) }
+                try { nav.getBackStackEntry(Routes.SELECCIONAR_CLIENTE) }
                 catch (e: Exception) { it }
             }
             val sharedVm = hiltViewModel<ReservaSharedViewModel>(backEntry)
             val dispVm   = hiltViewModel<DisponibilidadViewModel>()
+            dispVm.clienteSeleccionado = sharedVm.clienteSeleccionado
 
             val servicio    = sharedVm.servicioSeleccionado
             val profesional = sharedVm.profesionalSeleccionado

@@ -100,4 +100,13 @@ interface ApiService {
     // ── Notificaciones ────────────────────────────
     @POST("Notificaciones/registrar-token")
     suspend fun registrarFcmToken(@Body request: FcmTokenRequest)
+
+    // ── Clientes ──────────────────────────────────────
+    @GET("Clientes/buscar")
+    suspend fun buscarClientes(
+        @Query("busqueda") busqueda: String
+    ): List<Cliente>
+
+    @POST("Clientes")
+    suspend fun crearCliente(@Body request: CrearClienteRequest): Cliente
 }

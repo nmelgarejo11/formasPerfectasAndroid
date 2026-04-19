@@ -19,6 +19,7 @@ object Constants {
         const val PERFIL          = "perfil"
         const val DEMO_EXPIRADO  = "demo_expirado"
         const val SPLASH_EMPRESA = "splash_empresa"
+        const val SELECCIONAR_CLIENTE = "seleccionar_cliente"
     }
 
     // ID de sede por defecto (puedes hacerlo dinámico después)
