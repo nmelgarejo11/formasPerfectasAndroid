@@ -99,26 +99,45 @@ fun DisponibilidadScreen(
         AlertDialog(
             onDismissRequest = {},
             icon  = {
-                Icon(
-                    Icons.Default.CheckCircle,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(48.dp)
+                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    Icon(
+                        Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(48.dp)
+                    )
+                }
+            },
+            title = {
+                Text(
+                    "¡Cita reservada!",
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center
                 )
             },
-            title = { Text("¡Cita reservada!") },
             text  = {
                 Text(
                     (uiState as? DisponibilidadUiState.CitaCreada)?.mensaje
-                        ?: "Tu cita fue creada exitosamente."
+                        ?: "Tu cita fue creada exitosamente.",
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center
                 )
             },
             confirmButton = {
-                Button(onClick = {
-                    mostrarExito = false
-                    vm.resetear()
-                    onCitaCreada()
-                }) { Text("Ver mis citas") }
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Button(
+                        onClick = {
+                            mostrarExito = false
+                            vm.resetear()
+                            onCitaCreada()
+                        }
+                    ) {
+                        Text("Ver mis citas")
+                    }
+                }
             }
         )
     }
