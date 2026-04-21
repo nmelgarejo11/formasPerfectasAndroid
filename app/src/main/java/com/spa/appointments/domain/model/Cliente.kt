@@ -9,7 +9,8 @@ data class Cliente(
     @Json(name = "nombre")   val nombre: String,
     @Json(name = "apellido") val apellido: String,
     @Json(name = "telefono") val telefono: String?,
-    @Json(name = "email")    val email: String?
+    @Json(name = "email")    val email: String?,
+    @Json(name = "estado") val estado: Boolean = true
 ) {
     val nombreCompleto get() = "$nombre $apellido"
 }
@@ -20,4 +21,12 @@ data class CrearClienteRequest(
     @Json(name = "apellido") val apellido: String,
     @Json(name = "telefono") val telefono: String?,
     @Json(name = "email")    val email: String?
+)
+
+@JsonClass(generateAdapter = true)
+data class ActualizarClienteRequest(
+    @Json(name = "nombre") val nombre: String,
+    @Json(name = "apellido") val apellido: String,
+    @Json(name = "telefono") val telefono: String?,
+    @Json(name = "email") val email: String?
 )

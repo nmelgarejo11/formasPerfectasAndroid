@@ -18,6 +18,7 @@ fun mapIcon(nombre: String?): ImageVector {
 
         // Submódulos de Catálogo
         "group"                  -> Icons.Default.Group
+        "people"                 -> Icons.Default.People
 
         // Submódulos de Mi cuenta
         "settings"               -> Icons.Default.Settings

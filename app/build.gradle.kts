@@ -43,7 +43,7 @@ android {
         debug {
             // ← cambia esta IP por la de tu PC (ipconfig en CMD)
             //buildConfigField("String", "BASE_URL", "\"http://192.168.40.76:5005/api/\"")
-            buildConfigField("String", "BASE_URL", "\"http://192.168.11.19:5005/api/\"")
+            buildConfigField("String", "BASE_URL", "\"http://192.168.40.75:5005/api/\"")
             isDebuggable = true
         }
         release {

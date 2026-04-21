@@ -24,12 +24,15 @@ import com.spa.appointments.ui.servicios.ServiciosScreen
 import com.spa.appointments.ui.splash.SplashEmpresaScreen
 import com.spa.appointments.ui.splash.SplashScreen
 import com.spa.appointments.ui.clientes.SeleccionarClienteScreen
+import com.spa.appointments.ui.clientes.ClientesScreen
+import com.spa.appointments.ui.clientes.ClienteDetalleScreen
 
 @Composable
 fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
     val nav = rememberNavController()
 
     val rutasConocidas = setOf(
+        Routes.CLIENTES,
         Routes.SELECCIONAR_CLIENTE,
         Routes.SERVICIOS,
         Routes.PROFESIONALES,
@@ -219,7 +222,7 @@ fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
             FinancieroScreen(onBack = { nav.popBackStack() })
         }
 
-        // ── com.spa.appointments.domain.model.Perfil ───────────────────────────────────────────────────────────
+        // ── Perfil ───────────────────────────────────────────────────────────
 
         composable(Routes.PERFIL) {
             PerfilScreen(
@@ -241,6 +244,32 @@ fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
                         popUpTo(Routes.DEMO_EXPIRADO) { this.inclusive = true }
                     }
                 }
+            )
+        }
+
+        // ── Clientes ─────────────────────────────────────────────────────────
+        composable(Routes.CLIENTES) {
+            ClientesScreen(
+                onBack         = { nav.popBackStack() },
+                onVerCliente   = { id -> nav.navigate("${Routes.CLIENTE_DETALLE}/$id") },
+                onCrearCliente = { nav.navigate(Routes.CLIENTE_NUEVO) }
+            )
+        }
+
+        composable("${Routes.CLIENTE_DETALLE}/{id}") { backEntry ->
+            val id = backEntry.arguments?.getString("id")?.toIntOrNull() ?: return@composable
+            ClienteDetalleScreen(
+                idCliente = id,
+                esNuevo   = false,
+                onBack    = { nav.popBackStack() }
+            )
+        }
+
+        composable(Routes.CLIENTE_NUEVO) {
+            ClienteDetalleScreen(
+                idCliente = 0,
+                esNuevo   = true,
+                onBack    = { nav.popBackStack() }
             )
         }
     }

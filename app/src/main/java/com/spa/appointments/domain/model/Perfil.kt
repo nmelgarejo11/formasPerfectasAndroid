@@ -1,23 +1,28 @@
 package com.spa.appointments.domain.model
+import com.squareup.moshi.Json
+import com.squareup.moshi.JsonClass
 
+@JsonClass(generateAdapter = true)
 data class Perfil(
-    val idUsuario: Int,
-    val nombreUsuario: String,
-    val fotoUrl: String?,
-    val idCliente: Int,
-    val nombre: String,
-    val apellido: String,
-    val telefono: String?,
-    val email: String?
+    @Json(name = "idUsuario") val idUsuario: Int,
+    @Json(name = "nombreUsuario") val nombreUsuario: String,
+    @Json(name = "fotoUrl") val fotoUrl: String?,
+    @Json(name = "idCliente") val idCliente: Int,
+    @Json(name = "nombre") val nombre: String,
+    @Json(name = "apellido") val apellido: String,
+    @Json(name = "telefono") val telefono: String?,
+    @Json(name = "email") val email: String?
 )
 
+@JsonClass(generateAdapter = true)
 data class ActualizarPerfilRequest(
-    val nombre: String,
-    val apellido: String,
-    val telefono: String?,
-    val email: String?
+    @Json(name = "nombre") val nombre: String,
+    @Json(name = "apellido") val apellido: String,
+    @Json(name = "telefono") val telefono: String?,
+    @Json(name = "email") val email: String?
 )
 
+@JsonClass(generateAdapter = true)
 data class FotoResponse(
-    val fotoUrl: String
+    @Json(name = "fotoUrl") val fotoUrl: String
 )

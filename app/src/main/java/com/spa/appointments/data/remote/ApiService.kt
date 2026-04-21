@@ -112,6 +112,18 @@ interface ApiService {
     @POST("Clientes")
     suspend fun crearCliente(@Body request: CrearClienteRequest): Cliente
 
+    @GET("Clientes/{id}")
+    suspend fun obtenerCliente(@Path("id") id: Int): Cliente
+
+    @PUT("Clientes/{id}")
+    suspend fun actualizarCliente(
+        @Path("id") id: Int,
+        @Body request: ActualizarClienteRequest
+    )
+
+    @DELETE("Clientes/{id}")
+    suspend fun desactivarCliente(@Path("id") id: Int)
+
     // ── Perfil ──────────────────────────────────────
     @GET("Perfil")
     suspend fun obtenerPerfil(): Response<Perfil>
