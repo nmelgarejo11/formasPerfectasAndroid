@@ -21,8 +21,9 @@ object Constants {
         const val SPLASH_EMPRESA = "splash_empresa"
         const val SELECCIONAR_CLIENTE = "seleccionar_cliente"
         const val CLIENTES = "clientes"
-        const val CLIENTE_DETALLE = "cliente_detalle"   // editar
-        const val CLIENTE_NUEVO = "cliente_nuevo"        // crear
+        const val CLIENTE_DETALLE = "cliente_detalle"
+        const val CLIENTE_NUEVO = "cliente_nuevo"
+        const val REAGENDAMIENTOS = "reagendamientos"
     }
 
     // ID de sede por defecto (puedes hacerlo dinámico después)

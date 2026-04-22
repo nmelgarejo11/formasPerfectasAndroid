@@ -21,6 +21,7 @@ import com.spa.appointments.domain.model.Cita
 fun MisCitasScreen(
     onBack: () -> Unit,
     onVerHistorial: () -> Unit,
+    onVerReagendamientos: () -> Unit,
     vm: MisCitasViewModel = hiltViewModel()
 ) {
     val uiState    by vm.uiState.collectAsState()
@@ -146,6 +147,12 @@ fun MisCitasScreen(
                     }
                 },
                 actions = {
+
+                    // Botón reagendamientos pendientes
+                    IconButton(onClick = onVerReagendamientos) {
+                        Icon(Icons.Default.EditCalendar, "Reagendamientos")
+                    }
+
                     // Botón para ver historial
                     IconButton(onClick = onVerHistorial) {
                         Icon(Icons.Default.History, "Historial")

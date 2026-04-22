@@ -136,4 +136,20 @@ interface ApiService {
     suspend fun subirFoto(
         @Part foto: MultipartBody.Part
     ): Response<FotoResponse>
+
+    // Reagendamiento
+    @GET("Reagendamiento/pendientes")
+    suspend fun getPendientesReagendamiento(): List<CitaPendiente>
+
+    @PUT("Reagendamiento/{id}/aprobar")
+    suspend fun aprobarReagendamiento(
+        @Path("id") id: Int,
+        @Body request: AprobarReagendamientoRequest
+    )
+
+    @PUT("Reagendamiento/{id}/rechazar")
+    suspend fun rechazarReagendamiento(
+        @Path("id") id: Int,
+        @Body request: RechazarReagendamientoRequest
+    )
 }

@@ -26,6 +26,7 @@ import com.spa.appointments.ui.splash.SplashScreen
 import com.spa.appointments.ui.clientes.SeleccionarClienteScreen
 import com.spa.appointments.ui.clientes.ClientesScreen
 import com.spa.appointments.ui.clientes.ClienteDetalleScreen
+import com.spa.appointments.ui.citas.ReagendamientosScreen
 
 @Composable
 fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
@@ -41,6 +42,7 @@ fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
         Routes.HISTORIAL,
         Routes.FINANCIERO,
         Routes.PERFIL,
+        Routes.REAGENDAMIENTOS,
         "logout"
     )
 
@@ -208,7 +210,8 @@ fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
         composable(Routes.MIS_CITAS) {
             MisCitasScreen(
                 onBack         = { nav.popBackStack() },
-                onVerHistorial = { nav.navigate(Routes.HISTORIAL) }
+                onVerHistorial = { nav.navigate(Routes.HISTORIAL) },
+                onVerReagendamientos  = { nav.navigate(Routes.REAGENDAMIENTOS) }
             )
         }
 
@@ -271,6 +274,11 @@ fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
                 esNuevo   = true,
                 onBack    = { nav.popBackStack() }
             )
+        }
+
+        // ── Reagendamientos ──────────────────────────────────────────────────
+        composable(Routes.REAGENDAMIENTOS) {
+            ReagendamientosScreen(onBack = { nav.popBackStack() })
         }
     }
 }
