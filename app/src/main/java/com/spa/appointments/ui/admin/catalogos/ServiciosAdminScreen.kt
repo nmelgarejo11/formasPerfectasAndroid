@@ -5,8 +5,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -15,9 +15,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.spa.appointments.domain.model.CategoriaAdmin
 import com.spa.appointments.domain.model.ServicioAdmin
 import com.spa.appointments.domain.model.ServicioRequest
-import com.spa.appointments.domain.model.CategoriaAdmin
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -31,6 +31,15 @@ fun ServiciosAdminScreen(
 
     var showDialog by remember { mutableStateOf(false) }
     var editando   by remember { mutableStateOf<ServicioAdmin?>(null) }
+    var busqueda   by remember { mutableStateOf("") }
+
+    val filtrados = remember(servicios, busqueda) {
+        if (busqueda.isBlank()) servicios
+        else servicios.filter {
+            it.nombre.contains(busqueda, ignoreCase = true) ||
+                    it.nombreCategoria.contains(busqueda, ignoreCase = true)
+        }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.cargarServicios()
@@ -51,7 +60,7 @@ fun ServiciosAdminScreen(
                 title = { Text("Servicios") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.Edit, contentDescription = "Volver")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
                     }
                 }
             )
@@ -65,48 +74,67 @@ fun ServiciosAdminScreen(
             }
         }
     ) { padding ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            when {
-                uiState is CatalogosUiState.Loading && servicios.isEmpty() -> {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                }
-                servicios.isEmpty() -> {
-                    Text(
-                        text = "Sin servicios. Crea el primero.",
-                        modifier = Modifier.align(Alignment.Center),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
-                else -> {
-                    LazyColumn(
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(servicios, key = { it.id }) { srv ->
-                            ServicioAdminCard(
-                                servicio = srv,
-                                onEditar = {
-                                    editando = srv
-                                    showDialog = true
-                                },
-                                onToggle = { viewModel.toggleServicio(srv.id) }
-                            )
+            // Buscador
+            OutlinedTextField(
+                value = busqueda,
+                onValueChange = { busqueda = it },
+                label = { Text("Buscar servicio o categoría") },
+                leadingIcon = { Icon(Icons.Default.Search, null) },
+                trailingIcon = {
+                    if (busqueda.isNotBlank()) {
+                        IconButton(onClick = { busqueda = "" }) {
+                            Icon(Icons.Default.Clear, null)
+                        }
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                singleLine = true
+            )
+
+            Box(modifier = Modifier.fillMaxSize()) {
+                when {
+                    uiState is CatalogosUiState.Loading && servicios.isEmpty() -> {
+                        CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                    }
+                    filtrados.isEmpty() -> {
+                        Text(
+                            text = if (busqueda.isBlank()) "Sin servicios. Crea el primero."
+                            else "Sin resultados para \"$busqueda\"",
+                            modifier = Modifier.align(Alignment.Center),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                    else -> {
+                        LazyColumn(
+                            contentPadding = PaddingValues(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(filtrados, key = { it.id }) { srv ->
+                                ServicioAdminCard(
+                                    servicio = srv,
+                                    onEditar = { editando = srv; showDialog = true },
+                                    onToggle = { viewModel.toggleServicio(srv.id) }
+                                )
+                            }
                         }
                     }
                 }
-            }
 
-            if (uiState is CatalogosUiState.Error) {
-                Snackbar(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(16.dp)
-                ) {
-                    Text((uiState as CatalogosUiState.Error).mensaje)
+                if (uiState is CatalogosUiState.Error) {
+                    Snackbar(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(16.dp)
+                    ) {
+                        Text((uiState as CatalogosUiState.Error).mensaje)
+                    }
                 }
             }
         }
@@ -114,15 +142,11 @@ fun ServiciosAdminScreen(
 
     if (showDialog) {
         ServicioDialog(
-            servicio = editando,
+            servicio   = editando,
             categorias = categorias,
-            guardando = uiState is CatalogosUiState.Loading,
-            onGuardar = { req -> viewModel.guardarServicio(editando?.id, req) },
-            onDismiss = {
-                showDialog = false
-                editando = null
-                viewModel.resetState()
-            }
+            guardando  = uiState is CatalogosUiState.Loading,
+            onGuardar  = { req -> viewModel.guardarServicio(editando?.id, req) },
+            onDismiss  = { showDialog = false; editando = null; viewModel.resetState() }
         )
     }
 }
@@ -133,11 +157,11 @@ private fun ServicioAdminCard(
     onEditar: () -> Unit,
     onToggle: () -> Unit
 ) {
+    val iconoOpcion = ICONOS_DISPONIBLES.firstOrNull { it.clave == servicio.icono }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
         Row(
@@ -146,6 +170,8 @@ private fun ServicioAdminCard(
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+
+
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = servicio.nombre,
@@ -163,6 +189,7 @@ private fun ServicioAdminCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+
             IconButton(onClick = onEditar) {
                 Icon(Icons.Default.Edit, contentDescription = "Editar")
             }
@@ -187,12 +214,15 @@ private fun ServicioDialog(
     var descripcion by remember(servicio) { mutableStateOf(servicio?.descripcion ?: "") }
     var duracion    by remember(servicio) { mutableStateOf(servicio?.duracionMinutos?.toString() ?: "") }
     var precio      by remember(servicio) { mutableStateOf(servicio?.precioBase?.toString() ?: "") }
-    var icono       by remember(servicio) { mutableStateOf(servicio?.icono ?: "") }
 
-    // Selector de categoría
+    var iconoSeleccionado by remember(servicio) {
+        mutableStateOf(ICONOS_DISPONIBLES.firstOrNull { it.clave == servicio?.icono })
+    }
+    var showIconoPicker by remember { mutableStateOf(false) }
+
     val categoriaInicial = categorias.firstOrNull { it.id == servicio?.idCategoria }
     var categoriaSeleccionada by remember(servicio) { mutableStateOf(categoriaInicial) }
-    var expandedCat          by remember { mutableStateOf(false) }
+    var expandedCat           by remember { mutableStateOf(false) }
 
     val esValido = nombre.isNotBlank()
             && duracion.toIntOrNull() != null
@@ -229,10 +259,7 @@ private fun ServicioDialog(
                         categorias.filter { it.estado }.forEach { cat ->
                             DropdownMenuItem(
                                 text = { Text(cat.nombre) },
-                                onClick = {
-                                    categoriaSeleccionada = cat
-                                    expandedCat = false
-                                }
+                                onClick = { categoriaSeleccionada = cat; expandedCat = false }
                             )
                         }
                     }
@@ -245,6 +272,7 @@ private fun ServicioDialog(
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
+
                 OutlinedTextField(
                     value = descripcion,
                     onValueChange = { descripcion = it },
@@ -252,6 +280,7 @@ private fun ServicioDialog(
                     modifier = Modifier.fillMaxWidth(),
                     maxLines = 2
                 )
+
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
                         value = duracion,
@@ -270,13 +299,22 @@ private fun ServicioDialog(
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
                     )
                 }
-                OutlinedTextField(
-                    value = icono,
-                    onValueChange = { icono = it },
-                    label = { Text("Ícono (opcional)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
+
+                // Selector de ícono
+//                OutlinedButton(
+//                    onClick = { showIconoPicker = true },
+//                    modifier = Modifier.fillMaxWidth()
+//                ) {
+//                    if (iconoSeleccionado != null) {
+//                        Icon(iconoSeleccionado!!.icono, null, modifier = Modifier.size(20.dp))
+//                        Spacer(Modifier.width(8.dp))
+//                        Text(iconoSeleccionado!!.etiqueta)
+//                    } else {
+//                        Icon(Icons.Default.Add, null, modifier = Modifier.size(20.dp))
+//                        Spacer(Modifier.width(8.dp))
+//                        Text("Seleccionar ícono")
+//                    }
+//                }
             }
         },
         confirmButton = {
@@ -289,23 +327,26 @@ private fun ServicioDialog(
                             descripcion     = descripcion.trim().ifBlank { null },
                             duracionMinutos = duracion.toInt(),
                             precioBase      = precio.toDouble(),
-                            icono           = icono.trim().ifBlank { null }
+                            icono           = iconoSeleccionado?.clave
                         )
                     )
                 },
                 enabled = esValido && !guardando
             ) {
-                if (guardando) CircularProgressIndicator(
-                    modifier = Modifier.size(16.dp),
-                    strokeWidth = 2.dp
-                )
+                if (guardando) CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                 else Text("Guardar")
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !guardando) {
-                Text("Cancelar")
-            }
+            TextButton(onClick = onDismiss, enabled = !guardando) { Text("Cancelar") }
         }
     )
+
+    if (showIconoPicker) {
+        IconoPickerDialog(
+            iconoActual   = iconoSeleccionado?.clave,
+            onSeleccionar = { opcion -> iconoSeleccionado = opcion; showIconoPicker = false },
+            onDismiss     = { showIconoPicker = false }
+        )
+    }
 }
