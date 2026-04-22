@@ -23,6 +23,11 @@ fun mapIcon(nombre: String?): ImageVector {
         // Submódulos de Mi cuenta
         "settings"               -> Icons.Default.Settings
 
+        // Submódulos de Administración
+        "admin_panel_settings"   -> Icons.Default.AdminPanelSettings
+        "category"               -> Icons.Default.Category
+        "spa"                    -> Icons.Default.Spa
+
         // Fallback genérico
         else                     -> Icons.Default.Circle
     }

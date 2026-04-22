@@ -27,6 +27,8 @@ import com.spa.appointments.ui.clientes.SeleccionarClienteScreen
 import com.spa.appointments.ui.clientes.ClientesScreen
 import com.spa.appointments.ui.clientes.ClienteDetalleScreen
 import com.spa.appointments.ui.citas.ReagendamientosScreen
+import com.spa.appointments.ui.admin.catalogos.CategoriasScreen
+import com.spa.appointments.ui.admin.catalogos.ServiciosAdminScreen
 
 @Composable
 fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
@@ -43,6 +45,8 @@ fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
         Routes.FINANCIERO,
         Routes.PERFIL,
         Routes.REAGENDAMIENTOS,
+        Routes.ADMIN_CATEGORIAS,
+        Routes.ADMIN_SERVICIOS,
         "logout"
     )
 
@@ -279,6 +283,15 @@ fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
         // ── Reagendamientos ──────────────────────────────────────────────────
         composable(Routes.REAGENDAMIENTOS) {
             ReagendamientosScreen(onBack = { nav.popBackStack() })
+        }
+
+        // ── Admin Catálogos ──────────────────────────────────────────────────
+        composable(Routes.ADMIN_CATEGORIAS) {
+            CategoriasScreen(onBack = { nav.popBackStack() })
+        }
+
+        composable(Routes.ADMIN_SERVICIOS) {
+            ServiciosAdminScreen(onBack = { nav.popBackStack() })
         }
     }
 }

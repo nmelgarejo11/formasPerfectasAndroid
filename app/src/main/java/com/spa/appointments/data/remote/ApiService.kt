@@ -152,4 +152,34 @@ interface ApiService {
         @Path("id") id: Int,
         @Body request: RechazarReagendamientoRequest
     )
+    // ── Admin Catálogos ───────────────────────────────
+    @GET("categorias")
+    suspend fun getCategorias(): List<CategoriaAdmin>
+
+    @POST("categorias")
+    suspend fun crearCategoria(@Body request: CategoriaRequest): IdResponse
+
+    @PUT("categorias/{id}")
+    suspend fun editarCategoria(
+        @Path("id") id: Int,
+        @Body request: CategoriaRequest
+    )
+
+    @PATCH("categorias/{id}/estado")
+    suspend fun toggleEstadoCategoria(@Path("id") id: Int): EstadoResponse
+
+    @GET("admin/servicios")
+    suspend fun getServiciosAdmin(): List<ServicioAdmin>
+
+    @POST("admin/servicios")
+    suspend fun crearServicio(@Body request: ServicioRequest): IdResponse
+
+    @PUT("admin/servicios/{id}")
+    suspend fun editarServicio(
+        @Path("id") id: Int,
+        @Body request: ServicioRequest
+    )
+
+    @PATCH("admin/servicios/{id}/estado")
+    suspend fun toggleEstadoServicio(@Path("id") id: Int): EstadoResponse
 }
