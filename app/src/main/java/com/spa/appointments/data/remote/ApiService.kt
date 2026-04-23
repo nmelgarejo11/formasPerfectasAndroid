@@ -22,7 +22,8 @@ interface ApiService {
     // ── Profesionales ─────────────────────────────
     @GET("Profesionales")
     suspend fun getProfesionales(
-        @Query("idSede") idSede: Int? = null
+        @Query("idSede")      idSede: Int? = null,
+        @Query("idServicio")  idServicio: Int? = null
     ): List<Profesional>
 
     @GET("Profesionales/{idProfesional}/servicios")
@@ -182,4 +183,51 @@ interface ApiService {
 
     @PATCH("admin/servicios/{id}/estado")
     suspend fun toggleEstadoServicio(@Path("id") id: Int): EstadoResponse
+
+    // ── Admin Profesionales ───────────────────────────────────
+    @GET("admin/profesionales")
+    suspend fun getProfesionalesAdmin(): List<ProfesionalAdmin>
+
+    @POST("admin/profesionales")
+    suspend fun crearProfesional(@Body request: ProfesionalRequest): IdResponse
+
+    @PUT("admin/profesionales/{id}")
+    suspend fun editarProfesional(
+        @Path("id") id: Int,
+        @Body request: ProfesionalRequest
+    )
+
+    @PATCH("admin/profesionales/{id}/estado")
+    suspend fun toggleEstadoProfesional(@Path("id") id: Int): EstadoResponse
+
+    @Multipart
+    @POST("admin/profesionales/{id}/foto")
+    suspend fun subirFotoProfesional(
+        @Path("id") id: Int,
+        @Part foto: MultipartBody.Part
+    ): FotoResponse
+
+    @GET("admin/profesionales/cargos")
+    suspend fun getCargos(): List<CargoAdmin>
+
+    @GET("admin/profesionales/sedes")
+    suspend fun getSedesEmpresa(): List<SedeAdmin>
+
+    @GET("admin/profesionales/{id}/sedes")
+    suspend fun getSedesProfesional(@Path("id") id: Int): List<Int>
+
+    @PUT("admin/profesionales/{id}/sedes")
+    suspend fun guardarSedesProfesional(
+        @Path("id") id: Int,
+        @Body request: GuardarSedesRequest
+    )
+
+    @GET("admin/profesionales/{id}/servicios")
+    suspend fun getServiciosProfesional(@Path("id") id: Int): List<ServicioProfesionalResponse>
+
+    @PUT("admin/profesionales/{id}/servicios")
+    suspend fun guardarServiciosProfesional(
+        @Path("id") id: Int,
+        @Body request: GuardarServiciosRequest
+    )
 }

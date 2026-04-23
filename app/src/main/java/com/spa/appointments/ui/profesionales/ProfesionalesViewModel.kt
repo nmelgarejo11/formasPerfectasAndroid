@@ -12,9 +12,9 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 sealed class ProfesionalesUiState {
-    object Loading                               : ProfesionalesUiState()
+    object Loading                                   : ProfesionalesUiState()
     data class Success(val items: List<Profesional>) : ProfesionalesUiState()
-    data class Error(val mensaje: String)        : ProfesionalesUiState()
+    data class Error(val mensaje: String)            : ProfesionalesUiState()
 }
 
 @HiltViewModel
@@ -25,15 +25,17 @@ class ProfesionalesViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<ProfesionalesUiState>(ProfesionalesUiState.Loading)
     val uiState: StateFlow<ProfesionalesUiState> = _uiState
 
-    // Servicio seleccionado en el paso anterior
     var servicioSeleccionado: Servicio? = null
 
-    init { cargar() }
-
-    private fun cargar() {
+    // Recibe el idServicio ya resuelto y carga
+    fun iniciar(idServicio: Int?) {
         viewModelScope.launch {
+            _uiState.value = ProfesionalesUiState.Loading
             try {
-                val profesionales = repo.getProfesionales()
+                val profesionales = repo.getProfesionales(
+                    idSede     = null,
+                    idServicio = idServicio
+                )
                 _uiState.value = ProfesionalesUiState.Success(profesionales)
             } catch (e: Exception) {
                 _uiState.value = ProfesionalesUiState.Error(

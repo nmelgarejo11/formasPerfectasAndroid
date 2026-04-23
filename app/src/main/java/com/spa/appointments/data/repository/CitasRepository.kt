@@ -12,8 +12,8 @@ class CitasRepository @Inject constructor(
         api.getServicios()
 
     // Profesionales
-    suspend fun getProfesionales(idSede: Int? = null): List<Profesional> =
-        api.getProfesionales(idSede)
+    suspend fun getProfesionales(idSede: Int? = null, idServicio: Int? = null): List<Profesional> =
+        api.getProfesionales(idSede, idServicio)
 
     suspend fun getServiciosPorProfesional(idProfesional: Int): List<Servicio> =
         api.getServiciosPorProfesional(idProfesional)

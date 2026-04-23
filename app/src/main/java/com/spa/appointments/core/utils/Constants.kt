@@ -26,6 +26,8 @@ object Constants {
         const val REAGENDAMIENTOS = "reagendamientos"
         const val ADMIN_CATEGORIAS = "admin_categorias"
         const val ADMIN_SERVICIOS  = "admin_servicios"
+        const val ADMIN_PROFESIONALES        = "admin_profesionales"
+        const val ADMIN_PROFESIONAL_DETALLE  = "admin_profesional_detalle"
     }
 
     // ID de sede por defecto (puedes hacerlo dinámico después)

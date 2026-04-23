@@ -1,6 +1,7 @@
 package com.spa.appointments.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.NavHost
@@ -29,6 +30,9 @@ import com.spa.appointments.ui.clientes.ClienteDetalleScreen
 import com.spa.appointments.ui.citas.ReagendamientosScreen
 import com.spa.appointments.ui.admin.catalogos.CategoriasScreen
 import com.spa.appointments.ui.admin.catalogos.ServiciosAdminScreen
+import com.spa.appointments.ui.admin.profesionales.ProfesionalesAdminScreen
+import com.spa.appointments.ui.admin.profesionales.ProfesionalDetalleScreen
+import com.spa.appointments.ui.profesionales.ProfesionalesViewModel
 
 @Composable
 fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
@@ -47,6 +51,7 @@ fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
         Routes.REAGENDAMIENTOS,
         Routes.ADMIN_CATEGORIAS,
         Routes.ADMIN_SERVICIOS,
+        Routes.ADMIN_PROFESIONALES,
         "logout"
     )
 
@@ -168,6 +173,12 @@ fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
                 catch (e: Exception) { it }
             }
             val sharedVm = hiltViewModel<ReservaSharedViewModel>(backEntry)
+            val profVm   = hiltViewModel<ProfesionalesViewModel>()
+
+            // Pasamos el id directamente — no dependemos de servicioSeleccionado del profVm
+            LaunchedEffect(sharedVm.servicioSeleccionado?.id) {
+                profVm.iniciar(sharedVm.servicioSeleccionado?.id)
+            }
 
             ProfesionalesScreen(
                 onBack = { nav.popBackStack() },
@@ -178,7 +189,8 @@ fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
                     } else {
                         nav.navigate(Routes.SERVICIOS)
                     }
-                }
+                },
+                vm = profVm
             )
         }
 
@@ -292,6 +304,22 @@ fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
 
         composable(Routes.ADMIN_SERVICIOS) {
             ServiciosAdminScreen(onBack = { nav.popBackStack() })
+        }
+
+        // ── Admin Profesionales ──────────────────────────────────────────────
+        composable(Routes.ADMIN_PROFESIONALES) {
+            ProfesionalesAdminScreen(
+                onBack      = { nav.popBackStack() },
+                onVerDetalle = { id -> nav.navigate("${Routes.ADMIN_PROFESIONAL_DETALLE}/$id") }
+            )
+        }
+
+        composable("${Routes.ADMIN_PROFESIONAL_DETALLE}/{id}") { backEntry ->
+            val id = backEntry.arguments?.getString("id")?.toIntOrNull() ?: return@composable
+            ProfesionalDetalleScreen(
+                idProfesional = id,
+                onBack        = { nav.popBackStack() }
+            )
         }
     }
 }
