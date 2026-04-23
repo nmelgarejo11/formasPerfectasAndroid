@@ -28,6 +28,8 @@ object Constants {
         const val ADMIN_SERVICIOS  = "admin_servicios"
         const val ADMIN_PROFESIONALES        = "admin_profesionales"
         const val ADMIN_PROFESIONAL_DETALLE  = "admin_profesional_detalle"
+        const val ADMIN_HORARIOS = "admin_horarios"
+        const val ADMIN_HORARIOS_LISTA = "admin_horarios_lista"
     }
 
     // ID de sede por defecto (puedes hacerlo dinámico después)

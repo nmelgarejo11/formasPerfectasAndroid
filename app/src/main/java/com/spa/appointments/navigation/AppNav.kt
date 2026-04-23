@@ -33,6 +33,9 @@ import com.spa.appointments.ui.admin.catalogos.ServiciosAdminScreen
 import com.spa.appointments.ui.admin.profesionales.ProfesionalesAdminScreen
 import com.spa.appointments.ui.admin.profesionales.ProfesionalDetalleScreen
 import com.spa.appointments.ui.profesionales.ProfesionalesViewModel
+import com.spa.appointments.ui.admin.horarios.HorariosScreen
+import androidx.compose.runtime.collectAsState
+import com.spa.appointments.ui.admin.horarios.HorariosListaScreen
 
 @Composable
 fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
@@ -52,6 +55,7 @@ fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
         Routes.ADMIN_CATEGORIAS,
         Routes.ADMIN_SERVICIOS,
         Routes.ADMIN_PROFESIONALES,
+        Routes.ADMIN_HORARIOS_LISTA,
         "logout"
     )
 
@@ -310,7 +314,8 @@ fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
         composable(Routes.ADMIN_PROFESIONALES) {
             ProfesionalesAdminScreen(
                 onBack      = { nav.popBackStack() },
-                onVerDetalle = { id -> nav.navigate("${Routes.ADMIN_PROFESIONAL_DETALLE}/$id") }
+                onVerDetalle = { id -> nav.navigate("${Routes.ADMIN_PROFESIONAL_DETALLE}/$id") },
+                onVerHorario = { id -> nav.navigate("${Routes.ADMIN_HORARIOS}/$id") }
             )
         }
 
@@ -318,6 +323,25 @@ fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
             val id = backEntry.arguments?.getString("id")?.toIntOrNull() ?: return@composable
             ProfesionalDetalleScreen(
                 idProfesional = id,
+                onBack        = { nav.popBackStack() }
+            )
+        }
+
+        // ── Admin Horarios ───────────────────────────────────────────────────
+        composable(Routes.ADMIN_HORARIOS_LISTA) {
+            HorariosListaScreen(
+                onBack        = { nav.popBackStack() },
+                onSeleccionar = { id -> nav.navigate("${Routes.ADMIN_HORARIOS}/$id") }
+            )
+        }
+
+        composable("${Routes.ADMIN_HORARIOS}/{id}") { backEntry ->
+            val id          = backEntry.arguments?.getString("id")?.toIntOrNull() ?: return@composable
+            val profVm      = hiltViewModel<com.spa.appointments.ui.admin.profesionales.ProfesionalesAdminViewModel>()
+            val profesional = profVm.profesionales.collectAsState().value.firstOrNull { it.id == id }
+            HorariosScreen(
+                idProfesional = id,
+                profesional   = profesional,
                 onBack        = { nav.popBackStack() }
             )
         }

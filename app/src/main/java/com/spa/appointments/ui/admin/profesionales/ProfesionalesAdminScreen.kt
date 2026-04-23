@@ -26,6 +26,7 @@ import com.spa.appointments.domain.model.ProfesionalAdmin
 fun ProfesionalesAdminScreen(
     onBack: () -> Unit,
     onVerDetalle: (Int) -> Unit,
+    onVerHorario: (Int) -> Unit,
     viewModel: ProfesionalesAdminViewModel = hiltViewModel()
 ) {
     val profesionales by viewModel.profesionales.collectAsState()
@@ -126,7 +127,8 @@ fun ProfesionalesAdminScreen(
                                     onEditar    = { editando = prof; showDialog = true },
                                     onToggle    = { viewModel.toggleEstado(prof.id) },
                                     onFoto      = { editando = prof; fotoLauncher.launch("image/*") },
-                                    onDetalle   = { onVerDetalle(prof.id) }
+                                    onDetalle   = { onVerDetalle(prof.id) },
+                                    onVerHorario = { onVerHorario(prof.id) }
                                 )
                             }
                         }
@@ -163,7 +165,8 @@ private fun ProfesionalCard(
     onEditar:  () -> Unit,
     onToggle:  () -> Unit,
     onFoto:    () -> Unit,
-    onDetalle: () -> Unit
+    onDetalle: () -> Unit,
+    onVerHorario: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -247,6 +250,9 @@ private fun ProfesionalCard(
             // Detalle (sedes y servicios)
             IconButton(onClick = onDetalle) {
                 Icon(Icons.Default.Tune, contentDescription = "Asignaciones")
+            }
+            IconButton(onClick = onVerHorario) {
+                Icon(Icons.Default.CalendarMonth, contentDescription = "Horario")
             }
             IconButton(onClick = onEditar) {
                 Icon(Icons.Default.Edit, contentDescription = "Editar")

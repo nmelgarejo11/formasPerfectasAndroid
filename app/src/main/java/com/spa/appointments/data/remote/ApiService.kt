@@ -230,4 +230,35 @@ interface ApiService {
         @Path("id") id: Int,
         @Body request: GuardarServiciosRequest
     )
+
+    // ── Admin Horarios ────────────────────────────────────────
+    @GET("admin/horarios/{idProfesional}")
+    suspend fun getHorario(@Path("idProfesional") idProfesional: Int): List<HorarioItem>
+
+    @PUT("admin/horarios/{idProfesional}")
+    suspend fun guardarHorario(
+        @Path("idProfesional") idProfesional: Int,
+        @Body request: GuardarHorarioRequest
+    )
+
+    @POST("admin/horarios/{idProfesional}/copiar")
+    suspend fun copiarHorario(
+        @Path("idProfesional") idProfesional: Int,
+        @Body request: CopiarHorarioRequest
+    )
+
+    @GET("admin/horarios/{idProfesional}/bloqueos")
+    suspend fun getBloqueos(@Path("idProfesional") idProfesional: Int): List<BloqueoResponse>
+
+    @POST("admin/horarios/{idProfesional}/bloqueos")
+    suspend fun crearBloqueo(
+        @Path("idProfesional") idProfesional: Int,
+        @Body request: BloqueoRequest
+    )
+
+    @DELETE("admin/horarios/{idProfesional}/bloqueos/{id}")
+    suspend fun eliminarBloqueo(
+        @Path("idProfesional") idProfesional: Int,
+        @Path("id") id: Int
+    )
 }

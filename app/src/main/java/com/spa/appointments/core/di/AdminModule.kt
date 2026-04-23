@@ -2,6 +2,7 @@ package com.spa.appointments.core.di
 
 import com.spa.appointments.data.remote.ApiService
 import com.spa.appointments.data.repository.CatalogosAdminRepository
+import com.spa.appointments.data.repository.HorariosRepository
 import com.spa.appointments.data.repository.ProfesionalesAdminRepository
 import dagger.Module
 import dagger.Provides
@@ -22,4 +23,9 @@ object AdminModule {
     @Singleton
     fun provideProfesionalesAdminRepository(api: ApiService): ProfesionalesAdminRepository =
         ProfesionalesAdminRepository(api)
+
+    @Provides
+    @Singleton
+    fun provideHorariosRepository(api: ApiService): HorariosRepository =
+        HorariosRepository(api)
 }
