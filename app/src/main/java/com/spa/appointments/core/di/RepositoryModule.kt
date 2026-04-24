@@ -1,6 +1,8 @@
 package com.spa.appointments.core.di
 
+import com.spa.appointments.data.repository.AuthRepositoryImpl
 import com.spa.appointments.data.repository.PerfilRepositoryImpl
+import com.spa.appointments.domain.repository.AuthRepository
 import com.spa.appointments.domain.repository.PerfilRepository
 import dagger.Binds
 import dagger.Module
@@ -17,4 +19,10 @@ abstract class RepositoryModule {
     abstract fun bindPerfilRepository(
         impl: PerfilRepositoryImpl
     ): PerfilRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindAuthRepository(
+        impl: AuthRepositoryImpl
+    ): AuthRepository
 }

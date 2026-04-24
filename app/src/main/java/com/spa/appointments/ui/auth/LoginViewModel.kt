@@ -3,7 +3,7 @@ package com.spa.appointments.ui.auth
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.spa.appointments.data.repository.AuthRepository
+import com.spa.appointments.domain.repository.AuthRepository
 import com.spa.appointments.core.security.TokenStorage
 import com.spa.appointments.core.utils.JwtUtils
 import com.spa.appointments.core.theme.TemaStore
