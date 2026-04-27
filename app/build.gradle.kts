@@ -42,8 +42,8 @@ android {
     buildTypes {
         debug {
             // ← cambia esta IP por la de tu PC (ipconfig en CMD)
-            //buildConfigField("String", "BASE_URL", "\"http://192.168.40.76:5005/api/\"")
-            buildConfigField("String", "BASE_URL", "\"http://192.168.1.8:5005/api/\"")
+            buildConfigField("String", "BASE_URL", "\"http://192.168.40.76:5005/api/\"")
+            //buildConfigField("String", "BASE_URL", "\"http://192.168.1.8:5005/api/\"")
             isDebuggable = true
         }
         release {
@@ -68,6 +68,8 @@ android {
 
 dependencies {
 
+
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.7.0")
 
     implementation(platform("com.google.firebase:firebase-bom:33.1.0"))
     implementation("com.google.firebase:firebase-messaging-ktx")

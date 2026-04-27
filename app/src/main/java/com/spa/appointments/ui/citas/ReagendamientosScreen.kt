@@ -19,6 +19,11 @@ import com.spa.appointments.domain.model.CitaPendiente
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.platform.LocalLifecycleOwner
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -29,6 +34,18 @@ fun ReagendamientosScreen(
     val uiState     by viewModel.uiState.collectAsState()
     val actionState by viewModel.actionState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    // Refresca la lista cada vez que el screen vuelve a estar activo (onResume)
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.cargar()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     LaunchedEffect(actionState) {
         when (actionState) {
@@ -74,8 +91,10 @@ fun ReagendamientosScreen(
                 val pendientes = (uiState as ReagendamientoUiState.Success).pendientes
                 if (pendientes.isEmpty()) {
                     Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                        Text("No hay reagendamientos pendientes",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            "No hay reagendamientos pendientes",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 } else {
                     LazyColumn(
@@ -85,12 +104,12 @@ fun ReagendamientosScreen(
                     ) {
                         items(pendientes) { cita ->
                             CitaPendienteCard(
-                                cita        = cita,
-                                isLoading   = actionState is ReagendamientoActionState.Loading,
-                                onAprobar   = { nuevaInicio, nuevaFin ->
+                                cita      = cita,
+                                isLoading = actionState is ReagendamientoActionState.Loading,
+                                onAprobar = { nuevaInicio, nuevaFin ->
                                     viewModel.aprobar(cita.id, nuevaInicio, nuevaFin)
                                 },
-                                onRechazar  = { motivo ->
+                                onRechazar = { motivo ->
                                     viewModel.rechazar(cita.id, motivo)
                                 }
                             )
