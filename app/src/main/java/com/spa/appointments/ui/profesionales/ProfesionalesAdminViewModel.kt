@@ -45,8 +45,36 @@ class ProfesionalesAdminViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<ProfesionalesUiState>(ProfesionalesUiState.Idle)
     val uiState: StateFlow<ProfesionalesUiState> = _uiState
 
-    // ─── Carga inicial ────────────────────────────────────────
+    // Agrega este flag después de los StateFlows
+    private var datosInicializados = false
 
+    // Reemplaza cargarDatos() y cargarAsignaciones() por este método unificado
+    fun cargarDatosInicial(idProfesional: Int) {
+        if (datosInicializados) return        // ← Bloquea doble llamada
+        datosInicializados = true
+        viewModelScope.launch {
+            _uiState.value = ProfesionalesUiState.Loading
+            try {
+                val defProf      = async { repo.getProfesionales() }
+                val defCargos    = async { repo.getCargos() }
+                val defSedes     = async { repo.getSedesEmpresa() }
+                val defAsigSedes = async { repo.getSedesProfesional(idProfesional) }
+                val defAsigServ  = async { repo.getServiciosProfesional(idProfesional) }
+
+                _profesionales.value      = defProf.await()
+                _cargos.value             = defCargos.await()
+                _sedes.value              = defSedes.await()
+                _sedesAsignadas.value     = defAsigSedes.await()
+                _serviciosAsignados.value = defAsigServ.await()
+
+                _uiState.value = ProfesionalesUiState.Idle
+            } catch (e: Exception) {
+                _uiState.value = ProfesionalesUiState.Error(e.message ?: "Error al cargar datos")
+            }
+        }
+    }
+
+    // Mantén cargarDatos() solo para cuando se llama desde la lista de profesionales
     fun cargarDatos() {
         viewModelScope.launch {
             _uiState.value = ProfesionalesUiState.Loading
@@ -60,19 +88,6 @@ class ProfesionalesAdminViewModel @Inject constructor(
                 _uiState.value = ProfesionalesUiState.Idle
             } catch (e: Exception) {
                 _uiState.value = ProfesionalesUiState.Error(e.message ?: "Error al cargar datos")
-            }
-        }
-    }
-
-    fun cargarAsignaciones(idProfesional: Int) {
-        viewModelScope.launch {
-            try {
-                val defSedes    = async { repo.getSedesProfesional(idProfesional) }
-                val defServicios = async { repo.getServiciosProfesional(idProfesional) }
-                _sedesAsignadas.value    = defSedes.await()
-                _serviciosAsignados.value = defServicios.await()
-            } catch (e: Exception) {
-                _uiState.value = ProfesionalesUiState.Error(e.message ?: "Error al cargar asignaciones")
             }
         }
     }
@@ -131,6 +146,8 @@ class ProfesionalesAdminViewModel @Inject constructor(
                 repo.guardarSedes(idProfesional, idsSedes)
                 _sedesAsignadas.value = idsSedes
                 _uiState.value = ProfesionalesUiState.Success
+                kotlinx.coroutines.delay(1000)   // ← Muestra éxito 1 segundo
+                _uiState.value = ProfesionalesUiState.Idle
             } catch (e: Exception) {
                 _uiState.value = ProfesionalesUiState.Error(e.message ?: "Error al guardar sedes")
             }
@@ -146,6 +163,8 @@ class ProfesionalesAdminViewModel @Inject constructor(
                     ServicioProfesionalResponse(it.idServicio, it.precio)
                 }
                 _uiState.value = ProfesionalesUiState.Success
+                kotlinx.coroutines.delay(1000)   // ← Muestra éxito 1 segundo
+                _uiState.value = ProfesionalesUiState.Idle
             } catch (e: Exception) {
                 _uiState.value = ProfesionalesUiState.Error(e.message ?: "Error al guardar servicios")
             }

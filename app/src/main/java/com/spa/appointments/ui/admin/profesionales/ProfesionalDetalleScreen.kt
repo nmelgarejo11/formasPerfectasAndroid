@@ -34,8 +34,8 @@ fun ProfesionalDetalleScreen(
     val uiState            by viewModel.uiState.collectAsState()
 
     // Estado local de checkboxes de sedes
-    var sedesSeleccionadas by remember(sedesAsignadas) {
-        mutableStateOf(sedesAsignadas.toSet())
+    var sedeSeleccionada by remember(sedesAsignadas) {
+        mutableStateOf(sedesAsignadas.firstOrNull())
     }
 
     // Estado local de servicios con precio editable
@@ -48,14 +48,9 @@ fun ProfesionalDetalleScreen(
         )
     }
 
-    LaunchedEffect(Unit) {
-        viewModel.cargarDatos()
-        viewModel.cargarAsignaciones(idProfesional)
+    LaunchedEffect(idProfesional) {
+        viewModel.cargarDatosInicial(idProfesional)
         catalogosViewModel.cargarServicios()
-    }
-
-    LaunchedEffect(uiState) {
-        if (uiState is ProfesionalesUiState.Success) viewModel.resetState()
     }
 
     Scaffold(
@@ -101,15 +96,10 @@ fun ProfesionalDetalleScreen(
                             )
                         } else {
                             sedes.forEach { sede ->
-                                SedeCheckRow(
-                                    sede       = sede,
-                                    checked    = sede.id in sedesSeleccionadas,
-                                    onChecked  = { checked ->
-                                        sedesSeleccionadas = if (checked)
-                                            sedesSeleccionadas + sede.id
-                                        else
-                                            sedesSeleccionadas - sede.id
-                                    }
+                                SedeRadioRow(
+                                    sede     = sede,
+                                    selected = sede.id == sedeSeleccionada,
+                                    onSelected = { sedeSeleccionada = sede.id }
                                 )
                             }
                         }
@@ -117,14 +107,15 @@ fun ProfesionalDetalleScreen(
                         Spacer(Modifier.height(8.dp))
                         Button(
                             onClick = {
-                                viewModel.guardarSedes(idProfesional, sedesSeleccionadas.toList())
-                            },
-                            enabled = uiState !is ProfesionalesUiState.Loading,
-                            modifier = Modifier.align(Alignment.End)
+                                viewModel.guardarSedes(
+                                    idProfesional,
+                                    listOfNotNull(sedeSeleccionada)
+                                )
+                            }
                         ) {
                             Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp))
                             Spacer(Modifier.width(4.dp))
-                            Text("Guardar sedes")
+                            Text("Guardar sede")
                         }
                     }
                 }
@@ -182,9 +173,7 @@ fun ProfesionalDetalleScreen(
                                         }
                                     }
                                 viewModel.guardarServicios(idProfesional, items)
-                            },
-                            enabled = uiState !is ProfesionalesUiState.Loading,
-                            modifier = Modifier.align(Alignment.End)
+                            }
                         ) {
                             Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp))
                             Spacer(Modifier.width(4.dp))
@@ -211,11 +200,12 @@ fun ProfesionalDetalleScreen(
     }
 }
 
+
 @Composable
-private fun SedeCheckRow(
+private fun SedeRadioRow(
     sede: SedeAdmin,
-    checked: Boolean,
-    onChecked: (Boolean) -> Unit
+    selected: Boolean,
+    onSelected: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -223,7 +213,10 @@ private fun SedeCheckRow(
             .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Checkbox(checked = checked, onCheckedChange = onChecked)
+        RadioButton(
+            selected = selected,
+            onClick  = onSelected
+        )
         Spacer(Modifier.width(8.dp))
         Column {
             Text(sede.nombre, style = MaterialTheme.typography.bodyMedium)

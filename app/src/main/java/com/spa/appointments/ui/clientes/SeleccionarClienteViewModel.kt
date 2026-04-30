@@ -32,8 +32,13 @@ class SeleccionarClienteViewModel @Inject constructor(
 
     private var searchJob: Job? = null
 
+
+    private val _textoBusqueda = MutableStateFlow("")
+    val textoBusqueda: StateFlow<String> = _textoBusqueda
+
     // Búsqueda con debounce de 400ms para no llamar en cada tecla
     fun buscar(texto: String) {
+        _textoBusqueda.value = texto
         searchJob?.cancel()
 
         if (texto.length < 2) {
@@ -86,6 +91,8 @@ class SeleccionarClienteViewModel @Inject constructor(
     }
 
     fun resetear() {
+        _textoBusqueda.value = ""
+        searchJob?.cancel()
         _uiState.value = SeleccionarClienteUiState.Idle
     }
 }

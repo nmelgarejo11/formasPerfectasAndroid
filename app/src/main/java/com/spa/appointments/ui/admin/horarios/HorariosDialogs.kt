@@ -5,6 +5,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.Alignment
+import com.spa.appointments.domain.model.ProfesionalAdmin
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Clear
 
 // ─── Selector de hora ─────────────────────────────────────
 
@@ -45,44 +50,111 @@ fun HoraPickerDialog(
 fun CopiarHorarioDialog(
     idProfesionalDestino: Int,
     guardando: Boolean,
+    profesionales: List<com.spa.appointments.domain.model.ProfesionalAdmin>,  // ← Recibe la lista
     onCopiar: (idOrigen: Int) -> Unit,
     onDismiss: () -> Unit
 ) {
-    var idOrigenTexto by remember { mutableStateOf("") }
-    val idOrigen = idOrigenTexto.toIntOrNull()
-    val esValido = idOrigen != null && idOrigen != idProfesionalDestino
+    var seleccionado by remember { mutableStateOf<com.spa.appointments.domain.model.ProfesionalAdmin?>(null) }
+    var busqueda     by remember { mutableStateOf("") }
+
+    val filtrados = remember(profesionales, busqueda) {
+        profesionales
+            .filter { it.estado && it.id != idProfesionalDestino }  // ← Excluye el destino
+            .filter {
+                busqueda.isBlank() ||
+                        it.nombre.contains(busqueda, ignoreCase = true) ||
+                        it.apellido.contains(busqueda, ignoreCase = true)
+            }
+    }
 
     AlertDialog(
         onDismissRequest = { if (!guardando) onDismiss() },
-        title = { Text("Copiar horario") },
-        text  = {
+        title = { Text("Copiar horario de...") },
+        text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    "Ingresa el ID del profesional cuyo horario quieres copiar.",
-                    style = MaterialTheme.typography.bodySmall
-                )
+
+                // Buscador
                 OutlinedTextField(
-                    value = idOrigenTexto,
-                    onValueChange = { idOrigenTexto = it },
-                    label = { Text("ID profesional origen") },
-                    modifier = Modifier.fillMaxWidth(),
+                    value         = busqueda,
+                    onValueChange = { busqueda = it },
+                    label         = { Text("Buscar profesional") },
+                    leadingIcon   = { Icon(androidx.compose.material.icons.Icons.Default.Search, null) },
+                    trailingIcon  = {
+                        if (busqueda.isNotBlank()) {
+                            IconButton(onClick = { busqueda = "" }) {
+                                Icon(androidx.compose.material.icons.Icons.Default.Clear, null)
+                            }
+                        }
+                    },
+                    modifier   = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
-                if (idOrigen == idProfesionalDestino) {
+
+                // Lista de profesionales
+                if (filtrados.isEmpty()) {
                     Text(
-                        "No puedes copiar el horario del mismo profesional.",
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall
+                        "Sin profesionales disponibles",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(vertical = 8.dp)
                     )
+                } else {
+                    androidx.compose.foundation.lazy.LazyColumn(
+                        modifier = Modifier.heightIn(max = 300.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        items(filtrados, key = { it.id }) { prof: ProfesionalAdmin ->
+                            val estaSeleccionado = seleccionado?.id == prof.id
+                            Card(
+                                onClick = { seleccionado = prof },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = if (estaSeleccionado)
+                                        MaterialTheme.colorScheme.primaryContainer
+                                    else
+                                        MaterialTheme.colorScheme.surface
+                                ),
+                                elevation = CardDefaults.cardElevation(if (estaSeleccionado) 4.dp else 1.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    RadioButton(
+                                        selected = estaSeleccionado,
+                                        onClick  = { seleccionado = prof }
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            "${prof.nombre} ${prof.apellido}",
+                                            style      = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold
+                                        )
+                                        Text(
+                                            prof.nombreCargo,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         },
         confirmButton = {
             Button(
-                onClick = { onCopiar(idOrigen!!) },
-                enabled = esValido && !guardando
+                onClick  = { onCopiar(seleccionado!!.id) },
+                enabled  = seleccionado != null && !guardando
             ) {
-                if (guardando) CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                if (guardando) CircularProgressIndicator(
+                    modifier    = Modifier.size(16.dp),
+                    strokeWidth = 2.dp
+                )
                 else Text("Copiar")
             }
         },

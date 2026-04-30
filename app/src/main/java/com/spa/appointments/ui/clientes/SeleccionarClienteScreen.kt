@@ -23,8 +23,8 @@ fun SeleccionarClienteScreen(
     vm: SeleccionarClienteViewModel = hiltViewModel()
 ) {
     val uiState by vm.uiState.collectAsState()
+    val textoBusqueda by vm.textoBusqueda.collectAsState()
 
-    var textoBusqueda    by remember { mutableStateOf("") }
     var mostrarFormNuevo by remember { mutableStateOf(false) }
 
     // Formulario nuevo cliente
@@ -132,17 +132,13 @@ fun SeleccionarClienteScreen(
             OutlinedTextField(
                 value         = textoBusqueda,
                 onValueChange = {
-                    textoBusqueda = it
                     vm.buscar(it)
                 },
                 label         = { Text("Busqueda...") },
                 leadingIcon   = { Icon(Icons.Default.Search, contentDescription = null) },
                 trailingIcon  = {
                     if (textoBusqueda.isNotEmpty()) {
-                        IconButton(onClick = {
-                            textoBusqueda = ""
-                            vm.resetear()
-                        }) {
+                        IconButton(onClick = { vm.resetear() }) {  // ← VM limpia todo
                             Icon(Icons.Default.Clear, "Limpiar")
                         }
                     }

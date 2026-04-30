@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.spa.appointments.domain.model.BloqueoResponse
 import com.spa.appointments.domain.model.ProfesionalAdmin
+import com.spa.appointments.ui.admin.profesionales.ProfesionalesAdminViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -22,7 +23,8 @@ fun HorariosScreen(
     idProfesional: Int,
     profesional: ProfesionalAdmin?,
     onBack: () -> Unit,
-    viewModel: HorariosViewModel = hiltViewModel()
+    viewModel: HorariosViewModel = hiltViewModel(),
+    profViewModel: ProfesionalesAdminViewModel = hiltViewModel()
 ) {
     val diasHorario by viewModel.diasHorario.collectAsState()
     val bloqueos    by viewModel.bloqueos.collectAsState()
@@ -33,8 +35,12 @@ fun HorariosScreen(
     var showBloqueoDialog   by remember { mutableStateOf(false) }
     var showEliminarBloqueo by remember { mutableStateOf<BloqueoResponse?>(null) }
 
-    LaunchedEffect(idProfesional) { viewModel.cargar(idProfesional) }
+    val profesionales by profViewModel.profesionales.collectAsState()  // ← Agregar
 
+    LaunchedEffect(idProfesional) {
+        viewModel.cargar(idProfesional)
+        profViewModel.cargarDatos()   // ← Agregar
+    }
     LaunchedEffect(uiState) {
         if (uiState is HorariosUiState.Success) {
             showCopiarDialog  = false
@@ -189,8 +195,9 @@ fun HorariosScreen(
     if (showCopiarDialog) {
         CopiarHorarioDialog(
             idProfesionalDestino = idProfesional,
-            guardando = uiState is HorariosUiState.Loading,
-            onCopiar  = { idOrigen ->
+            guardando     = uiState is HorariosUiState.Loading,
+            profesionales = profesionales,
+            onCopiar      = { idOrigen ->
                 viewModel.copiarHorario(idProfesional, idOrigen, idSedeSeleccionada)
             },
             onDismiss = { showCopiarDialog = false }
