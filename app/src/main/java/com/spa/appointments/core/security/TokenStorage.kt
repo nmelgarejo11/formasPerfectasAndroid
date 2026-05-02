@@ -40,13 +40,23 @@ class TokenStorage(context: Context) {
 
     private fun crearPrefs(): SharedPreferences {
         return try {
-            // Intento normal de crear las EncryptedSharedPreferences
             crearEncryptedPrefs()
         } catch (e: Exception) {
-            // Si falla (clave del Keystore borrada, datos corruptos, etc.)
-            // borramos el archivo de prefs y lo recreamos limpio
-            Log.w(TAG, "EncryptedSharedPreferences corrompido, limpiando...", e)
-            limpiarArchivoPrefs()
+            Log.w(TAG, "Prefs corruptas, limpiando completamente...", e)
+
+
+            appContext.deleteSharedPreferences(PREF_NAME)
+
+
+            try {
+                val keyStore = java.security.KeyStore.getInstance("AndroidKeyStore")
+                keyStore.load(null)
+                keyStore.deleteEntry(MasterKey.DEFAULT_MASTER_KEY_ALIAS)
+            } catch (ke: Exception) {
+                Log.e(TAG, "Error limpiando keystore", ke)
+            }
+
+
             crearEncryptedPrefs()
         }
     }
