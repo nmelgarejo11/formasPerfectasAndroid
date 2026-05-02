@@ -45,10 +45,22 @@ interface ApiService {
     suspend fun crearCita(@Body request: CrearCitaRequest): CrearCitaResponse
 
     @GET("Citas/activas")
-    suspend fun getCitasActivas(@Query("idCliente") idCliente: Int): List<Cita>
+    suspend fun getCitasActivas(
+        @Query("nombreCliente")  nombreCliente:  String? = null,
+        @Query("fechaDesde")     fechaDesde:     String? = null,
+        @Query("fechaHasta")     fechaHasta:     String? = null,
+        @Query("idProfesional")  idProfesional:  Int?    = null,
+        @Query("idEstado")       idEstado:       Int?    = null
+    ): List<Cita>
 
     @GET("Citas/historial")
-    suspend fun getCitasHistorial(@Query("idCliente") idCliente: Int): List<Cita>
+    suspend fun getCitasHistorial(
+        @Query("nombreCliente")  nombreCliente:  String? = null,
+        @Query("fechaDesde")     fechaDesde:     String? = null,
+        @Query("fechaHasta")     fechaHasta:     String? = null,
+        @Query("idProfesional")  idProfesional:  Int?    = null,
+        @Query("idEstado")       idEstado:       Int?    = null
+    ): List<Cita>
 
     @PUT("Citas/cancelar")
     suspend fun cancelarCita(@Body request: AccionCitaCancelarRequest): AccionCitaResponse

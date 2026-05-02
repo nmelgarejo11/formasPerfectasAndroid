@@ -54,7 +54,7 @@ class MisCitasViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = MisCitasUiState.Loading
             try {
-                val citas = repo.getCitasActivas(idCliente)
+                val citas = repo.getCitasActivas()
                 _uiState.value = if (citas.isEmpty()) MisCitasUiState.Empty
                 else MisCitasUiState.Success(citas)
             } catch (e: Exception) {

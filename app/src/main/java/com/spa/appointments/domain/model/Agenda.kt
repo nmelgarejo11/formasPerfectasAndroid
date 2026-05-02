@@ -36,20 +36,23 @@ data class CrearCitaResponse(
 
 @JsonClass(generateAdapter = true)
 data class Cita(
-    @Json(name = "id")               val id: Int,
-    @Json(name = "fechaHoraInicio")  val fechaHoraInicio: String,
-    @Json(name = "fechaHoraFin")     val fechaHoraFin: String,
-    @Json(name = "notas")            val notas: String?,
-    @Json(name = "idEstado")         val idEstado: Int,
-    @Json(name = "estado")           val estado: String,
-    @Json(name = "colorEstado")      val colorEstado: String?,
-    @Json(name = "idProfesional")    val idProfesional: Int,
-    @Json(name = "profesional")      val profesional: String,
-    @Json(name = "fotoProfesional")  val fotoProfesional: String?,
-    @Json(name = "cargoProfesional") val cargoProfesional: String?,
-    @Json(name = "sede")             val sede: String,
-    @Json(name = "servicios")        val servicios: String?,
-    @Json(name = "total")            val total: Double
+    @Json(name = "id")                        val id: Int,
+    @Json(name = "fechaHoraInicio")           val fechaHoraInicio: String,
+    @Json(name = "fechaHoraFin")              val fechaHoraFin: String,
+    @Json(name = "notas")                     val notas: String?,
+    @Json(name = "idEstado")                  val idEstado: Int,
+    @Json(name = "estado")                    val estado: String,
+    @Json(name = "colorEstado")               val colorEstado: String?,
+    @Json(name = "idProfesional")             val idProfesional: Int,
+    @Json(name = "profesional")               val profesional: String,
+    @Json(name = "fotoProfesional")           val fotoProfesional: String?,
+    @Json(name = "cargoProfesional")          val cargoProfesional: String?,
+    @Json(name = "sede")                      val sede: String,
+    @Json(name = "servicios")                 val servicios: String?,
+    @Json(name = "total")                     val total: Double,
+    @Json(name = "idCitaOriginal")            val idCitaOriginal: Int?,
+    @Json(name = "fechaHoraInicioOriginal")   val fechaHoraInicioOriginal: String?,
+    @Json(name = "nombreCliente")             val nombreCliente: String?
 )
 
 @JsonClass(generateAdapter = true)

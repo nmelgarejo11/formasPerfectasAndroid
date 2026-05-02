@@ -31,11 +31,21 @@ class CitasRepository @Inject constructor(
     suspend fun crearCita(request: CrearCitaRequest): CrearCitaResponse =
         api.crearCita(request)
 
-    suspend fun getCitasActivas(idCliente: Int): List<Cita> =
-        api.getCitasActivas(idCliente)
+    suspend fun getCitasActivas(
+        nombreCliente:  String? = null,
+        fechaDesde:     String? = null,
+        fechaHasta:     String? = null,
+        idProfesional:  Int?    = null,
+        idEstado:       Int?    = null
+    ): List<Cita> = api.getCitasActivas(nombreCliente, fechaDesde, fechaHasta, idProfesional, idEstado)
 
-    suspend fun getCitasHistorial(idCliente: Int): List<Cita> =
-        api.getCitasHistorial(idCliente)
+    suspend fun getCitasHistorial(
+        nombreCliente:  String? = null,
+        fechaDesde:     String? = null,
+        fechaHasta:     String? = null,
+        idProfesional:  Int?    = null,
+        idEstado:       Int?    = null
+    ): List<Cita> = api.getCitasHistorial(nombreCliente, fechaDesde, fechaHasta, idProfesional, idEstado)
 
     suspend fun cancelarCita(idCita: Int): AccionCitaResponse =
         api.cancelarCita(AccionCitaCancelarRequest(idCita))
