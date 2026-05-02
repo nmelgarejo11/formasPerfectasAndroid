@@ -1,3 +1,4 @@
+// ui/citas/MisCitasScreen.kt
 package com.spa.appointments.ui.citas
 
 import androidx.compose.foundation.layout.*
@@ -15,6 +16,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.spa.appointments.domain.model.Cita
+import com.spa.appointments.domain.model.MetodoPago
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.runtime.DisposableEffect
@@ -28,25 +30,25 @@ fun MisCitasScreen(
     onVerReagendamientos: () -> Unit,
     vm: MisCitasViewModel = hiltViewModel()
 ) {
-    val uiState    by vm.uiState.collectAsState()
-    val accionState by vm.accionState.collectAsState()
+    val uiState        by vm.uiState.collectAsState()
+    val accionState    by vm.accionState.collectAsState()
+    val metodosPago    by vm.metodosPago.collectAsState()
 
-    // Cita seleccionada para acción (cancelar o reagendar)
-    var citaAccion      by remember { mutableStateOf<Cita?>(null) }
-    var mostrarCancelar by remember { mutableStateOf(false) }
-    var mostrarReagendar by remember { mutableStateOf(false) }
-    var motivoReagendar by remember { mutableStateOf("") }
+    // Cita seleccionada para acción
+    var citaAccion              by remember { mutableStateOf<Cita?>(null) }
+    var mostrarCancelar         by remember { mutableStateOf(false) }
+    var mostrarReagendar        by remember { mutableStateOf(false) }
+    var mostrarFinalizar        by remember { mutableStateOf(false) }
+    var motivoReagendar         by remember { mutableStateOf("") }
+    var metodoPagoSeleccionado  by remember { mutableStateOf<MetodoPago?>(null) }
 
-    // Snackbar para mensajes de éxito o error
     val snackbarHost = remember { SnackbarHostState() }
 
-    // Refresca al volver desde Reagendamientos u otras pantallas
+    // Refresca al volver a la pantalla
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) {
-                vm.cargar()
-            }
+            if (event == Lifecycle.Event.ON_RESUME) vm.cargar()
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
@@ -55,19 +57,13 @@ fun MisCitasScreen(
     // Reaccionar a resultados de acciones
     LaunchedEffect(accionState) {
         when (val s = accionState) {
-            is AccionUiState.Success -> {
-                snackbarHost.showSnackbar(s.mensaje)
-                vm.resetAccion()
-            }
-            is AccionUiState.Error -> {
-                snackbarHost.showSnackbar(s.mensaje)
-                vm.resetAccion()
-            }
+            is AccionUiState.Success -> { snackbarHost.showSnackbar(s.mensaje); vm.resetAccion() }
+            is AccionUiState.Error   -> { snackbarHost.showSnackbar(s.mensaje); vm.resetAccion() }
             else -> Unit
         }
     }
 
-    // Diálogo: Cancelar cita
+    // ── Diálogo: Cancelar cita ────────────────────────────────────────────────
     if (mostrarCancelar && citaAccion != null) {
         AlertDialog(
             onDismissRequest = { mostrarCancelar = false },
@@ -80,29 +76,23 @@ fun MisCitasScreen(
             },
             title = { Text("Cancelar cita") },
             text  = {
-                Text("¿Estás seguro que deseas cancelar tu cita con " +
-                        "${citaAccion?.profesional}?")
+                Text("¿Estás seguro que deseas cancelar tu cita con ${citaAccion?.profesional}?")
             },
             confirmButton = {
                 Button(
-                    onClick = {
-                        mostrarCancelar = false
-                        vm.cancelarCita(citaAccion!!.id)
-                    },
-                    colors = ButtonDefaults.buttonColors(
+                    onClick = { mostrarCancelar = false; vm.cancelarCita(citaAccion!!.id) },
+                    colors  = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.error
                     )
                 ) { Text("Sí, cancelar") }
             },
             dismissButton = {
-                OutlinedButton(onClick = { mostrarCancelar = false }) {
-                    Text("No, volver")
-                }
+                OutlinedButton(onClick = { mostrarCancelar = false }) { Text("No, volver") }
             }
         )
     }
 
-    // Diálogo: Solicitar reagendamiento
+    // ── Diálogo: Solicitar reagendamiento ─────────────────────────────────────
     if (mostrarReagendar && citaAccion != null) {
         AlertDialog(
             onDismissRequest = { mostrarReagendar = false },
@@ -117,7 +107,7 @@ fun MisCitasScreen(
             text  = {
                 Column {
                     Text(
-                        text = "Tu solicitud será revisada por el negocio. " +
+                        text  = "Tu solicitud será revisada por el negocio. " +
                                 "Te notificaremos cuando sea aprobada.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -137,10 +127,7 @@ fun MisCitasScreen(
             confirmButton = {
                 Button(onClick = {
                     mostrarReagendar = false
-                    vm.reagendarCita(
-                        citaAccion!!.id,
-                        motivoReagendar.ifBlank { null }
-                    )
+                    vm.reagendarCita(citaAccion!!.id, motivoReagendar.ifBlank { null })
                     motivoReagendar = ""
                 }) { Text("Enviar solicitud") }
             },
@@ -153,6 +140,79 @@ fun MisCitasScreen(
         )
     }
 
+    // ── Diálogo: Finalizar cita ───────────────────────────────────────────────
+    if (mostrarFinalizar && citaAccion != null) {
+        AlertDialog(
+            onDismissRequest = {
+                mostrarFinalizar       = false
+                metodoPagoSeleccionado = null
+            },
+            icon  = {
+                Icon(
+                    Icons.Default.CheckCircle,
+                    contentDescription = null,
+                    tint = Color(0xFF607D8B)
+                )
+            },
+            title = { Text("Finalizar cita") },
+            text  = {
+                Column {
+                    Text(
+                        text  = "Selecciona el método de pago utilizado por el cliente.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(12.dp))
+
+                    if (metodosPago.isEmpty()) {
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                        }
+                    } else {
+                        metodosPago.forEach { metodo ->
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 2.dp)
+                            ) {
+                                RadioButton(
+                                    selected = metodoPagoSeleccionado?.id == metodo.id,
+                                    onClick  = { metodoPagoSeleccionado = metodo }
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text(metodo.nombre, style = MaterialTheme.typography.bodyMedium)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        mostrarFinalizar = false
+                        vm.finalizarCita(citaAccion!!.id, metodoPagoSeleccionado!!.id)
+                        metodoPagoSeleccionado = null
+                    },
+                    enabled = metodoPagoSeleccionado != null,
+                    colors  = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF607D8B)
+                    )
+                ) { Text("Finalizar") }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = {
+                    mostrarFinalizar       = false
+                    metodoPagoSeleccionado = null
+                }) { Text("Cancelar") }
+            }
+        )
+    }
+
+    // ── Scaffold principal ────────────────────────────────────────────────────
     Scaffold(
         topBar = {
             TopAppBar(
@@ -163,17 +223,12 @@ fun MisCitasScreen(
                     }
                 },
                 actions = {
-
-                    // Botón reagendamientos pendientes
                     IconButton(onClick = onVerReagendamientos) {
                         Icon(Icons.Default.EditCalendar, "Reagendamientos")
                     }
-
-                    // Botón para ver historial
                     IconButton(onClick = onVerHistorial) {
                         Icon(Icons.Default.History, "Historial")
                     }
-                    // Botón para recargar
                     IconButton(onClick = { vm.cargar() }) {
                         Icon(Icons.Default.Refresh, "Recargar")
                     }
@@ -191,9 +246,7 @@ fun MisCitasScreen(
             when (val state = uiState) {
 
                 is MisCitasUiState.Loading -> {
-                    CircularProgressIndicator(
-                        modifier = Modifier.align(Alignment.Center)
-                    )
+                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                 }
 
                 is MisCitasUiState.Empty -> {
@@ -204,22 +257,22 @@ fun MisCitasScreen(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Icon(
-                            imageVector = Icons.Default.CalendarMonth,
+                            imageVector        = Icons.Default.CalendarMonth,
                             contentDescription = null,
-                            modifier = Modifier.size(64.dp),
-                            tint = MaterialTheme.colorScheme.secondary
+                            modifier           = Modifier.size(64.dp),
+                            tint               = MaterialTheme.colorScheme.secondary
                         )
                         Spacer(Modifier.height(16.dp))
                         Text(
-                            text = "No tienes citas activas",
-                            style = MaterialTheme.typography.titleMedium,
+                            text       = "No tienes citas activas",
+                            style      = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(Modifier.height(8.dp))
                         Text(
-                            text = "Reserva tu primera cita desde el menú principal.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            text      = "Reserva tu primera cita desde el menú principal.",
+                            style     = MaterialTheme.typography.bodyMedium,
+                            color     = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center
                         )
                     }
@@ -233,33 +286,26 @@ fun MisCitasScreen(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text  = state.mensaje,
-                            color = MaterialTheme.colorScheme.error,
+                            text      = state.mensaje,
+                            color     = MaterialTheme.colorScheme.error,
                             textAlign = TextAlign.Center
                         )
                         Spacer(Modifier.height(16.dp))
-                        Button(onClick = { vm.cargar() }) {
-                            Text("Reintentar")
-                        }
+                        Button(onClick = { vm.cargar() }) { Text("Reintentar") }
                     }
                 }
 
                 is MisCitasUiState.Success -> {
                     LazyColumn(
-                        contentPadding = PaddingValues(16.dp),
+                        contentPadding      = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         items(state.citas) { cita ->
                             CitaCard(
-                                cita = cita,
-                                onCancelar = {
-                                    citaAccion      = cita
-                                    mostrarCancelar = true
-                                },
-                                onReagendar = {
-                                    citaAccion       = cita
-                                    mostrarReagendar = true
-                                },
+                                cita           = cita,
+                                onCancelar     = { citaAccion = cita; mostrarCancelar  = true },
+                                onReagendar    = { citaAccion = cita; mostrarReagendar = true },
+                                onFinalizar    = { citaAccion = cita; mostrarFinalizar = true },
                                 accionCargando = accionState is AccionUiState.Loading
                             )
                         }
@@ -270,14 +316,16 @@ fun MisCitasScreen(
     }
 }
 
+// ── CitaCard ──────────────────────────────────────────────────────────────────
+
 @Composable
 private fun CitaCard(
-    cita: Cita,
-    onCancelar: () -> Unit,
-    onReagendar: () -> Unit,
+    cita:           Cita,
+    onCancelar:     () -> Unit,
+    onReagendar:    () -> Unit,
+    onFinalizar:    () -> Unit,
     accionCargando: Boolean
 ) {
-    // Convertir el color hex del estado a Color de Compose
     val colorEstado = remember(cita.colorEstado) {
         runCatching {
             Color(android.graphics.Color.parseColor(cita.colorEstado ?: "#888888"))
@@ -290,23 +338,22 @@ private fun CitaCard(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
 
-            // ── Encabezado: estado + fecha ──
+            // ── Encabezado: estado + fecha ────────────────────────────────────
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier             = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment    = Alignment.CenterVertically
             ) {
-                // Badge de estado
                 Surface(
                     shape = MaterialTheme.shapes.small,
                     color = colorEstado.copy(alpha = 0.15f)
                 ) {
                     Text(
-                        text     = cita.estado,
-                        color    = colorEstado,
-                        style    = MaterialTheme.typography.labelSmall,
+                        text       = cita.estado,
+                        color      = colorEstado,
+                        style      = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        modifier   = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                     )
                 }
                 Text(
@@ -318,31 +365,31 @@ private fun CitaCard(
 
             Spacer(Modifier.height(12.dp))
 
-            // ── Profesional ──
+            // ── Profesional ───────────────────────────────────────────────────
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    imageVector = Icons.Default.Person,
+                    imageVector        = Icons.Default.Person,
                     contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                    tint = MaterialTheme.colorScheme.primary
+                    modifier           = Modifier.size(16.dp),
+                    tint               = MaterialTheme.colorScheme.primary
                 )
                 Spacer(Modifier.width(6.dp))
                 Text(
-                    text  = "${cita.profesional} · ${cita.cargoProfesional ?: ""}",
-                    style = MaterialTheme.typography.bodyMedium,
+                    text       = "${cita.profesional} · ${cita.cargoProfesional ?: ""}",
+                    style      = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold
                 )
             }
 
             Spacer(Modifier.height(4.dp))
 
-            // ── Hora y sede ──
+            // ── Hora y sede ───────────────────────────────────────────────────
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    imageVector = Icons.Default.Schedule,
+                    imageVector        = Icons.Default.Schedule,
                     contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                    tint = MaterialTheme.colorScheme.secondary
+                    modifier           = Modifier.size(16.dp),
+                    tint               = MaterialTheme.colorScheme.secondary
                 )
                 Spacer(Modifier.width(6.dp))
                 Text(
@@ -355,24 +402,24 @@ private fun CitaCard(
 
             Spacer(Modifier.height(4.dp))
 
-            // ── Total ──
+            // ── Total ─────────────────────────────────────────────────────────
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    imageVector = Icons.Default.AttachMoney,
+                    imageVector        = Icons.Default.AttachMoney,
                     contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                    tint = MaterialTheme.colorScheme.secondary
+                    modifier           = Modifier.size(16.dp),
+                    tint               = MaterialTheme.colorScheme.secondary
                 )
                 Spacer(Modifier.width(6.dp))
                 Text(
-                    text  = "Total: ${"$%,.0f".format(cita.total)}",
-                    style = MaterialTheme.typography.bodySmall,
+                    text       = "Total: ${"$%,.0f".format(cita.total)}",
+                    style      = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
+                    color      = MaterialTheme.colorScheme.primary
                 )
             }
 
-            // ── Notas ──
+            // ── Notas ─────────────────────────────────────────────────────────
             cita.notas?.let {
                 Spacer(Modifier.height(4.dp))
                 Text(
@@ -382,18 +429,17 @@ private fun CitaCard(
                 )
             }
 
-            // ── Botones de acción ──
-            // Solo disponibles si la cita está en estado Programada (1) o Confirmada (2)
+            // ── Botones de acción (solo Programada=1 o Confirmada=2) ──────────
             if (cita.idEstado in listOf(1, 2)) {
                 Spacer(Modifier.height(12.dp))
                 HorizontalDivider()
                 Spacer(Modifier.height(8.dp))
 
+                // Fila 1: Reagendar + Cancelar
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier              = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // Botón reagendar
                     OutlinedButton(
                         onClick  = onReagendar,
                         enabled  = !accionCargando,
@@ -402,13 +448,12 @@ private fun CitaCard(
                         Icon(
                             Icons.Default.EditCalendar,
                             contentDescription = null,
-                            modifier = Modifier.size(16.dp)
+                            modifier           = Modifier.size(16.dp)
                         )
                         Spacer(Modifier.width(4.dp))
                         Text("Reagendar")
                     }
 
-                    // Botón cancelar
                     OutlinedButton(
                         onClick  = onCancelar,
                         enabled  = !accionCargando,
@@ -426,24 +471,43 @@ private fun CitaCard(
                             Icon(
                                 Icons.Default.Cancel,
                                 contentDescription = null,
-                                modifier = Modifier.size(16.dp)
+                                modifier           = Modifier.size(16.dp)
                             )
                             Spacer(Modifier.width(4.dp))
                             Text("Cancelar")
                         }
                     }
                 }
+
+                // Fila 2: Finalizar
+                Spacer(Modifier.height(6.dp))
+                Button(
+                    onClick  = onFinalizar,
+                    enabled  = !accionCargando,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors   = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF607D8B)
+                    )
+                ) {
+                    Icon(
+                        Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        modifier           = Modifier.size(16.dp)
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text("Finalizar cita")
+                }
             }
 
-            // Mensaje informativo si está pendiente de cambio
+            // ── Info: pendiente de cambio ─────────────────────────────────────
             if (cita.idEstado == 4) {
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         Icons.Default.Info,
                         contentDescription = null,
-                        modifier = Modifier.size(14.dp),
-                        tint = MaterialTheme.colorScheme.secondary
+                        modifier           = Modifier.size(14.dp),
+                        tint               = MaterialTheme.colorScheme.secondary
                     )
                     Spacer(Modifier.width(4.dp))
                     Text(
@@ -457,11 +521,10 @@ private fun CitaCard(
     }
 }
 
-// ── Helpers de formato de fecha ───────────────────────────────────────────────
+// ── Helpers de formato ────────────────────────────────────────────────────────
 
 private fun formatearFecha(fechaIso: String): String {
     return try {
-        // El API devuelve formato: "2026-04-10T09:00:00"
         val partes = fechaIso.substring(0, 10).split("-")
         "${partes[2]}/${partes[1]}/${partes[0]}"
     } catch (e: Exception) { fechaIso }
@@ -469,7 +532,6 @@ private fun formatearFecha(fechaIso: String): String {
 
 private fun formatearHora(fechaIso: String): String {
     return try {
-        // Extraemos solo HH:mm
         fechaIso.substring(11, 16)
     } catch (e: Exception) { fechaIso }
 }

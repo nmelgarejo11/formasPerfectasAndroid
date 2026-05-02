@@ -261,4 +261,12 @@ interface ApiService {
         @Path("idProfesional") idProfesional: Int,
         @Path("id") id: Int
     )
+
+    // data/remote/ApiService.kt  (agregar dentro de la interfaz existente, sección Citas)
+
+    @GET("Citas/metodos-pago")
+    suspend fun getMetodosPago(): List<MetodoPago>
+
+    @PUT("Citas/finalizar")
+    suspend fun finalizarCita(@Body request: FinalizarCitaRequest): FinalizarCitaResponse
 }

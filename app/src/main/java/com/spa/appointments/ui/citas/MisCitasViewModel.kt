@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.spa.appointments.core.security.TokenStorage
 import com.spa.appointments.data.repository.CitasRepository
 import com.spa.appointments.domain.model.Cita
+import com.spa.appointments.domain.model.MetodoPago
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -37,11 +38,17 @@ class MisCitasViewModel @Inject constructor(
     private val _accionState = MutableStateFlow<AccionUiState>(AccionUiState.Idle)
     val accionState: StateFlow<AccionUiState> = _accionState
 
+    private val _metodosPago = MutableStateFlow<List<MetodoPago>>(emptyList())
+    val metodosPago: StateFlow<List<MetodoPago>> = _metodosPago
+
     // Usamos IdEmpresa como IdCliente temporalmente
     // En el futuro habrá un flujo de selección de cliente real
     private val idCliente: Int get() = tokenStorage.getIdEmpresa()
 
-    init { cargar() }
+    init {
+        cargar()
+        cargarMetodosPago()  // <-- agregar esta línea
+    }
 
     fun cargar() {
         viewModelScope.launch {
@@ -53,6 +60,33 @@ class MisCitasViewModel @Inject constructor(
             } catch (e: Exception) {
                 _uiState.value = MisCitasUiState.Error(
                     e.localizedMessage ?: "Error al cargar las citas"
+                )
+            }
+        }
+    }
+
+    fun cargarMetodosPago() {
+        viewModelScope.launch {
+            try {
+                _metodosPago.value = repo.getMetodosPago()
+            } catch (_: Exception) { /* silencioso, no crítico */ }
+        }
+    }
+
+    fun finalizarCita(idCita: Int, idMetodoPago: Int) {
+        viewModelScope.launch {
+            _accionState.value = AccionUiState.Loading
+            try {
+                val resp = repo.finalizarCita(idCita, idMetodoPago)
+                if (resp.ok) {
+                    _accionState.value = AccionUiState.Success(resp.mensaje)
+                    cargar()
+                } else {
+                    _accionState.value = AccionUiState.Error(resp.mensaje)
+                }
+            } catch (e: Exception) {
+                _accionState.value = AccionUiState.Error(
+                    e.localizedMessage ?: "Error al finalizar la cita"
                 )
             }
         }
