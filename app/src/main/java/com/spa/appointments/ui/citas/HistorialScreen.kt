@@ -1,5 +1,7 @@
+// Ruta: app/src/main/java/com/spa/appointments/ui/citas/HistorialScreen.kt
 package com.spa.appointments.ui.citas
 
+import android.app.DatePickerDialog
 import androidx.compose.animation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -17,6 +19,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.spa.appointments.domain.model.Cita
+import com.spa.appointments.domain.model.EstadoCita
+
+// ─── Screen principal ─────────────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -26,9 +31,9 @@ fun HistorialScreen(
 ) {
     val uiState     by vm.uiState.collectAsState()
     val filtros     by vm.filtros.collectAsState()
+    val estados     by vm.estados.collectAsState()
     val showFiltros by vm.mostrarFiltros.collectAsState()
 
-    // Estado temporal del panel de filtros (no se aplica hasta confirmar)
     var filtrosTemp by remember { mutableStateOf(FiltrosHistorial()) }
 
     Scaffold(
@@ -41,7 +46,6 @@ fun HistorialScreen(
                     }
                 },
                 actions = {
-                    // Indicador visual cuando hay filtros activos
                     if (filtros.activo) {
                         IconButton(onClick = { vm.limpiarFiltros() }) {
                             BadgedBox(badge = { Badge() }) {
@@ -80,6 +84,7 @@ fun HistorialScreen(
             ) {
                 FiltrosPanel(
                     filtros   = filtrosTemp,
+                    estados   = estados,
                     onChange  = { filtrosTemp = it },
                     onAplicar = { vm.aplicarFiltros(filtrosTemp) },
                     onCerrar  = { vm.toggleFiltros() }
@@ -99,17 +104,23 @@ fun HistorialScreen(
                     }
                     is HistorialUiState.Error -> {
                         Column(
-                            modifier = Modifier.align(Alignment.Center).padding(32.dp),
+                            modifier = Modifier
+                                .align(Alignment.Center)
+                                .padding(32.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Text(state.mensaje, color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center)
+                            Text(
+                                text      = state.mensaje,
+                                color     = MaterialTheme.colorScheme.error,
+                                textAlign = TextAlign.Center
+                            )
                             Spacer(Modifier.height(16.dp))
                             Button(onClick = { vm.cargar() }) { Text("Reintentar") }
                         }
                     }
                     is HistorialUiState.Success -> {
                         LazyColumn(
-                            contentPadding     = PaddingValues(16.dp),
+                            contentPadding      = PaddingValues(16.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             items(state.citas, key = { it.id }) { cita ->
@@ -123,12 +134,13 @@ fun HistorialScreen(
     }
 }
 
-// ─── Panel de filtros ────────────────────────────────────────────────────────
+// ─── Panel de filtros ─────────────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun FiltrosPanel(
     filtros:   FiltrosHistorial,
+    estados:   List<EstadoCita>,
     onChange:  (FiltrosHistorial) -> Unit,
     onAplicar: () -> Unit,
     onCerrar:  () -> Unit
@@ -138,9 +150,11 @@ private fun FiltrosPanel(
     Surface(tonalElevation = 4.dp, shadowElevation = 2.dp) {
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
 
-            Text("Filtrar historial",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold)
+            Text(
+                text       = "Filtrar historial",
+                style      = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold
+            )
 
             Spacer(Modifier.height(12.dp))
 
@@ -157,8 +171,8 @@ private fun FiltrosPanel(
                         }
                     }
                 },
-                singleLine    = true,
-                modifier      = Modifier.fillMaxWidth()
+                singleLine = true,
+                modifier   = Modifier.fillMaxWidth()
             )
 
             Spacer(Modifier.height(8.dp))
@@ -183,8 +197,9 @@ private fun FiltrosPanel(
 
             Spacer(Modifier.height(8.dp))
 
-            // ── Estado — lista desplegable ────────────────────────────────
+            // ── Dropdown de estados desde BD ──────────────────────────────
             EstadoDropdown(
+                estados            = estados,
                 seleccionadoId     = filtros.idEstado,
                 seleccionadoNombre = filtros.nombreEstado,
                 onSelect           = { id, nombre ->
@@ -207,7 +222,7 @@ private fun FiltrosPanel(
     }
 }
 
-// ── DatePicker ────────────────────────────────────────────────────────────────
+// ─── DatePicker ───────────────────────────────────────────────────────────────
 
 @Composable
 private fun FiltroDatePicker(
@@ -225,9 +240,9 @@ private fun FiltroDatePicker(
         readOnly      = true,
         label         = { Text(label) },
         trailingIcon  = {
-            Row {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = {
-                    android.app.DatePickerDialog(
+                    DatePickerDialog(
                         context,
                         { _, y, m, d ->
                             onDate("%04d-%02d-%02d".format(y, m + 1, d))
@@ -241,30 +256,26 @@ private fun FiltroDatePicker(
                 }
                 if (value != null) {
                     IconButton(onClick = { onDate(null) }) {
-                        Icon(Icons.Default.Clear, "Limpiar fecha",
-                            modifier = Modifier.size(16.dp))
+                        Icon(
+                            imageVector        = Icons.Default.Clear,
+                            contentDescription = "Limpiar fecha",
+                            modifier           = Modifier.size(16.dp)
+                        )
                     }
                 }
             }
         },
-        singleLine    = true,
-        modifier      = modifier
+        singleLine = true,
+        modifier   = modifier
     )
 }
 
-// ── Dropdown de estados ───────────────────────────────────────────────────────
-
-private val estadosHistorial = listOf(
-    null  to "Todos",
-    3     to "Cancelada",
-    5     to "Reagendada",
-    6     to "Rechazada",
-    7     to "Completada"
-)
+// ─── Dropdown de estados ──────────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun EstadoDropdown(
+    estados:            List<EstadoCita>,
     seleccionadoId:     Int?,
     seleccionadoNombre: String?,
     onSelect:           (Int?, String?) -> Unit
@@ -290,18 +301,45 @@ private fun EstadoDropdown(
             expanded         = expanded,
             onDismissRequest = { expanded = false }
         ) {
-            estadosHistorial.forEach { (id, nombre) ->
+            // Opción "Todos" siempre primera
+            DropdownMenuItem(
+                text = { Text("Todos los estados") },
+                onClick = {
+                    onSelect(null, null)
+                    expanded = false
+                },
+                leadingIcon = {
+                    if (seleccionadoId == null)
+                        Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp))
+                }
+            )
+            if (estados.isNotEmpty()) HorizontalDivider()
+            // Estados dinámicos desde BD
+            estados.forEach { estado ->
+                val colorEstado = remember(estado.color) {
+                    runCatching {
+                        Color(android.graphics.Color.parseColor(estado.color))
+                    }.getOrDefault(Color.Gray)
+                }
                 DropdownMenuItem(
-                    text    = { Text(nombre) },
+                    text = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Surface(
+                                modifier = Modifier.size(8.dp),
+                                shape    = MaterialTheme.shapes.extraSmall,
+                                color    = colorEstado
+                            ) {}
+                            Spacer(Modifier.width(8.dp))
+                            Text(estado.nombre)
+                        }
+                    },
                     onClick = {
-                        onSelect(id, if (id == null) null else nombre)
+                        onSelect(estado.id, estado.nombre)
                         expanded = false
                     },
                     leadingIcon = {
-                        if (seleccionadoId == id) {
-                            Icon(Icons.Default.Check, null,
-                                modifier = Modifier.size(16.dp))
-                        }
+                        if (seleccionadoId == estado.id)
+                            Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp))
                     }
                 )
             }
@@ -309,7 +347,7 @@ private fun EstadoDropdown(
     }
 }
 
-// ─── Tarjeta ─────────────────────────────────────────────────────────────────
+// ─── Tarjeta de cita ──────────────────────────────────────────────────────────
 
 @Composable
 private fun HistorialCitaCard(cita: Cita) {
@@ -330,9 +368,9 @@ private fun HistorialCitaCard(cita: Cita) {
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
 
-            // Fila superior: estado + fecha
+            // ── Fila superior: estado + fecha ─────────────────────────────
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier              = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment     = Alignment.CenterVertically
             ) {
@@ -355,7 +393,7 @@ private fun HistorialCitaCard(cita: Cita) {
                 )
             }
 
-            // Banner de reagendamiento
+            // ── Banner de reagendamiento ───────────────────────────────────
             if (esReagendada && cita.fechaHoraInicioOriginal != null) {
                 Spacer(Modifier.height(8.dp))
                 Surface(
@@ -386,6 +424,28 @@ private fun HistorialCitaCard(cita: Cita) {
 
             Spacer(Modifier.height(8.dp))
 
+            // ── Cliente ───────────────────────────────────────────────────
+            if (!cita.nombreCliente.isNullOrBlank()) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier          = Modifier.padding(bottom = 4.dp)
+                ) {
+                    Icon(
+                        imageVector        = Icons.Default.Person,
+                        contentDescription = null,
+                        modifier           = Modifier.size(14.dp),
+                        tint               = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        text  = cita.nombreCliente,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            // ── Profesional, hora, sede, total ────────────────────────────
             Text(
                 text       = cita.profesional,
                 style      = MaterialTheme.typography.bodyMedium,
@@ -406,16 +466,20 @@ private fun HistorialCitaCard(cita: Cita) {
     }
 }
 
-// ─── Empty state ─────────────────────────────────────────────────────────────
+// ─── Empty state ──────────────────────────────────────────────────────────────
 
 @Composable
-private fun EmptyHistorial(conFiltros: Boolean, modifier: Modifier = Modifier) {
+private fun EmptyHistorial(
+    conFiltros: Boolean,
+    modifier:   Modifier = Modifier
+) {
     Column(
-        modifier           = modifier.padding(32.dp),
+        modifier            = modifier.padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Icon(
-            imageVector        = if (conFiltros) Icons.Default.SearchOff else Icons.Default.History,
+            imageVector        = if (conFiltros) Icons.Default.SearchOff
+            else Icons.Default.History,
             contentDescription = null,
             modifier           = Modifier.size(64.dp),
             tint               = MaterialTheme.colorScheme.secondary
@@ -429,7 +493,7 @@ private fun EmptyHistorial(conFiltros: Boolean, modifier: Modifier = Modifier) {
         Spacer(Modifier.height(8.dp))
         Text(
             text      = if (conFiltros) "Ninguna cita coincide con los filtros aplicados."
-            else "Aquí aparecerán tus citas pasadas.",
+            else "Aquí aparecerán las citas pasadas.",
             style     = MaterialTheme.typography.bodyMedium,
             color     = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
@@ -437,7 +501,7 @@ private fun EmptyHistorial(conFiltros: Boolean, modifier: Modifier = Modifier) {
     }
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Helpers de formato ───────────────────────────────────────────────────────
 
 private fun formatearFechaHistorial(fechaIso: String): String = try {
     val p = fechaIso.substring(0, 10).split("-")

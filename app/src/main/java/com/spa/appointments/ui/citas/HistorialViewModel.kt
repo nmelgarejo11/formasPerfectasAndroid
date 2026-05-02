@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.spa.appointments.data.repository.CitasRepository
 import com.spa.appointments.domain.model.Cita
+import com.spa.appointments.domain.model.EstadoCita
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -44,7 +45,20 @@ class HistorialViewModel @Inject constructor(
     private val _mostrarFiltros = MutableStateFlow(false)
     val mostrarFiltros: StateFlow<Boolean> = _mostrarFiltros.asStateFlow()
 
-    init { cargar() }
+    private val _estados = MutableStateFlow<List<EstadoCita>>(emptyList())
+    val estados: StateFlow<List<EstadoCita>> = _estados.asStateFlow()
+
+    init {
+        cargarEstados()
+        cargar()
+    }
+
+    private fun cargarEstados() {
+        viewModelScope.launch {
+            runCatching { repo.getEstadosCita("HISTORIAL") }
+                .onSuccess { _estados.value = it }
+        }
+    }
 
     fun cargar() {
         viewModelScope.launch {

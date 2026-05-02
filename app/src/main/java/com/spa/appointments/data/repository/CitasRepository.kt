@@ -62,4 +62,7 @@ class CitasRepository @Inject constructor(
         val resp = api.finalizarCita(FinalizarCitaRequest(idCita, idMetodoPago))
         return AccionCitaResponse(ok = resp.ok, mensaje = resp.mensaje)
     }
+
+    suspend fun getEstadosCita(grupo: String? = null): List<EstadoCita> =
+        api.getEstadosCita(grupo)
 }

@@ -68,6 +68,11 @@ interface ApiService {
     @PUT("Citas/reagendar")
     suspend fun reagendarCita(@Body request: AccionCitaReagendarRequest): AccionCitaResponse
 
+    @GET("Citas/estados")
+    suspend fun getEstadosCita(
+        @Query("grupo") grupo: String? = null
+    ): List<EstadoCita>
+
     // ── Financiero ────────────────────────────────
     @GET("Financiero/resumen")
     suspend fun getResumenFinanciero(
