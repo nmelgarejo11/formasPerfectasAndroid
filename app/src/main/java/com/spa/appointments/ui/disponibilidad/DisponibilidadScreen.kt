@@ -1,26 +1,24 @@
+// Ruta: app/src/main/java/com/spa/appointments/ui/disponibilidad/DisponibilidadScreen.kt
 package com.spa.appointments.ui.disponibilidad
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -37,107 +35,137 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DisponibilidadScreen(
-    servicio: Servicio,
-    profesional: Profesional,
-    onBack: () -> Unit,
+    servicio:     Servicio,
+    profesional:  Profesional,
+    onBack:       () -> Unit,
     onCitaCreada: () -> Unit,
     vm: DisponibilidadViewModel = hiltViewModel()
 ) {
-    // Pasamos los datos al ViewModel al entrar a la pantalla
     LaunchedEffect(Unit) {
-        vm.servicio     = servicio
-        vm.profesional  = profesional
+        vm.servicio    = servicio
+        vm.profesional = profesional
         vm.seleccionarFecha(LocalDate.now())
     }
 
-    val uiState          by vm.uiState.collectAsState()
+    val uiState           by vm.uiState.collectAsState()
     val fechaSeleccionada by vm.fechaSeleccionada.collectAsState()
     val slotSeleccionado  by vm.slotSeleccionado.collectAsState()
 
-    var notas            by remember { mutableStateOf("") }
-    var mostrarDialogo   by remember { mutableStateOf(false) }
-    var mostrarExito     by remember { mutableStateOf(false) }
+    var notas          by remember { mutableStateOf("") }
+    var mostrarDialogo by remember { mutableStateOf(false) }
+    var mostrarExito   by remember { mutableStateOf(false) }
 
-    // Cuando la cita se crea exitosamente
     LaunchedEffect(uiState) {
-        if (uiState is DisponibilidadUiState.CitaCreada) {
-            mostrarExito = true
-        }
+        if (uiState is DisponibilidadUiState.CitaCreada) mostrarExito = true
     }
 
-    // Diálogo de confirmación
+    // ── Diálogo de confirmación ───────────────────────────────────────────────
     if (mostrarDialogo) {
         AlertDialog(
             onDismissRequest = { mostrarDialogo = false },
-            title   = { Text("Confirmar cita") },
-            text    = {
-                Column {
-                    Text("Servicio: ${servicio.nombre}")
-                    Text("Profesional: ${profesional.nombreCompleto}")
-                    Text("Fecha: ${fechaSeleccionada.format(
-                        DateTimeFormatter.ofPattern("dd/MM/yyyy"))}")
-                    Text("Hora: ${slotSeleccionado?.horaInicio} - ${slotSeleccionado?.horaFin}")
-                    Text("Total: ${"$%,.0f".format(servicio.precioBase)}")
+            shape = RoundedCornerShape(16.dp),
+            icon  = {
+                Surface(
+                    shape = RoundedCornerShape(50),
+                    color = MaterialTheme.colorScheme.primaryContainer
+                ) {
+                    Icon(
+                        Icons.Default.EventAvailable, null,
+                        tint     = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.padding(10.dp).size(24.dp)
+                    )
+                }
+            },
+            title = { Text("Confirmar reserva", fontWeight = FontWeight.Bold) },
+            text  = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+
+                    ConfirmacionFila(
+                        icono  = Icons.Default.Spa,
+                        label  = "Servicio",
+                        valor  = servicio.nombre
+                    )
+                    ConfirmacionFila(
+                        icono  = Icons.Default.Badge,
+                        label  = "Profesional",
+                        valor  = profesional.nombreCompleto
+                    )
+                    ConfirmacionFila(
+                        icono  = Icons.Default.CalendarToday,
+                        label  = "Fecha",
+                        valor  = fechaSeleccionada.format(
+                            DateTimeFormatter.ofPattern("dd/MM/yyyy")
+                        )
+                    )
+                    ConfirmacionFila(
+                        icono  = Icons.Default.Schedule,
+                        label  = "Hora",
+                        valor  = "${slotSeleccionado?.horaInicio?.substring(0,5)} – ${slotSeleccionado?.horaFin?.substring(0,5)}"
+                    )
+                    HorizontalDivider()
+                    ConfirmacionFila(
+                        icono  = Icons.Default.AttachMoney,
+                        label  = "Total",
+                        valor  = "${"$%,.0f".format(servicio.precioBase)}",
+                        negrita = true
+                    )
                 }
             },
             confirmButton = {
-                Button(onClick = {
-                    mostrarDialogo = false
-                    vm.confirmarCita(notas.ifBlank { null })
-                }) { Text("Confirmar") }
+                Button(
+                    onClick = { mostrarDialogo = false; vm.confirmarCita(notas.ifBlank { null }) },
+                    shape   = RoundedCornerShape(10.dp)
+                ) { Text("Confirmar reserva") }
             },
             dismissButton = {
-                OutlinedButton(onClick = { mostrarDialogo = false }) {
-                    Text("Cancelar")
-                }
+                OutlinedButton(
+                    onClick = { mostrarDialogo = false },
+                    shape   = RoundedCornerShape(10.dp)
+                ) { Text("Cancelar") }
             }
         )
     }
 
-    // Diálogo de éxito
+    // ── Diálogo de éxito ──────────────────────────────────────────────────────
     if (mostrarExito) {
         AlertDialog(
             onDismissRequest = {},
+            shape = RoundedCornerShape(16.dp),
             icon  = {
-                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                Surface(
+                    shape = RoundedCornerShape(50),
+                    color = MaterialTheme.colorScheme.primaryContainer
+                ) {
                     Icon(
-                        Icons.Default.CheckCircle,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(48.dp)
+                        Icons.Default.CheckCircle, null,
+                        tint     = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.padding(12.dp).size(32.dp)
                     )
                 }
             },
             title = {
                 Text(
                     "¡Cita reservada!",
-                    modifier = Modifier.fillMaxWidth(),
-                    textAlign = TextAlign.Center
+                    fontWeight = FontWeight.Bold,
+                    textAlign  = TextAlign.Center,
+                    modifier   = Modifier.fillMaxWidth()
                 )
             },
             text  = {
                 Text(
-                    (uiState as? DisponibilidadUiState.CitaCreada)?.mensaje
+                    text      = (uiState as? DisponibilidadUiState.CitaCreada)?.mensaje
                         ?: "Tu cita fue creada exitosamente.",
-                    modifier = Modifier.fillMaxWidth(),
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
+                    color     = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier  = Modifier.fillMaxWidth()
                 )
             },
             confirmButton = {
-                Box(
-                    modifier = Modifier.fillMaxWidth(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Button(
-                        onClick = {
-                            mostrarExito = false
-                            vm.resetear()
-                            onCitaCreada()
-                        }
-                    ) {
-                        Text("Ver mis citas")
-                    }
-                }
+                Button(
+                    onClick = { mostrarExito = false; vm.resetear(); onCitaCreada() },
+                    shape   = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("Ver mis citas") }
             }
         )
     }
@@ -145,7 +173,20 @@ fun DisponibilidadScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Elige fecha y hora") },
+                title = {
+                    Column {
+                        Text(
+                            text       = "Elige fecha y hora",
+                            style      = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text  = servicio.nombre,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Default.ArrowBack, "Volver")
@@ -154,28 +195,43 @@ fun DisponibilidadScreen(
             )
         },
         bottomBar = {
-            // Botón de confirmar fijo abajo
-            Surface(shadowElevation = 8.dp) {
-                Button(
-                    onClick = { mostrarDialogo = true },
-                    enabled = slotSeleccionado != null &&
-                            uiState !is DisponibilidadUiState.CreandoCita,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                ) {
-                    if (uiState is DisponibilidadUiState.CreandoCita) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            color    = MaterialTheme.colorScheme.onPrimary,
-                            strokeWidth = 2.dp
-                        )
-                    } else {
-                        Text(
-                            text = slotSeleccionado?.let {
-                                "Reservar a las ${it.horaInicio}"
-                            } ?: "Selecciona un horario"
-                        )
+            Surface(
+                shadowElevation = 8.dp,
+                tonalElevation  = 2.dp
+            ) {
+                AnimatedContent(
+                    targetState = slotSeleccionado,
+                    label       = "boton_reservar"
+                ) { slot ->
+                    Button(
+                        onClick  = { mostrarDialogo = true },
+                        enabled  = slot != null && uiState !is DisponibilidadUiState.CreandoCita,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 12.dp)
+                            .height(52.dp),
+                        shape    = RoundedCornerShape(12.dp)
+                    ) {
+                        if (uiState is DisponibilidadUiState.CreandoCita) {
+                            CircularProgressIndicator(
+                                modifier    = Modifier.size(20.dp),
+                                color       = MaterialTheme.colorScheme.onPrimary,
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Icon(
+                                imageVector        = if (slot != null) Icons.Default.EventAvailable
+                                else Icons.Default.Schedule,
+                                contentDescription = null,
+                                modifier           = Modifier.size(18.dp)
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                text       = slot?.let { "Reservar a las ${it.horaInicio.substring(0,5)}" }
+                                    ?: "Selecciona un horario",
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
                     }
                 }
             }
@@ -187,31 +243,37 @@ fun DisponibilidadScreen(
                 .fillMaxSize()
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
+                .padding(bottom = 8.dp)
         ) {
-
-            // ── Resumen del servicio y profesional ──
             ResumenReserva(servicio = servicio, profesional = profesional)
 
             Spacer(Modifier.height(8.dp))
 
-            // ── Selector de fecha (próximos 30 días) ──
             SelectorFecha(
-                fechaSeleccionada = fechaSeleccionada,
+                fechaSeleccionada   = fechaSeleccionada,
                 onFechaSeleccionada = { vm.seleccionarFecha(it) }
             )
 
             Spacer(Modifier.height(16.dp))
 
-            // ── Slots de tiempo ──
+            // ── Slots ─────────────────────────────────────────────────────
             when (val state = uiState) {
                 is DisponibilidadUiState.LoadingSlots -> {
                     Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(200.dp),
+                        modifier         = Modifier.fillMaxWidth().height(180.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator()
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            CircularProgressIndicator()
+                            Text(
+                                "Buscando horarios disponibles…",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
 
@@ -224,131 +286,243 @@ fun DisponibilidadScreen(
                 }
 
                 is DisponibilidadUiState.Error -> {
-                    Text(
-                        text     = state.mensaje,
-                        color    = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.padding(24.dp)
-                    )
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.errorContainer
+                    ) {
+                        Row(
+                            modifier          = Modifier.padding(14.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.CloudOff, null,
+                                modifier = Modifier.size(18.dp),
+                                tint     = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                text  = state.mensaje,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    }
                 }
 
                 else -> Unit
             }
 
-            // ── Notas opcionales ──
+            // ── Notas ─────────────────────────────────────────────────────
             Spacer(Modifier.height(16.dp))
             OutlinedTextField(
                 value         = notas,
                 onValueChange = { notas = it },
                 label         = { Text("Notas (opcional)") },
-                placeholder   = { Text("Ej: Alergia a ciertos productos...") },
+                placeholder   = { Text("Ej: Alergia a ciertos productos…") },
+                leadingIcon   = { Icon(Icons.Default.Notes, null) },
                 modifier      = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp),
+                shape         = RoundedCornerShape(12.dp),
                 minLines      = 2,
                 maxLines      = 4
             )
 
-            Spacer(Modifier.height(100.dp)) // espacio para el botón fijo
+            Spacer(Modifier.height(16.dp))
         }
     }
 }
 
-// ── Componente: Resumen ───────────────────────────────────────────────────────
+// ── Fila de confirmación ──────────────────────────────────────────────────────
+@Composable
+private fun ConfirmacionFila(
+    icono:   androidx.compose.ui.graphics.vector.ImageVector,
+    label:   String,
+    valor:   String,
+    negrita: Boolean = false
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier          = Modifier.fillMaxWidth()
+    ) {
+        Icon(
+            imageVector        = icono,
+            contentDescription = null,
+            modifier           = Modifier.size(16.dp),
+            tint               = MaterialTheme.colorScheme.primary
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text  = "$label:",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.width(80.dp)
+        )
+        Text(
+            text       = valor,
+            style      = MaterialTheme.typography.bodySmall,
+            fontWeight = if (negrita) FontWeight.Bold else FontWeight.Normal,
+            color      = if (negrita) MaterialTheme.colorScheme.primary
+            else MaterialTheme.colorScheme.onSurface
+        )
+    }
+}
+
+// ── Resumen de reserva ────────────────────────────────────────────────────────
 @Composable
 private fun ResumenReserva(servicio: Servicio, profesional: Profesional) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp),
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        shape  = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.primaryContainer
-        )
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
             Text(
-                text  = servicio.nombre,
-                style = MaterialTheme.typography.titleMedium,
+                text       = servicio.nombre,
+                style      = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onPrimaryContainer
+                color      = MaterialTheme.colorScheme.onPrimaryContainer
             )
-            Text(
-                text  = "con ${profesional.nombreCompleto}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer
-            )
-            Spacer(Modifier.height(4.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Default.Badge, null,
+                    modifier = Modifier.size(13.dp),
+                    tint     = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                )
+                Spacer(Modifier.width(4.dp))
                 Text(
-                    text  = "${servicio.duracionMinutos} min",
+                    text  = profesional.nombreCompleto,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
-                Text(
-                    text  = "${"$%,.0f".format(servicio.precioBase)}",
-                    style = MaterialTheme.typography.bodySmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
+            }
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.15f)
+            )
+            Row(
+                modifier              = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.Timer, null,
+                        modifier = Modifier.size(13.dp),
+                        tint     = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        text  = "${servicio.duracionMinutos} min",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.AttachMoney, null,
+                        modifier = Modifier.size(13.dp),
+                        tint     = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                    )
+                    Text(
+                        text       = "${"$%,.0f".format(servicio.precioBase)}",
+                        style      = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Bold,
+                        color      = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
             }
         }
     }
 }
 
-// ── Componente: Selector de fecha ─────────────────────────────────────────────
+// ── Selector de fecha ─────────────────────────────────────────────────────────
 @Composable
 private fun SelectorFecha(
-    fechaSeleccionada: LocalDate,
+    fechaSeleccionada:   LocalDate,
     onFechaSeleccionada: (LocalDate) -> Unit
 ) {
-    // Generamos los próximos 30 días
-    val dias = (0..29).map { LocalDate.now().plusDays(it.toLong()) }
+    val dias  = (0..29).map { LocalDate.now().plusDays(it.toLong()) }
+    val today = LocalDate.now()
 
     Column {
         Text(
-            text     = "Selecciona la fecha",
-            style    = MaterialTheme.typography.titleSmall,
+            text       = "Selecciona la fecha",
+            style      = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            modifier   = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
         )
 
         LazyRow(
-            contentPadding    = PaddingValues(horizontal = 16.dp),
+            contentPadding        = PaddingValues(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             items(dias) { dia ->
                 val seleccionado = dia == fechaSeleccionada
-                val esHoy        = dia == LocalDate.now()
+                val esHoy        = dia == today
 
+                // Agrupa el cambio de mes: muestra etiqueta si es el 1 del mes
+                // o el primer día de la lista
                 Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(
-                            if (seleccionado) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.surfaceVariant
-                        )
-                        .clickable { onFechaSeleccionada(dia) }
-                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text(
-                        text  = dia.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale("es")),
-                        fontSize = 11.sp,
-                        color = if (seleccionado) MaterialTheme.colorScheme.onPrimary
-                        else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text  = dia.dayOfMonth.toString(),
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp,
-                        color = if (seleccionado) MaterialTheme.colorScheme.onPrimary
-                        else MaterialTheme.colorScheme.onSurface
-                    )
-                    if (esHoy) {
+                    // Mini etiqueta de mes cuando cambia
+                    if (dia.dayOfMonth == 1 || dia == today) {
                         Text(
-                            text  = "Hoy",
-                            fontSize = 9.sp,
-                            color = if (seleccionado) MaterialTheme.colorScheme.onPrimary
-                            else MaterialTheme.colorScheme.primary
+                            text     = if (esHoy) "HOY"
+                            else dia.month.getDisplayName(TextStyle.SHORT, Locale("es"))
+                                .uppercase(),
+                            fontSize = 8.sp,
+                            fontWeight = FontWeight.Bold,
+                            color    = if (seleccionado) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            modifier = Modifier.padding(bottom = 2.dp)
+                        )
+                    } else {
+                        Spacer(Modifier.height(12.dp)) // alinea chips sin etiqueta
+                    }
+
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(
+                                if (seleccionado) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.surfaceVariant
+                            )
+                            .then(
+                                if (!seleccionado && esHoy)
+                                    Modifier.border(
+                                        1.5.dp,
+                                        MaterialTheme.colorScheme.primary,
+                                        RoundedCornerShape(12.dp)
+                                    )
+                                else Modifier
+                            )
+                            .clickable { onFechaSeleccionada(dia) }
+                            .padding(horizontal = 12.dp, vertical = 8.dp)
+                    ) {
+                        Text(
+                            text     = dia.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale("es")),
+                            fontSize = 10.sp,
+                            color    = if (seleccionado) MaterialTheme.colorScheme.onPrimary
+                            else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text       = dia.dayOfMonth.toString(),
+                            fontWeight = FontWeight.Bold,
+                            fontSize   = 18.sp,
+                            color      = if (seleccionado) MaterialTheme.colorScheme.onPrimary
+                            else MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
@@ -357,78 +531,115 @@ private fun SelectorFecha(
     }
 }
 
-// ── Componente: Grid de slots ─────────────────────────────────────────────────
+// ── Grid de slots ─────────────────────────────────────────────────────────────
 @Composable
 private fun SlotsGrid(
-    slots: List<SlotDisponible>,
+    slots:            List<SlotDisponible>,
     slotSeleccionado: SlotDisponible?,
-    onSlotClick: (SlotDisponible) -> Unit
+    onSlotClick:      (SlotDisponible) -> Unit
 ) {
-    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-        Text(
-            text       = "Horarios disponibles",
-            style      = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Bold,
-            modifier   = Modifier.padding(bottom = 8.dp)
-        )
+    val slotsDisponibles = slots.filter { it.disponible }
 
-        val slotsDisponibles = slots.filter { it.disponible }
+    Column(
+        modifier = Modifier.padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Row(
+            modifier              = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment     = Alignment.CenterVertically
+        ) {
+            Text(
+                text       = "Horarios disponibles",
+                style      = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold
+            )
+            if (slotsDisponibles.isNotEmpty()) {
+                Text(
+                    text  = "${slotsDisponibles.size} disponibles",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
 
         if (slotsDisponibles.isEmpty()) {
-            Text(
-                text     = "No hay horarios disponibles para este día.",
-                color    = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(vertical = 16.dp)
-            )
+            Surface(
+                shape    = RoundedCornerShape(12.dp),
+                color    = MaterialTheme.colorScheme.surfaceVariant,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier          = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.EventBusy, null,
+                        modifier = Modifier.size(20.dp),
+                        tint     = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        text  = "No hay horarios disponibles para este día.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
             return
         }
 
-        // Dividimos los slots en filas de 3 columnas manualmente
-        // Así el Column crece según el contenido sin altura fija
         val filas = slotsDisponibles.chunked(3)
 
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            filas.forEach { fila ->
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    fila.forEach { slot ->
-                        val seleccionado = slot == slotSeleccionado
+        filas.forEach { fila ->
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier              = Modifier.fillMaxWidth()
+            ) {
+                fila.forEach { slot ->
+                    val seleccionado = slot == slotSeleccionado
 
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(
-                                    if (seleccionado) MaterialTheme.colorScheme.primary
-                                    else MaterialTheme.colorScheme.surfaceVariant
-                                )
-                                .border(
-                                    width = if (seleccionado) 0.dp else 1.dp,
-                                    color = MaterialTheme.colorScheme.outline,
-                                    shape = RoundedCornerShape(8.dp)
-                                )
-                                .clickable { onSlotClick(slot) }
-                                .padding(vertical = 12.dp)
+                    Surface(
+                        shape    = RoundedCornerShape(10.dp),
+                        color    = if (seleccionado) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.surfaceVariant,
+                        border   = if (seleccionado) null
+                        else androidx.compose.foundation.BorderStroke(
+                            1.dp,
+                            MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
+                        ),
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { onSlotClick(slot) }
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier            = Modifier.padding(vertical = 12.dp)
                         ) {
                             Text(
                                 text       = slot.horaInicio.substring(0, 5),
                                 textAlign  = TextAlign.Center,
-                                fontWeight = if (seleccionado) FontWeight.Bold
-                                else FontWeight.Normal,
+                                fontWeight = if (seleccionado) FontWeight.Bold else FontWeight.Normal,
+                                fontSize   = 14.sp,
                                 color      = if (seleccionado) MaterialTheme.colorScheme.onPrimary
                                 else MaterialTheme.colorScheme.onSurface
                             )
+                            if (seleccionado) {
+                                Icon(
+                                    Icons.Default.Check, null,
+                                    modifier = Modifier
+                                        .padding(top = 2.dp)
+                                        .size(12.dp),
+                                    tint     = MaterialTheme.colorScheme.onPrimary
+                                )
+                            }
                         }
                     }
+                }
 
-                    // Si la fila tiene menos de 3 slots, rellenamos con espacios
-                    // para que los slots existentes mantengan el mismo ancho
-                    repeat(3 - fila.size) {
-                        Spacer(modifier = Modifier.weight(1f))
-                    }
+                // Relleno para filas incompletas
+                repeat(3 - fila.size) {
+                    Spacer(modifier = Modifier.weight(1f))
                 }
             }
         }
