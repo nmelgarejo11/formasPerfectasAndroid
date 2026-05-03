@@ -1,8 +1,11 @@
+// Ruta: app/src/main/java/com/spa/appointments/ui/home/HomeScreen.kt
 package com.spa.appointments.ui.home
 
+import androidx.compose.animation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -16,66 +19,113 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.spa.appointments.core.utils.mapIcon
 import com.spa.appointments.domain.model.EstadoLicencia
 import com.spa.appointments.domain.model.Modulo
-import com.spa.appointments.core.security.TokenStorage
+
+// ─── Screen principal ─────────────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    onLogout:   () -> Unit,
-    onNavigate: (String) -> Unit,
+    onLogout:           () -> Unit,
+    onNavigate:         (String) -> Unit,
     pendingDestination: MutableState<String?> = mutableStateOf(null),
-    vm: HomeViewModel = hiltViewModel()
+    vm: HomeViewModel   = hiltViewModel()
 ) {
     val uiState by vm.uiState.collectAsState()
 
+    val userName = (uiState as? HomeUiState.Success)?.userName ?: ""
+    val inicial  = userName.firstOrNull()?.uppercase() ?: "U"
+
+    // ── Diálogo de notificación pendiente ────────────────────────────────────
     val destino = pendingDestination.value
     if (destino != null) {
         AlertDialog(
             onDismissRequest = { pendingDestination.value = null },
-            icon = {
-                Icon(
-                    Icons.Default.Notifications,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary
-                )
+            shape = RoundedCornerShape(16.dp),
+            icon  = {
+                Surface(
+                    shape = RoundedCornerShape(50),
+                    color = MaterialTheme.colorScheme.primaryContainer
+                ) {
+                    Icon(
+                        Icons.Default.Notifications, null,
+                        tint     = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.padding(10.dp).size(22.dp)
+                    )
+                }
             },
-            title = { Text("Tienes una actualización") },
+            title = { Text("Tienes una actualización", fontWeight = FontWeight.Bold) },
             text  = {
                 Text(
-                    when (destino) {
+                    text  = when (destino) {
                         "mis_citas" -> "Hay novedades en tus citas. ¿Deseas verlas ahora?"
                         "historial" -> "Hay novedades en tu historial. ¿Deseas verlo ahora?"
                         else        -> "Tienes una nueva notificación."
-                    }
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             },
             confirmButton = {
-                Button(onClick = {
-                    pendingDestination.value = null
-                    onNavigate(destino)
-                }) { Text("Ver ahora") }
+                Button(
+                    onClick = { pendingDestination.value = null; onNavigate(destino) },
+                    shape   = RoundedCornerShape(10.dp)
+                ) { Text("Ver ahora") }
             },
             dismissButton = {
-                OutlinedButton(onClick = { pendingDestination.value = null }) {
-                    Text("Después")
-                }
+                OutlinedButton(
+                    onClick = { pendingDestination.value = null },
+                    shape   = RoundedCornerShape(10.dp)
+                ) { Text("Después") }
             }
         )
     }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
-                    when (val s = uiState) {
-                        is HomeUiState.Success -> Text("Hola, ${s.userName}")
-                        else                   -> Text("Dashboard")
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        // Avatar con inicial del usuario
+                        Surface(
+                            shape    = RoundedCornerShape(50),
+                            color    = MaterialTheme.colorScheme.primaryContainer,
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(
+                                    text       = inicial,
+                                    style      = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color      = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                        }
+                        Spacer(Modifier.width(10.dp))
+                        Column {
+                            when (val s = uiState) {
+                                is HomeUiState.Success -> {
+                                    Text(
+                                        text       = "Hola, ${s.userName}",
+                                        style      = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        text  = "¿Qué hacemos hoy?",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                else -> Text(
+                                    text       = "Dashboard",
+                                    style      = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
                     }
                 },
                 actions = {
-                    IconButton(onClick = {
-                        vm.logout()
-                        onLogout()
-                    }) {
+                    IconButton(onClick = { vm.logout(); onLogout() }) {
                         Icon(
                             imageVector        = Icons.Default.ExitToApp,
                             contentDescription = "Cerrar sesión"
@@ -91,9 +141,12 @@ fun HomeScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // ── Banner de licencia (solo si expira hoy) ──────────────────
-
-            if (vm.licenciaEstado == EstadoLicencia.EXPIRA_HOY) {
+            // ── Banner licencia ──────────────────────────────────────────
+            AnimatedVisibility(
+                visible = vm.licenciaEstado == EstadoLicencia.EXPIRA_HOY,
+                enter   = expandVertically() + fadeIn(),
+                exit    = shrinkVertically() + fadeOut()
+            ) {
                 BannerDemoExpiracion(mensaje = vm.licenciaMensaje)
             }
 
@@ -102,71 +155,89 @@ fun HomeScreen(
                 when (val state = uiState) {
 
                     is HomeUiState.Loading -> {
-                        CircularProgressIndicator(
-                            modifier = Modifier.align(Alignment.Center)
-                        )
+                        Column(
+                            modifier            = Modifier.align(Alignment.Center),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            CircularProgressIndicator()
+                            Text(
+                                "Cargando menú…",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
 
                     is HomeUiState.Empty -> {
                         Column(
-                            modifier = Modifier
+                            modifier            = Modifier
                                 .align(Alignment.Center)
-                                .padding(32.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
+                                .padding(40.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            Icon(
-                                imageVector        = Icons.Default.Warning,
-                                contentDescription = null,
-                                tint               = MaterialTheme.colorScheme.secondary,
-                                modifier           = Modifier.size(48.dp)
-                            )
-                            Spacer(Modifier.height(16.dp))
+                            Surface(
+                                shape = RoundedCornerShape(24.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant
+                            ) {
+                                Icon(
+                                    Icons.Default.LockPerson, null,
+                                    modifier = Modifier.padding(20.dp).size(48.dp),
+                                    tint     = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                             Text(
-                                text  = "Sin acceso",
-                                style = MaterialTheme.typography.titleMedium
+                                text       = "Sin acceso",
+                                style      = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
                             )
-                            Spacer(Modifier.height(8.dp))
                             Text(
                                 text      = "Tu usuario no tiene módulos asignados.\nContacta al administrador.",
                                 style     = MaterialTheme.typography.bodyMedium,
                                 color     = MaterialTheme.colorScheme.onSurfaceVariant,
                                 textAlign = TextAlign.Center
                             )
-                            Spacer(Modifier.height(24.dp))
-                            OutlinedButton(onClick = {
-                                vm.logout()
-                                onLogout()
-                            }) {
-                                Text("Cerrar sesión")
-                            }
+                            OutlinedButton(
+                                onClick = { vm.logout(); onLogout() },
+                                shape   = RoundedCornerShape(10.dp)
+                            ) { Text("Cerrar sesión") }
                         }
                     }
 
                     is HomeUiState.Error -> {
                         Column(
-                            modifier = Modifier
+                            modifier            = Modifier
                                 .align(Alignment.Center)
                                 .padding(32.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
+                            Surface(
+                                shape = RoundedCornerShape(50),
+                                color = MaterialTheme.colorScheme.errorContainer
+                            ) {
+                                Icon(
+                                    Icons.Default.CloudOff, null,
+                                    modifier = Modifier.padding(16.dp).size(32.dp),
+                                    tint     = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                            }
                             Text(
-                                text      = "Error al cargar el menú",
-                                style     = MaterialTheme.typography.titleMedium
+                                text       = "Error al cargar el menú",
+                                style      = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
                             )
-                            Spacer(Modifier.height(8.dp))
                             Text(
                                 text      = state.mensaje,
                                 style     = MaterialTheme.typography.bodySmall,
                                 color     = MaterialTheme.colorScheme.error,
                                 textAlign = TextAlign.Center
                             )
-                            Spacer(Modifier.height(16.dp))
-                            Button(onClick = {
-                                vm.logout()
-                                onLogout()
-                            }) {
-                                Text("Volver al login")
-                            }
+                            Button(
+                                onClick = { vm.logout(); onLogout() },
+                                shape   = RoundedCornerShape(10.dp)
+                            ) { Text("Volver al login") }
                         }
                     }
 
@@ -182,7 +253,8 @@ fun HomeScreen(
     }
 }
 
-// ── Banner demo expiración ────────────────────────────────────────────────────
+// ─── Banner de licencia ───────────────────────────────────────────────────────
+
 @Composable
 private fun BannerDemoExpiracion(mensaje: String) {
     Surface(
@@ -190,16 +262,21 @@ private fun BannerDemoExpiracion(mensaje: String) {
         color    = MaterialTheme.colorScheme.errorContainer
     ) {
         Row(
-            modifier              = Modifier.padding(12.dp),
-            verticalAlignment     = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            modifier          = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector        = Icons.Default.Warning,
-                contentDescription = null,
-                tint               = MaterialTheme.colorScheme.error,
-                modifier           = Modifier.size(20.dp)
-            )
+            Surface(
+                shape = RoundedCornerShape(50),
+                color = MaterialTheme.colorScheme.error.copy(alpha = 0.15f)
+            ) {
+                Icon(
+                    imageVector        = Icons.Default.Warning,
+                    contentDescription = null,
+                    tint               = MaterialTheme.colorScheme.error,
+                    modifier           = Modifier.padding(5.dp).size(16.dp)
+                )
+            }
+            Spacer(Modifier.width(10.dp))
             Text(
                 text     = mensaje,
                 style    = MaterialTheme.typography.bodySmall,
@@ -210,14 +287,15 @@ private fun BannerDemoExpiracion(mensaje: String) {
     }
 }
 
-// ── Menú dinámico ─────────────────────────────────────────────────────────────
+// ─── Menú dinámico ────────────────────────────────────────────────────────────
+
 @Composable
 private fun MenuDinamico(
     modulos:    List<Modulo>,
     onNavigate: (String) -> Unit
 ) {
     LazyColumn(
-        contentPadding      = PaddingValues(16.dp),
+        contentPadding      = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         items(modulos) { modulo ->
@@ -226,59 +304,94 @@ private fun MenuDinamico(
     }
 }
 
+// ─── Card de módulo ───────────────────────────────────────────────────────────
+
 @Composable
 private fun ModuloCard(
-    modulo:    Modulo,
+    modulo:     Modulo,
     onNavigate: (String) -> Unit
 ) {
     Card(
         modifier  = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        shape     = RoundedCornerShape(14.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors    = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp, MaterialTheme.colorScheme.outlineVariant
+        )
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
 
-            // Cabecera del módulo
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector        = mapIcon(modulo.icono),
-                    contentDescription = modulo.modulo,
-                    tint               = MaterialTheme.colorScheme.primary
-                )
-                Spacer(Modifier.width(8.dp))
+            // ── Cabecera del módulo ───────────────────────────────────────
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier          = Modifier.padding(bottom = 10.dp)
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer
+                ) {
+                    Icon(
+                        imageVector        = mapIcon(modulo.icono),
+                        contentDescription = modulo.modulo,
+                        tint               = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier           = Modifier.padding(8.dp).size(20.dp)
+                    )
+                }
+                Spacer(Modifier.width(10.dp))
                 Text(
                     text       = modulo.modulo,
-                    style      = MaterialTheme.typography.titleMedium,
+                    style      = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold
                 )
             }
 
-            Spacer(Modifier.height(8.dp))
-            HorizontalDivider()
-            Spacer(Modifier.height(8.dp))
+            HorizontalDivider(
+                color    = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                modifier = Modifier.padding(bottom = 6.dp)
+            )
 
-            // Submódulos
+            // ── Submódulos ────────────────────────────────────────────────
             modulo.submodulos?.forEach { sub ->
-                TextButton(
-                    onClick        = { onNavigate(sub.ruta) },
-                    modifier       = Modifier.fillMaxWidth(),
-                    contentPadding = PaddingValues(vertical = 4.dp)
+                Surface(
+                    shape    = RoundedCornerShape(10.dp),
+                    color    = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0f),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Icon(
-                        imageVector        = mapIcon(sub.icono),
-                        contentDescription = sub.nombre,
-                        modifier           = Modifier.size(18.dp)
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text     = sub.nombre,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Icon(
-                        imageVector        = Icons.Default.KeyboardArrowRight,
-                        contentDescription = null,
-                        modifier           = Modifier.size(16.dp),
-                        tint               = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    TextButton(
+                        onClick        = { onNavigate(sub.ruta) },
+                        modifier       = Modifier.fillMaxWidth(),
+                        shape          = RoundedCornerShape(10.dp),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp)
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.secondaryContainer
+                        ) {
+                            Icon(
+                                imageVector        = mapIcon(sub.icono),
+                                contentDescription = sub.nombre,
+                                modifier           = Modifier.padding(6.dp).size(16.dp),
+                                tint               = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        }
+                        Spacer(Modifier.width(10.dp))
+                        Text(
+                            text       = sub.nombre,
+                            modifier   = Modifier.weight(1f),
+                            style      = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
+                            textAlign  = TextAlign.Start
+                        )
+                        Icon(
+                            imageVector        = Icons.Default.ChevronRight,
+                            contentDescription = null,
+                            modifier           = Modifier.size(18.dp),
+                            tint               = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
         }
