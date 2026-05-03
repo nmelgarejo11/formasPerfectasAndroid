@@ -3,9 +3,11 @@ package com.spa.appointments.ui.citas
 
 import android.app.DatePickerDialog
 import androidx.compose.animation.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -17,6 +19,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.spa.appointments.domain.model.Cita
 import com.spa.appointments.domain.model.EstadoCita
@@ -36,10 +39,28 @@ fun HistorialScreen(
 
     var filtrosTemp by remember { mutableStateOf(FiltrosHistorial()) }
 
+    // Conteo para subtítulo
+    val totalCitas = (uiState as? HistorialUiState.Success)?.citas?.size
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Historial de citas") },
+                title = {
+                    Column {
+                        Text(
+                            text       = "Historial de citas",
+                            style      = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        if (totalCitas != null) {
+                            Text(
+                                text  = "$totalCitas ${if (totalCitas == 1) "registro" else "registros"}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Default.ArrowBack, "Volver")
@@ -60,7 +81,9 @@ fun HistorialScreen(
                         Icon(
                             imageVector = if (filtros.activo) Icons.Default.FilterAlt
                             else Icons.Default.FilterList,
-                            contentDescription = "Filtrar"
+                            contentDescription = "Filtrar",
+                            tint = if (filtros.activo) MaterialTheme.colorScheme.primary
+                            else LocalContentColor.current
                         )
                     }
                     IconButton(onClick = { vm.cargar() }) {
@@ -91,37 +114,117 @@ fun HistorialScreen(
                 )
             }
 
+            // Banner de filtros activos
+            AnimatedVisibility(
+                visible = filtros.activo && !showFiltros,
+                enter   = expandVertically() + fadeIn(),
+                exit    = shrinkVertically() + fadeOut()
+            ) {
+                Surface(
+                    color    = MaterialTheme.colorScheme.secondaryContainer,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier          = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector        = Icons.Default.FilterAlt,
+                            contentDescription = null,
+                            modifier           = Modifier.size(14.dp),
+                            tint               = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text     = "Filtros aplicados",
+                            style    = MaterialTheme.typography.labelSmall,
+                            color    = MaterialTheme.colorScheme.onSecondaryContainer,
+                            modifier = Modifier.weight(1f)
+                        )
+                        TextButton(
+                            onClick      = { vm.limpiarFiltros() },
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                        ) {
+                            Text(
+                                text  = "Limpiar",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        }
+                    }
+                }
+            }
+
             Box(modifier = Modifier.fillMaxSize()) {
                 when (val state = uiState) {
                     is HistorialUiState.Loading -> {
-                        CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                        Column(
+                            modifier            = Modifier.align(Alignment.Center),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            CircularProgressIndicator()
+                            Text(
+                                text  = "Cargando historial…",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
+
                     is HistorialUiState.Empty -> {
                         EmptyHistorial(
                             conFiltros = filtros.activo,
                             modifier   = Modifier.align(Alignment.Center)
                         )
                     }
+
                     is HistorialUiState.Error -> {
                         Column(
-                            modifier = Modifier
+                            modifier            = Modifier
                                 .align(Alignment.Center)
                                 .padding(32.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
+                            Surface(
+                                shape = RoundedCornerShape(50),
+                                color = MaterialTheme.colorScheme.errorContainer
+                            ) {
+                                Icon(
+                                    imageVector        = Icons.Default.CloudOff,
+                                    contentDescription = null,
+                                    modifier           = Modifier
+                                        .padding(16.dp)
+                                        .size(32.dp),
+                                    tint               = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                            }
                             Text(
                                 text      = state.mensaje,
                                 color     = MaterialTheme.colorScheme.error,
-                                textAlign = TextAlign.Center
+                                textAlign = TextAlign.Center,
+                                style     = MaterialTheme.typography.bodyMedium
                             )
-                            Spacer(Modifier.height(16.dp))
-                            Button(onClick = { vm.cargar() }) { Text("Reintentar") }
+                            Button(
+                                onClick = { vm.cargar() },
+                                shape   = RoundedCornerShape(10.dp)
+                            ) {
+                                Icon(
+                                    imageVector        = Icons.Default.Refresh,
+                                    contentDescription = null,
+                                    modifier           = Modifier.size(16.dp)
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text("Reintentar")
+                            }
                         }
                     }
+
                     is HistorialUiState.Success -> {
                         LazyColumn(
-                            contentPadding      = PaddingValues(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                            contentPadding      = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             items(state.citas, key = { it.id }) { cita ->
                                 HistorialCitaCard(cita = cita)
@@ -147,18 +250,29 @@ private fun FiltrosPanel(
 ) {
     val context = LocalContext.current
 
-    Surface(tonalElevation = 4.dp, shadowElevation = 2.dp) {
-        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+    Surface(
+        tonalElevation  = 4.dp,
+        shadowElevation = 2.dp
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
 
-            Text(
-                text       = "Filtrar historial",
-                style      = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold
-            )
+            Row(
+                verticalAlignment     = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier              = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text       = "Filtrar historial",
+                    style      = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                IconButton(onClick = onCerrar, modifier = Modifier.size(28.dp)) {
+                    Icon(Icons.Default.Close, contentDescription = "Cerrar", modifier = Modifier.size(18.dp))
+                }
+            }
 
             Spacer(Modifier.height(12.dp))
 
-            // ── Búsqueda por cliente ──────────────────────────────────────
             OutlinedTextField(
                 value         = filtros.nombreCliente ?: "",
                 onValueChange = { onChange(filtros.copy(nombreCliente = it.ifBlank { null })) },
@@ -172,12 +286,12 @@ private fun FiltrosPanel(
                     }
                 },
                 singleLine = true,
+                shape      = RoundedCornerShape(12.dp),
                 modifier   = Modifier.fillMaxWidth()
             )
 
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(10.dp))
 
-            // ── Fechas con DatePickerDialog ───────────────────────────────
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FiltroDatePicker(
                     label    = "Desde",
@@ -195,9 +309,8 @@ private fun FiltrosPanel(
                 )
             }
 
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(10.dp))
 
-            // ── Dropdown de estados desde BD ──────────────────────────────
             EstadoDropdown(
                 estados            = estados,
                 seleccionadoId     = filtros.idEstado,
@@ -207,16 +320,21 @@ private fun FiltrosPanel(
                 }
             )
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(14.dp))
 
             Row(
                 modifier              = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
                 verticalAlignment     = Alignment.CenterVertically
             ) {
-                TextButton(onClick = onCerrar) { Text("Cancelar") }
-                Spacer(Modifier.width(8.dp))
-                Button(onClick = onAplicar)    { Text("Aplicar") }
+                OutlinedButton(
+                    onClick = onCerrar,
+                    shape   = RoundedCornerShape(10.dp)
+                ) { Text("Cancelar") }
+                Button(
+                    onClick = onAplicar,
+                    shape   = RoundedCornerShape(10.dp)
+                ) { Text("Aplicar filtros") }
             }
         }
     }
@@ -239,6 +357,7 @@ private fun FiltroDatePicker(
         onValueChange = {},
         readOnly      = true,
         label         = { Text(label) },
+        shape         = RoundedCornerShape(12.dp),
         trailingIcon  = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = {
@@ -281,17 +400,17 @@ private fun EstadoDropdown(
     onSelect:           (Int?, String?) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
-    val textoMostrado = seleccionadoNombre ?: "Todos los estados"
 
     ExposedDropdownMenuBox(
         expanded         = expanded,
         onExpandedChange = { expanded = !expanded }
     ) {
         OutlinedTextField(
-            value         = textoMostrado,
+            value         = seleccionadoNombre ?: "Todos los estados",
             onValueChange = {},
             readOnly      = true,
             label         = { Text("Estado") },
+            shape         = RoundedCornerShape(12.dp),
             trailingIcon  = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
             modifier      = Modifier
                 .fillMaxWidth()
@@ -301,7 +420,6 @@ private fun EstadoDropdown(
             expanded         = expanded,
             onDismissRequest = { expanded = false }
         ) {
-            // Opción "Todos" siempre primera
             DropdownMenuItem(
                 text = { Text("Todos los estados") },
                 onClick = {
@@ -314,7 +432,6 @@ private fun EstadoDropdown(
                 }
             )
             if (estados.isNotEmpty()) HorizontalDivider()
-            // Estados dinámicos desde BD
             estados.forEach { estado ->
                 val colorEstado = remember(estado.color) {
                     runCatching {
@@ -361,107 +478,187 @@ private fun HistorialCitaCard(cita: Cita) {
 
     Card(
         modifier  = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        shape     = RoundedCornerShape(14.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors    = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        border = BorderStroke(
+            width = 1.dp,
+            color = MaterialTheme.colorScheme.outlineVariant
         )
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        // Barra de color del estado en el borde izquierdo
+        Row(modifier = Modifier.fillMaxWidth()) {
+            // Acento de color lateral
+            Surface(
+                modifier = Modifier
+                    .width(4.dp)
+                    .fillMaxHeight(),
+                color    = colorEstado
+            ) {}
 
-            // ── Fila superior: estado + fecha ─────────────────────────────
-            Row(
-                modifier              = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment     = Alignment.CenterVertically
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 14.dp, vertical = 12.dp)
             ) {
-                Surface(
-                    shape = MaterialTheme.shapes.small,
-                    color = colorEstado.copy(alpha = 0.15f)
-                ) {
-                    Text(
-                        text       = cita.estado,
-                        color      = colorEstado,
-                        style      = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        modifier   = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                    )
-                }
-                Text(
-                    text  = formatearFechaHistorial(cita.fechaHoraInicio),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
 
-            // ── Banner de reagendamiento ───────────────────────────────────
-            if (esReagendada && cita.fechaHoraInicioOriginal != null) {
-                Spacer(Modifier.height(8.dp))
-                Surface(
-                    shape = MaterialTheme.shapes.small,
-                    color = MaterialTheme.colorScheme.tertiaryContainer
+                // ── Fila superior: chip de estado + fecha ─────────────────
+                Row(
+                    modifier              = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment     = Alignment.CenterVertically
                 ) {
-                    Row(
-                        modifier          = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 8.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = colorEstado.copy(alpha = 0.12f)
                     ) {
-                        Icon(
-                            imageVector        = Icons.Default.Update,
-                            contentDescription = null,
-                            modifier           = Modifier.size(12.dp),
-                            tint               = MaterialTheme.colorScheme.onTertiaryContainer
-                        )
-                        Spacer(Modifier.width(4.dp))
                         Text(
-                            text  = "Reagendada desde el ${formatearFechaHistorial(cita.fechaHoraInicioOriginal)}",
+                            text       = cita.estado,
+                            color      = colorEstado,
+                            style      = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            modifier   = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                        )
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector        = Icons.Default.CalendarToday,
+                            contentDescription = null,
+                            modifier           = Modifier.size(11.dp),
+                            tint               = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(Modifier.width(3.dp))
+                        Text(
+                            text  = formatearFechaHistorial(cita.fechaHoraInicio),
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onTertiaryContainer
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
-            }
 
-            Spacer(Modifier.height(8.dp))
+                // ── Banner de reagendamiento ───────────────────────────────
+                if (esReagendada && cita.fechaHoraInicioOriginal != null) {
+                    Spacer(Modifier.height(8.dp))
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = MaterialTheme.colorScheme.tertiaryContainer
+                    ) {
+                        Row(
+                            modifier          = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector        = Icons.Default.Update,
+                                contentDescription = null,
+                                modifier           = Modifier.size(12.dp),
+                                tint               = MaterialTheme.colorScheme.onTertiaryContainer
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                text  = "Reagendada · original: ${formatearFechaHistorial(cita.fechaHoraInicioOriginal)}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onTertiaryContainer
+                            )
+                        }
+                    }
+                }
 
-            // ── Cliente ───────────────────────────────────────────────────
-            if (!cita.nombreCliente.isNullOrBlank()) {
+                Spacer(Modifier.height(10.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                Spacer(Modifier.height(10.dp))
+
+                // ── Cliente ───────────────────────────────────────────────
+                if (!cita.nombreCliente.isNullOrBlank()) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier          = Modifier.padding(bottom = 6.dp)
+                    ) {
+                        Icon(
+                            imageVector        = Icons.Default.Person,
+                            contentDescription = null,
+                            modifier           = Modifier.size(14.dp),
+                            tint               = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(Modifier.width(5.dp))
+                        Text(
+                            text       = cita.nombreCliente,
+                            style      = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Medium,
+                            color      = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+
+                // ── Profesional ───────────────────────────────────────────
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier          = Modifier.padding(bottom = 4.dp)
                 ) {
                     Icon(
-                        imageVector        = Icons.Default.Person,
+                        imageVector        = Icons.Default.Badge,
                         contentDescription = null,
                         modifier           = Modifier.size(14.dp),
                         tint               = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Spacer(Modifier.width(4.dp))
+                    Spacer(Modifier.width(5.dp))
                     Text(
-                        text  = cita.nombreCliente,
+                        text       = cita.profesional,
+                        style      = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color      = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+
+                // ── Hora y sede ───────────────────────────────────────────
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier          = Modifier.padding(bottom = 8.dp)
+                ) {
+                    Icon(
+                        imageVector        = Icons.Default.AccessTime,
+                        contentDescription = null,
+                        modifier           = Modifier.size(14.dp),
+                        tint               = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.width(5.dp))
+                    Text(
+                        text  = "${formatearHoraHistorial(cita.fechaHoraInicio)} · ${cita.sede}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-            }
 
-            // ── Profesional, hora, sede, total ────────────────────────────
-            Text(
-                text       = cita.profesional,
-                style      = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text  = "${formatearHoraHistorial(cita.fechaHoraInicio)} · ${cita.sede}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                text       = "Total: ${"$%,.0f".format(cita.total)}",
-                style      = MaterialTheme.typography.bodySmall,
-                fontWeight = FontWeight.Bold,
-                color      = MaterialTheme.colorScheme.primary
-            )
+                // ── Total con fondo destacado ─────────────────────────────
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer
+                ) {
+                    Row(
+                        modifier          = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment     = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text  = "Total",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        Text(
+                            text       = "${"$%,.0f".format(cita.total)}",
+                            style      = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Bold,
+                            color      = MaterialTheme.colorScheme.onPrimaryContainer,
+                            fontSize   = 13.sp
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -474,23 +671,29 @@ private fun EmptyHistorial(
     modifier:   Modifier = Modifier
 ) {
     Column(
-        modifier            = modifier.padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+        modifier            = modifier.padding(40.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Icon(
-            imageVector        = if (conFiltros) Icons.Default.SearchOff
-            else Icons.Default.History,
-            contentDescription = null,
-            modifier           = Modifier.size(64.dp),
-            tint               = MaterialTheme.colorScheme.secondary
-        )
-        Spacer(Modifier.height(16.dp))
+        Surface(
+            shape = RoundedCornerShape(24.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant
+        ) {
+            Icon(
+                imageVector        = if (conFiltros) Icons.Default.SearchOff
+                else Icons.Default.History,
+                contentDescription = null,
+                modifier           = Modifier
+                    .padding(20.dp)
+                    .size(48.dp),
+                tint               = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
         Text(
             text       = if (conFiltros) "Sin resultados" else "Sin historial aún",
             style      = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold
         )
-        Spacer(Modifier.height(8.dp))
         Text(
             text      = if (conFiltros) "Ninguna cita coincide con los filtros aplicados."
             else "Aquí aparecerán las citas pasadas.",
