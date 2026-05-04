@@ -2,16 +2,20 @@ package com.spa.appointments.ui.clientes
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.spa.appointments.domain.model.ActualizarClienteRequest
 import com.spa.appointments.domain.model.CrearClienteRequest
@@ -27,30 +31,33 @@ fun ClienteDetalleScreen(
     val detalleState by viewModel.detalleState.collectAsState()
     val actionState  by viewModel.actionState.collectAsState()
 
-    var nombre   by remember { mutableStateOf("") }
-    var apellido by remember { mutableStateOf("") }
-    var telefono by remember { mutableStateOf("") }
-    var email    by remember { mutableStateOf("") }
+    var nombre      by remember { mutableStateOf("") }
+    var apellido    by remember { mutableStateOf("") }
+    var telefono    by remember { mutableStateOf("") }
+    var email       by remember { mutableStateOf("") }
     var initialized by remember { mutableStateOf(false) }
+
+    // Errores de validación
+    var nombreError   by remember { mutableStateOf<String?>(null) }
+    var apellidoError by remember { mutableStateOf<String?>(null) }
+    var emailError    by remember { mutableStateOf<String?>(null) }
 
     var showConfirmDesactivar by remember { mutableStateOf(false) }
 
-    // Cargar datos si es edición
+    val snackbarHostState = remember { SnackbarHostState() }
+
     LaunchedEffect(idCliente) {
         if (!esNuevo) viewModel.cargarCliente(idCliente)
     }
 
-    // Inicializar campos cuando llegan
     if (detalleState is ClienteDetalleState.Success && !initialized) {
         val c = (detalleState as ClienteDetalleState.Success).cliente
-        nombre      = c.nombre
-        apellido    = c.apellido
-        telefono    = c.telefono ?: ""
-        email       = c.email ?: ""
+        nombre   = c.nombre
+        apellido = c.apellido
+        telefono = c.telefono ?: ""
+        email    = c.email ?: ""
         initialized = true
     }
-
-    val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(actionState) {
         when (actionState) {
@@ -72,6 +79,18 @@ fun ClienteDetalleScreen(
         }
     }
 
+    // ── Validación local ──────────────────────────────────────────────────────
+    fun validar(): Boolean {
+        nombreError   = if (nombre.isBlank()) "El nombre es requerido" else null
+        apellidoError = if (apellido.isBlank()) "El apellido es requerido" else null
+        emailError    = when {
+            email.isNotBlank() && !android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches() ->
+                "Formato de email inválido"
+            else -> null
+        }
+        return nombreError == null && apellidoError == null && emailError == null
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -85,7 +104,10 @@ fun ClienteDetalleScreen(
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -94,26 +116,30 @@ fun ClienteDetalleScreen(
         when {
             !esNuevo && detalleState is ClienteDetalleState.Loading -> {
                 Box(
-                    Modifier
-                        .fillMaxSize()
-                        .padding(padding),
+                    Modifier.fillMaxSize().padding(padding),
                     contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
-                }
+                ) { CircularProgressIndicator() }
             }
 
             !esNuevo && detalleState is ClienteDetalleState.Error -> {
                 Box(
-                    Modifier
-                        .fillMaxSize()
-                        .padding(padding),
+                    Modifier.fillMaxSize().padding(padding),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        (detalleState as ClienteDetalleState.Error).mensaje,
-                        color = MaterialTheme.colorScheme.error
-                    )
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            Icons.Outlined.ErrorOutline,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(48.dp)
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        Text(
+                            (detalleState as ClienteDetalleState.Error).mensaje,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
                 }
             }
 
@@ -125,51 +151,103 @@ fun ClienteDetalleScreen(
                         .verticalScroll(rememberScrollState())
                         .padding(horizontal = 24.dp, vertical = 20.dp)
                 ) {
+
+                    // ── Sección: Datos personales ─────────────────────────
+                    SectionLabel("Datos personales")
+                    Spacer(Modifier.height(12.dp))
+
                     OutlinedTextField(
                         value = nombre,
-                        onValueChange = { nombre = it },
-                        label = { Text("Nombre") },
+                        onValueChange = {
+                            nombre = it
+                            if (nombreError != null) nombreError = null
+                        },
+                        label = { Text("Nombre *") },
+                        leadingIcon = {
+                            Icon(Icons.Outlined.Person, contentDescription = null)
+                        },
+                        isError = nombreError != null,
+                        supportingText = nombreError?.let { { Text(it) } },
                         modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(
+                            capitalization = KeyboardCapitalization.Words
+                        )
                     )
                     Spacer(Modifier.height(12.dp))
 
                     OutlinedTextField(
                         value = apellido,
-                        onValueChange = { apellido = it },
-                        label = { Text("Apellido") },
+                        onValueChange = {
+                            apellido = it
+                            if (apellidoError != null) apellidoError = null
+                        },
+                        label = { Text("Apellido *") },
+                        leadingIcon = {
+                            Icon(Icons.Outlined.Person, contentDescription = null)
+                        },
+                        isError = apellidoError != null,
+                        supportingText = apellidoError?.let { { Text(it) } },
                         modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(
+                            capitalization = KeyboardCapitalization.Words
+                        )
                     )
+
+                    Spacer(Modifier.height(20.dp))
+
+                    // ── Sección: Contacto ─────────────────────────────────
+                    SectionLabel("Contacto")
                     Spacer(Modifier.height(12.dp))
 
                     OutlinedTextField(
                         value = telefono,
-                        onValueChange = { telefono = it },
+                        onValueChange = { if (it.length <= 15) telefono = it },
                         label = { Text("Teléfono") },
+                        leadingIcon = {
+                            Icon(Icons.Outlined.Phone, contentDescription = null)
+                        },
                         modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
                     )
                     Spacer(Modifier.height(12.dp))
 
                     OutlinedTextField(
                         value = email,
-                        onValueChange = { email = it },
+                        onValueChange = {
+                            email = it
+                            if (emailError != null) emailError = null
+                        },
                         label = { Text("Email") },
+                        leadingIcon = {
+                            Icon(Icons.Outlined.Email, contentDescription = null)
+                        },
+                        isError = emailError != null,
+                        supportingText = emailError?.let { { Text(it) } },
                         modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
+                    )
+
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "* Campos requeridos",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
                     Spacer(Modifier.height(32.dp))
 
-                    // Botón guardar (AJUSTADO)
+                    // ── Botón guardar ─────────────────────────────────────
                     Button(
-                        onClick = {
+                        onClick = { if (validar()) {
                             if (esNuevo) {
                                 viewModel.crearCliente(
                                     CrearClienteRequest(
-                                        nombre   = nombre,
-                                        apellido = apellido,
+                                        nombre   = nombre.trim(),
+                                        apellido = apellido.trim(),
                                         telefono = telefono.ifBlank { null },
                                         email    = email.ifBlank { null }
                                     )
@@ -178,71 +256,94 @@ fun ClienteDetalleScreen(
                                 viewModel.actualizarCliente(
                                     idCliente,
                                     ActualizarClienteRequest(
-                                        nombre   = nombre,
-                                        apellido = apellido,
+                                        nombre   = nombre.trim(),
+                                        apellido = apellido.trim(),
                                         telefono = telefono.ifBlank { null },
                                         email    = email.ifBlank { null }
                                     )
                                 )
                             }
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(50.dp),
-                        enabled = actionState !is ClienteActionState.Loading
+                        }},
+                        modifier = Modifier.fillMaxWidth().height(52.dp),
+                        enabled = actionState !is ClienteActionState.Loading,
+                        shape = MaterialTheme.shapes.medium
                     ) {
                         if (actionState is ClienteActionState.Loading) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(20.dp),
-                                color = Color.White,
+                                color = MaterialTheme.colorScheme.onPrimary,
                                 strokeWidth = 2.dp
                             )
                         } else {
-                            Text("Guardar", fontWeight = FontWeight.Bold)
+                            Icon(Icons.Outlined.Save, contentDescription = null)
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                if (esNuevo) "Crear cliente" else "Guardar cambios",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp
+                            )
                         }
                     }
 
-                    // Botón desactivar (solo en edición)
+                    // ── Botón desactivar (solo edición) ───────────────────
                     if (!esNuevo) {
-                        Spacer(Modifier.height(12.dp))
+                        Spacer(Modifier.height(40.dp))
+                        HorizontalDivider()
+                        Spacer(Modifier.height(16.dp))
+
                         OutlinedButton(
                             onClick = { showConfirmDesactivar = true },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(50.dp),
+                            modifier = Modifier.fillMaxWidth().height(52.dp),
                             colors = ButtonDefaults.outlinedButtonColors(
                                 contentColor = MaterialTheme.colorScheme.error
                             ),
                             border = androidx.compose.foundation.BorderStroke(
-                                1.dp,
-                                MaterialTheme.colorScheme.error
+                                1.dp, MaterialTheme.colorScheme.error
                             ),
-                            enabled = actionState !is ClienteActionState.Loading
+                            enabled = actionState !is ClienteActionState.Loading,
+                            shape = MaterialTheme.shapes.medium
                         ) {
+                            Icon(Icons.Outlined.PersonOff, contentDescription = null)
+                            Spacer(Modifier.width(8.dp))
                             Text("Desactivar cliente", fontWeight = FontWeight.Bold)
                         }
                     }
+
+                    Spacer(Modifier.height(24.dp))
                 }
             }
         }
     }
 
-    // Diálogo de confirmación
+    // ── Diálogo confirmar desactivar ──────────────────────────────────────────
     if (showConfirmDesactivar) {
         AlertDialog(
             onDismissRequest = { showConfirmDesactivar = false },
-            title = { Text("¿Desactivar cliente?") },
+            icon = {
+                Icon(
+                    Icons.Outlined.Warning,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error
+                )
+            },
+            title = { Text("¿Desactivar cliente?", fontWeight = FontWeight.Bold) },
             text = {
-                Text("El cliente no podrá realizar reservas. Esta acción se puede revertir desde la base de datos.")
+                Text(
+                    "El cliente quedará inactivo y no podrá realizar nuevas reservas. " +
+                            "Contacta al administrador si necesitas reactivarlo."
+                )
             },
             confirmButton = {
-                TextButton(
+                Button(
                     onClick = {
                         showConfirmDesactivar = false
                         viewModel.desactivarCliente(idCliente)
-                    }
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
                 ) {
-                    Text("Desactivar", color = MaterialTheme.colorScheme.error)
+                    Text("Sí, desactivar")
                 }
             },
             dismissButton = {
@@ -252,4 +353,15 @@ fun ClienteDetalleScreen(
             }
         )
     }
+}
+
+// ── Componente auxiliar ───────────────────────────────────────────────────────
+@Composable
+private fun SectionLabel(text: String) {
+    Text(
+        text,
+        style = MaterialTheme.typography.labelLarge,
+        fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.primary
+    )
 }
