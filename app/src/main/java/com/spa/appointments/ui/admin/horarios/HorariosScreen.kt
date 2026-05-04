@@ -1,7 +1,9 @@
 package com.spa.appointments.ui.admin.horarios
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -17,13 +19,15 @@ import com.spa.appointments.domain.model.BloqueoResponse
 import com.spa.appointments.domain.model.ProfesionalAdmin
 import com.spa.appointments.ui.admin.profesionales.ProfesionalesAdminViewModel
 
+// ─── Screen principal ─────────────────────────────────────────────────────────
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HorariosScreen(
     idProfesional: Int,
-    profesional: ProfesionalAdmin?,
-    onBack: () -> Unit,
-    viewModel: HorariosViewModel = hiltViewModel(),
+    profesional:   ProfesionalAdmin?,
+    onBack:        () -> Unit,
+    viewModel:     HorariosViewModel          = hiltViewModel(),
     profViewModel: ProfesionalesAdminViewModel = hiltViewModel()
 ) {
     val diasHorario by viewModel.diasHorario.collectAsState()
@@ -35,17 +39,26 @@ fun HorariosScreen(
     var showBloqueoDialog   by remember { mutableStateOf(false) }
     var showEliminarBloqueo by remember { mutableStateOf<BloqueoResponse?>(null) }
 
-    val profesionales by profViewModel.profesionales.collectAsState()  // ← Agregar
+    val profesionales    by profViewModel.profesionales.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(idProfesional) {
         viewModel.cargar(idProfesional)
-        profViewModel.cargarDatos()   // ← Agregar
+        profViewModel.cargarDatos()
     }
+
     LaunchedEffect(uiState) {
-        if (uiState is HorariosUiState.Success) {
-            showCopiarDialog  = false
-            showBloqueoDialog = false
-            viewModel.resetState()
+        when (val s = uiState) {
+            is HorariosUiState.Success -> {
+                showCopiarDialog  = false
+                showBloqueoDialog = false
+                viewModel.resetState()
+            }
+            is HorariosUiState.Error -> {
+                snackbarHostState.showSnackbar(s.mensaje)
+                viewModel.resetState()
+            }
+            else -> Unit
         }
     }
 
@@ -54,11 +67,15 @@ fun HorariosScreen(
             TopAppBar(
                 title = {
                     Column {
-                        Text("Horarios")
+                        Text(
+                            text       = "Horarios",
+                            style      = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
                         if (profesional != null) {
                             Text(
-                                text = "${profesional.nombre} ${profesional.apellido}",
-                                style = MaterialTheme.typography.bodySmall,
+                                text  = "${profesional.nombre} ${profesional.apellido}",
+                                style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
@@ -66,138 +83,215 @@ fun HorariosScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Volver")
                     }
                 },
                 actions = {
-                    // Copiar horario
                     IconButton(onClick = { showCopiarDialog = true }) {
-                        Icon(Icons.Default.CopyAll, contentDescription = "Copiar horario")
+                        Icon(Icons.Default.CopyAll, "Copiar horario")
                     }
                 }
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
-        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
 
-            when {
-                uiState is HorariosUiState.Loading && diasHorario.all { !it.activo } -> {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                }
-                else -> {
+        when {
+            uiState is HorariosUiState.Loading && diasHorario.isEmpty() -> {
+                Box(
+                    modifier         = Modifier.fillMaxSize().padding(padding),
+                    contentAlignment = Alignment.Center
+                ) {
                     Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .verticalScroll(rememberScrollState())
-                            .padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
+                        CircularProgressIndicator()
+                        Text(
+                            "Cargando horarios…",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
 
-                        // ─── HORARIO SEMANAL ───────────────────────────────
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            elevation = CardDefaults.cardElevation(2.dp)
-                        ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Text(
-                                    text = "Horario semanal",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.SemiBold
+            else -> {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding)
+                        .verticalScroll(rememberScrollState())
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+
+                    // ── Card: Horario semanal ─────────────────────────────
+                    Card(
+                        modifier  = Modifier.fillMaxWidth(),
+                        shape     = RoundedCornerShape(14.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                        border    = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier          = Modifier.padding(bottom = 12.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.CalendarMonth, null,
+                                    modifier = Modifier.size(18.dp),
+                                    tint     = MaterialTheme.colorScheme.primary
                                 )
-                                Spacer(Modifier.height(12.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    text       = "Horario semanal",
+                                    style      = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
 
-                                diasHorario.forEach { dia ->
-                                    DiaHorarioRow(
-                                        dia      = dia,
-                                        onToggle = { viewModel.toggleDia(dia.diaSemana, it) },
-                                        onHoras  = { inicio, fin ->
-                                            viewModel.actualizarHora(dia.diaSemana, inicio, fin)
-                                        }
+                            HorizontalDivider(
+                                color    = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+
+                            diasHorario.forEach { dia ->
+                                DiaHorarioRow(
+                                    dia      = dia,
+                                    onToggle = { viewModel.toggleDia(dia.diaSemana, it) },
+                                    onHoras  = { inicio, fin ->
+                                        viewModel.actualizarHora(dia.diaSemana, inicio, fin)
+                                    }
+                                )
+                                if (dia != diasHorario.last()) {
+                                    HorizontalDivider(
+                                        color    = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+                                        modifier = Modifier.padding(vertical = 2.dp)
                                     )
-                                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                                 }
+                            }
 
-                                Spacer(Modifier.height(8.dp))
-                                Button(
-                                    onClick = {
-                                        viewModel.guardarHorario(idProfesional, idSedeSeleccionada)
-                                    },
-                                    enabled = uiState !is HorariosUiState.Loading,
-                                    modifier = Modifier.align(Alignment.End)
-                                ) {
-                                    Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.height(12.dp))
+
+                            Button(
+                                onClick  = {
+                                    viewModel.guardarHorario(idProfesional, idSedeSeleccionada)
+                                },
+                                enabled  = uiState !is HorariosUiState.Loading,
+                                modifier = Modifier.align(Alignment.End).height(40.dp),
+                                shape    = RoundedCornerShape(10.dp)
+                            ) {
+                                if (uiState is HorariosUiState.Loading) {
+                                    CircularProgressIndicator(
+                                        modifier    = Modifier.size(16.dp),
+                                        strokeWidth = 2.dp,
+                                        color       = MaterialTheme.colorScheme.onPrimary
+                                    )
+                                } else {
+                                    Icon(Icons.Default.Save, null, modifier = Modifier.size(16.dp))
                                     Spacer(Modifier.width(4.dp))
                                     Text("Guardar horario")
                                 }
                             }
                         }
+                    }
 
-                        // ─── BLOQUEOS ─────────────────────────────────────
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            elevation = CardDefaults.cardElevation(2.dp)
-                        ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically
+                    // ── Card: Bloqueos ────────────────────────────────────
+                    Card(
+                        modifier  = Modifier.fillMaxWidth(),
+                        shape     = RoundedCornerShape(14.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                        border    = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Row(
+                                modifier          = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.EventBusy, null,
+                                    modifier = Modifier.size(18.dp),
+                                    tint     = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    text       = "Bloqueos",
+                                    style      = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier   = Modifier.weight(1f)
+                                )
+                                FilledTonalButton(
+                                    onClick = { showBloqueoDialog = true },
+                                    shape   = RoundedCornerShape(10.dp)
                                 ) {
-                                    Text(
-                                        text = "Bloqueos",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.SemiBold,
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                    FilledTonalButton(onClick = { showBloqueoDialog = true }) {
-                                        Icon(Icons.Default.Add, null, modifier = Modifier.size(16.dp))
-                                        Spacer(Modifier.width(4.dp))
-                                        Text("Agregar")
+                                    Icon(Icons.Default.Add, null, modifier = Modifier.size(15.dp))
+                                    Spacer(Modifier.width(4.dp))
+                                    Text("Agregar", style = MaterialTheme.typography.labelMedium)
+                                }
+                            }
+
+                            HorizontalDivider(
+                                color    = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                                modifier = Modifier.padding(vertical = 10.dp)
+                            )
+
+                            if (bloqueos.isEmpty()) {
+                                Surface(
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = MaterialTheme.colorScheme.surfaceVariant
+                                ) {
+                                    Row(
+                                        modifier          = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            Icons.Default.CheckCircleOutline, null,
+                                            modifier = Modifier.size(16.dp),
+                                            tint     = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Spacer(Modifier.width(8.dp))
+                                        Text(
+                                            text  = "Sin bloqueos activos",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
                                     }
                                 }
-
-                                Spacer(Modifier.height(8.dp))
-
-                                if (bloqueos.isEmpty()) {
-                                    Text(
-                                        text = "Sin bloqueos activos",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                } else {
-                                    bloqueos.forEach { bloqueo ->
+                            } else {
+                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    bloqueos.forEachIndexed { index, bloqueo ->
                                         BloqueoRow(
-                                            bloqueo   = bloqueo,
+                                            bloqueo    = bloqueo,
                                             onEliminar = { showEliminarBloqueo = bloqueo }
                                         )
-                                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                                        if (index < bloqueos.lastIndex) {
+                                            HorizontalDivider(
+                                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+                                            )
+                                        }
                                     }
                                 }
                             }
                         }
-
-                        Spacer(Modifier.height(24.dp))
                     }
-                }
-            }
 
-            if (uiState is HorariosUiState.Error) {
-                Snackbar(
-                    modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp)
-                ) {
-                    Text((uiState as HorariosUiState.Error).mensaje)
+                    Spacer(Modifier.height(8.dp))
                 }
             }
         }
     }
 
-    // ─── Dialogs ──────────────────────────────────────────────
+    // ── Diálogos ──────────────────────────────────────────────────────────────
 
     if (showCopiarDialog) {
         CopiarHorarioDialog(
             idProfesionalDestino = idProfesional,
-            guardando     = uiState is HorariosUiState.Loading,
-            profesionales = profesionales,
-            onCopiar      = { idOrigen ->
+            guardando            = uiState is HorariosUiState.Loading,
+            profesionales        = profesionales,
+            onCopiar             = { idOrigen ->
                 viewModel.copiarHorario(idProfesional, idOrigen, idSedeSeleccionada)
             },
             onDismiss = { showCopiarDialog = false }
@@ -217,63 +311,97 @@ fun HorariosScreen(
     showEliminarBloqueo?.let { bloqueo ->
         AlertDialog(
             onDismissRequest = { showEliminarBloqueo = null },
-            title = { Text("Eliminar bloqueo") },
-            text  = { Text("¿Eliminar el bloqueo \"${bloqueo.motivo}\"?") },
+            shape = RoundedCornerShape(16.dp),
+            icon  = {
+                Surface(
+                    shape = RoundedCornerShape(50),
+                    color = MaterialTheme.colorScheme.errorContainer
+                ) {
+                    Icon(
+                        Icons.Default.DeleteForever, null,
+                        tint     = MaterialTheme.colorScheme.onErrorContainer,
+                        modifier = Modifier.padding(10.dp).size(22.dp)
+                    )
+                }
+            },
+            title = { Text("Eliminar bloqueo", fontWeight = FontWeight.Bold) },
+            text  = {
+                Text(
+                    text  = "¿Eliminar el bloqueo \"${bloqueo.motivo}\"? Esta acción no se puede deshacer.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            },
             confirmButton = {
                 Button(
                     onClick = {
                         viewModel.eliminarBloqueo(idProfesional, bloqueo.id)
                         showEliminarBloqueo = null
                     },
+                    shape  = RoundedCornerShape(10.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.error
                     )
                 ) { Text("Eliminar") }
             },
             dismissButton = {
-                TextButton(onClick = { showEliminarBloqueo = null }) { Text("Cancelar") }
+                OutlinedButton(
+                    onClick = { showEliminarBloqueo = null },
+                    shape   = RoundedCornerShape(10.dp)
+                ) { Text("Cancelar") }
             }
         )
     }
 }
 
-// ─── Componentes ──────────────────────────────────────────────
+// ─── Fila de día ──────────────────────────────────────────────────────────────
 
 @Composable
 private fun DiaHorarioRow(
-    dia: DiaHorario,
+    dia:      DiaHorario,
     onToggle: (Boolean) -> Unit,
-    onHoras: (inicio: String, fin: String) -> Unit
+    onHoras:  (inicio: String, fin: String) -> Unit
 ) {
-    var showTimePicker by remember { mutableStateOf<String?>(null) } // "inicio" o "fin"
+    var showTimePicker by remember { mutableStateOf<String?>(null) }
 
-    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+    ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier          = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Checkbox(checked = dia.activo, onCheckedChange = onToggle)
+            Checkbox(
+                checked         = dia.activo,
+                onCheckedChange = onToggle
+            )
             Text(
-                text = dia.nombreDia,
-                style = MaterialTheme.typography.bodyMedium,
+                text       = dia.nombreDia,
+                style      = MaterialTheme.typography.bodyMedium,
                 fontWeight = if (dia.activo) FontWeight.SemiBold else FontWeight.Normal,
-                modifier = Modifier.weight(1f)
+                modifier   = Modifier.weight(1f)
             )
             if (dia.activo) {
-                // Hora inicio
                 FilledTonalButton(
-                    onClick = { showTimePicker = "inicio" },
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                    modifier = Modifier.height(32.dp)
+                    onClick        = { showTimePicker = "inicio" },
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                    modifier       = Modifier.height(32.dp),
+                    shape          = RoundedCornerShape(8.dp)
                 ) {
                     Text(dia.horaInicio, style = MaterialTheme.typography.labelMedium)
                 }
-                Text(" – ", style = MaterialTheme.typography.bodySmall)
-                // Hora fin
+                Text(
+                    " – ",
+                    style    = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(horizontal = 2.dp)
+                )
                 FilledTonalButton(
-                    onClick = { showTimePicker = "fin" },
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                    modifier = Modifier.height(32.dp)
+                    onClick        = { showTimePicker = "fin" },
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                    modifier       = Modifier.height(32.dp),
+                    shape          = RoundedCornerShape(8.dp)
                 ) {
                     Text(dia.horaFin, style = MaterialTheme.typography.labelMedium)
                 }
@@ -290,33 +418,69 @@ private fun DiaHorarioRow(
                 else onHoras(dia.horaInicio, hora)
                 showTimePicker = null
             },
-            onDismiss  = { showTimePicker = null }
+            onDismiss = { showTimePicker = null }
         )
     }
 }
 
+// ─── Fila de bloqueo ──────────────────────────────────────────────────────────
+
 @Composable
 private fun BloqueoRow(
-    bloqueo: BloqueoResponse,
+    bloqueo:    BloqueoResponse,
     onEliminar: () -> Unit
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        modifier          = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(bloqueo.motivo, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-            Text(
-                text = "${bloqueo.fechaInicio.take(10)}  →  ${bloqueo.fechaFin.take(10)}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+        Surface(
+            shape = RoundedCornerShape(8.dp),
+            color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f),
+            modifier = Modifier.size(36.dp)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    Icons.Default.Block, null,
+                    modifier = Modifier.size(16.dp),
+                    tint     = MaterialTheme.colorScheme.error
+                )
+            }
         }
-        IconButton(onClick = onEliminar) {
+
+        Spacer(Modifier.width(10.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text       = bloqueo.motivo,
+                style      = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.SemiBold
+            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Default.DateRange, null,
+                    modifier = Modifier.size(11.dp),
+                    tint     = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.width(3.dp))
+                Text(
+                    text  = "${bloqueo.fechaInicio.take(10)} → ${bloqueo.fechaFin.take(10)}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        IconButton(
+            onClick  = onEliminar,
+            modifier = Modifier.size(36.dp)
+        ) {
             Icon(
-                Icons.Default.DeleteOutline,
-                contentDescription = "Eliminar",
-                tint = MaterialTheme.colorScheme.error
+                Icons.Default.DeleteOutline, "Eliminar",
+                modifier = Modifier.size(18.dp),
+                tint     = MaterialTheme.colorScheme.error
             )
         }
     }
