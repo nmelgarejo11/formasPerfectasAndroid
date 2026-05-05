@@ -28,6 +28,8 @@ import androidx.lifecycle.LifecycleEventObserver
 import com.spa.appointments.domain.model.Cita
 import com.spa.appointments.domain.model.EstadoCita
 import com.spa.appointments.domain.model.MetodoPago
+import androidx.compose.ui.res.painterResource
+import com.spa.appointments.R
 
 // ─── Screen principal ─────────────────────────────────────────────────────────
 
@@ -740,7 +742,12 @@ private fun CitaCard(
                             contentAlignment = Alignment.Center
                         ) {
                             IconButton(onClick = onWhatsApp, enabled = !accionCargando, modifier = Modifier.size(30.dp)) {
-                                Icon(Icons.Default.Chat, null, modifier = Modifier.size(16.dp), tint = Color(0xFF25D366))
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_whatsapp),
+                                    contentDescription = "WhatsApp",
+                                    modifier = Modifier.size(16.dp),
+                                    tint = Color.Unspecified
+                                )
                             }
                         }
                     }
