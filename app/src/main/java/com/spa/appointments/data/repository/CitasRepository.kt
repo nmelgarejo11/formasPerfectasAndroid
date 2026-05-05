@@ -65,4 +65,17 @@ class CitasRepository @Inject constructor(
 
     suspend fun getEstadosCita(grupo: String? = null): List<EstadoCita> =
         api.getEstadosCita(grupo)
+
+    suspend fun getWhatsAppCita(idCita: Int): WhatsAppCitaInfo {
+        val response = api.getWhatsAppCita(idCita)
+        if (!response.isSuccessful)
+            throw Exception("Error al obtener datos de WhatsApp")
+        val body = response.body()
+            ?: throw Exception("Respuesta vacía")
+        if (!body.ok)
+            throw Exception(body.mensaje ?: "El cliente no tiene teléfono registrado")
+        val data = body.data
+            ?: throw Exception("Sin datos de WhatsApp")
+        return data
+    }
 }

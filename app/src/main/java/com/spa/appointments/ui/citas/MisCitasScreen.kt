@@ -1,4 +1,3 @@
-// Ruta: app/src/main/java/com/spa/appointments/ui/citas/MisCitasScreen.kt
 package com.spa.appointments.ui.citas
 
 import android.app.DatePickerDialog
@@ -37,12 +36,14 @@ fun MisCitasScreen(
     onVerReagendamientos: () -> Unit,
     vm: MisCitasViewModel = hiltViewModel()
 ) {
+
     val uiState     by vm.uiState.collectAsState()
     val accionState by vm.accionState.collectAsState()
     val metodosPago by vm.metodosPago.collectAsState()
     val filtros     by vm.filtros.collectAsState()
     val estados     by vm.estados.collectAsState()
     val showFiltros by vm.mostrarFiltros.collectAsState()
+    val context = LocalContext.current
 
     var filtrosTemp by remember { mutableStateOf(FiltrosMisCitas()) }
 
@@ -55,6 +56,7 @@ fun MisCitasScreen(
 
     val snackbarHost = remember { SnackbarHostState() }
     val totalCitas   = (uiState as? MisCitasUiState.Success)?.citas?.size
+
 
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
@@ -492,6 +494,7 @@ fun MisCitasScreen(
                                     onCancelar     = { citaAccion = cita; mostrarCancelar  = true },
                                     onReagendar    = { citaAccion = cita; mostrarReagendar = true },
                                     onFinalizar    = { citaAccion = cita; mostrarFinalizar = true },
+                                    onWhatsApp     = { vm.abrirWhatsApp(cita.id, context) },
                                     accionCargando = accionState is AccionUiState.Loading
                                 )
                             }
@@ -722,6 +725,7 @@ private fun CitaCard(
     onCancelar:     () -> Unit,
     onReagendar:    () -> Unit,
     onFinalizar:    () -> Unit,
+    onWhatsApp:     () -> Unit,
     accionCargando: Boolean
 ) {
     val colorEstado = remember(cita.colorEstado) {
@@ -904,6 +908,23 @@ private fun CitaCard(
                             )
                         }
                     }
+                }
+
+                // ── WhatsApp ──────────────────────────────────────────────────
+                Spacer(Modifier.height(6.dp))
+                OutlinedButton(
+                    onClick  = onWhatsApp,
+                    enabled  = !accionCargando,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape    = RoundedCornerShape(10.dp),
+                    colors   = ButtonDefaults.outlinedButtonColors(
+                        contentColor = Color(0xFF25D366)
+                    ),
+                    border = BorderStroke(1.dp, Color(0xFF25D366).copy(alpha = 0.6f))
+                ) {
+                    Icon(Icons.Default.Chat, null, modifier = Modifier.size(15.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("WhatsApp", style = MaterialTheme.typography.labelMedium)
                 }
 
                 // ── Botones de acción (Programada=1 o Confirmada=2) ───────

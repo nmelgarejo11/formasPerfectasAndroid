@@ -286,4 +286,11 @@ interface ApiService {
 
     @PUT("Citas/finalizar")
     suspend fun finalizarCita(@Body request: FinalizarCitaRequest): FinalizarCitaResponse
+
+    @GET("Citas/{idCita}/whatsapp")
+    suspend fun getWhatsAppCita(
+        @Path("idCita") idCita: Int
+    ): Response<WhatsAppCitaResponse>
+
+
 }
