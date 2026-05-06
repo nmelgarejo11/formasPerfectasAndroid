@@ -13,6 +13,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -242,7 +243,7 @@ private fun ServicioAdminCard(
                 .padding(horizontal = 14.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Ícono de servicio en Surface
+            // Ícono de servicio
             Surface(
                 shape    = RoundedCornerShape(10.dp),
                 color    = MaterialTheme.colorScheme.secondaryContainer,
@@ -260,37 +261,14 @@ private fun ServicioAdminCard(
 
             Spacer(Modifier.width(12.dp))
 
+            // Información del servicio
             Column(modifier = Modifier.weight(1f)) {
-                Row(
-                    modifier              = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment     = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text       = servicio.nombre,
-                        style      = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier   = Modifier.weight(1f)
-                    )
-                    // Chip de estado activo/inactivo
-                    Surface(
-                        shape = RoundedCornerShape(6.dp),
-                        color = if (servicio.estado)
-                            MaterialTheme.colorScheme.primaryContainer
-                        else
-                            MaterialTheme.colorScheme.surfaceVariant
-                    ) {
-                        Text(
-                            text  = if (servicio.estado) "Activo" else "Inactivo",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = if (servicio.estado)
-                                MaterialTheme.colorScheme.onPrimaryContainer
-                            else
-                                MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                        )
-                    }
-                }
+                Text(
+                    text       = servicio.nombre,
+                    style      = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier   = Modifier.fillMaxWidth()
+                )
 
                 // Categoría
                 Row(
@@ -335,7 +313,7 @@ private fun ServicioAdminCard(
                             tint     = MaterialTheme.colorScheme.primary
                         )
                         Text(
-                            text       = "${"%.0f".format(servicio.precioBase)}",
+                            text       = "%.0f".format(servicio.precioBase),
                             style      = MaterialTheme.typography.bodySmall,
                             fontWeight = FontWeight.SemiBold,
                             color      = MaterialTheme.colorScheme.primary
@@ -344,28 +322,54 @@ private fun ServicioAdminCard(
                 }
             }
 
-            Spacer(Modifier.width(4.dp))
+            Spacer(Modifier.width(8.dp))
 
-            // Acciones
+            // ─── ACCIONES AJUSTADAS (Pendiente #1) ────────────────────────
             Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(2.dp)
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                IconButton(
-                    onClick  = onEditar,
-                    modifier = Modifier.size(36.dp)
+                // 1. Indicador de activo encima del toggle
+                Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = if (servicio.estado)
+                        MaterialTheme.colorScheme.primaryContainer
+                    else
+                        MaterialTheme.colorScheme.surfaceVariant
                 ) {
-                    Icon(
-                        Icons.Default.Edit, "Editar",
-                        modifier = Modifier.size(18.dp),
-                        tint     = MaterialTheme.colorScheme.onSurfaceVariant
+
+                    Text(
+                        text = if (servicio.estado) "Activa" else "Inactiva",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (servicio.estado)
+                            MaterialTheme.colorScheme.onPrimaryContainer
+                        else
+                            MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                     )
                 }
-                Switch(
-                    checked          = servicio.estado,
-                    onCheckedChange  = { onToggle() },
-                    modifier         = Modifier.size(width = 40.dp, height = 24.dp)
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    // 2. Lápiz junto al toggle
+                    IconButton(
+                        onClick  = onEditar,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Edit, "Editar",
+                            modifier = Modifier.size(18.dp),
+                            tint     = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    Switch(
+                        checked          = servicio.estado,
+                        onCheckedChange  = { onToggle() },
+                        modifier         = Modifier.scale(0.8f) // Escala para ajustar mejor visualmente al lado del icono
+                    )
+                }
             }
         }
     }
