@@ -19,9 +19,7 @@ import com.spa.appointments.ui.home.HomeScreen
 import com.spa.appointments.ui.home.HomeViewModel
 import com.spa.appointments.ui.licencia.DemoExpiradoScreen
 import com.spa.appointments.ui.perfil.PerfilScreen
-import com.spa.appointments.ui.profesionales.ProfesionalesScreen
 import com.spa.appointments.ui.reserva.ReservaSharedViewModel
-import com.spa.appointments.ui.servicios.ServiciosScreen
 import com.spa.appointments.ui.splash.SplashEmpresaScreen
 import com.spa.appointments.ui.splash.SplashScreen
 import com.spa.appointments.ui.clientes.SeleccionarClienteScreen
@@ -32,7 +30,6 @@ import com.spa.appointments.ui.admin.catalogos.CategoriasScreen
 import com.spa.appointments.ui.admin.catalogos.ServiciosAdminScreen
 import com.spa.appointments.ui.admin.profesionales.ProfesionalesAdminScreen
 import com.spa.appointments.ui.admin.profesionales.ProfesionalDetalleScreen
-import com.spa.appointments.ui.profesionales.ProfesionalesViewModel
 import com.spa.appointments.ui.admin.horarios.HorariosScreen
 import androidx.compose.runtime.collectAsState
 import com.spa.appointments.ui.admin.horarios.HorariosListaScreen
@@ -152,49 +149,6 @@ fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
                     sharedVm.clienteSeleccionado = cliente
                     nav.navigate(Routes.SERVICIOS)
                 }
-            )
-        }
-
-        composable(Routes.SERVICIOS) {
-            val backEntry = remember(it) {
-                try { nav.getBackStackEntry(Routes.SELECCIONAR_CLIENTE) }
-                catch (e: Exception) { it }
-            }
-            val sharedVm = hiltViewModel<ReservaSharedViewModel>(backEntry)
-
-            ServiciosScreen(
-                onBack = { nav.popBackStack() },
-                onSeleccionarServicio = { servicio ->
-                    sharedVm.servicioSeleccionado = servicio
-                    nav.navigate(Routes.PROFESIONALES)
-                }
-            )
-        }
-
-        composable(Routes.PROFESIONALES) {
-            val backEntry = remember(it) {
-                try { nav.getBackStackEntry(Routes.SELECCIONAR_CLIENTE) }
-                catch (e: Exception) { it }
-            }
-            val sharedVm = hiltViewModel<ReservaSharedViewModel>(backEntry)
-            val profVm   = hiltViewModel<ProfesionalesViewModel>()
-
-            // Pasamos el id directamente — no dependemos de servicioSeleccionado del profVm
-            LaunchedEffect(sharedVm.servicioSeleccionado?.id) {
-                profVm.iniciar(sharedVm.servicioSeleccionado?.id)
-            }
-
-            ProfesionalesScreen(
-                onBack = { nav.popBackStack() },
-                onSeleccionarProfesional = { profesional ->
-                    sharedVm.profesionalSeleccionado = profesional
-                    if (sharedVm.servicioSeleccionado != null) {
-                        nav.navigate(Routes.DISPONIBILIDAD)
-                    } else {
-                        nav.navigate(Routes.SERVICIOS)
-                    }
-                },
-                vm = profVm
             )
         }
 
