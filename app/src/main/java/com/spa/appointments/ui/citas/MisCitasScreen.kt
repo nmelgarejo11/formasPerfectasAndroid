@@ -30,6 +30,7 @@ import com.spa.appointments.domain.model.EstadoCita
 import com.spa.appointments.domain.model.MetodoPago
 import androidx.compose.ui.res.painterResource
 import com.spa.appointments.R
+import com.spa.appointments.domain.model.MetodoPagoDetalle
 
 // ─── Screen principal ─────────────────────────────────────────────────────────
 
@@ -255,106 +256,22 @@ fun MisCitasScreen(
 
     // ── Diálogo: Finalizar ───────────────────────────────────────────────────
     if (mostrarFinalizar && citaAccion != null) {
-        AlertDialog(
-            onDismissRequest = { mostrarFinalizar = false; metodoPagoSeleccionado = null },
-            shape            = RoundedCornerShape(20.dp),
-            containerColor   = MaterialTheme.colorScheme.surface,
-            icon = {
-                Box(
-                    modifier         = Modifier
-                        .size(56.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.tertiaryContainer),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        Icons.Default.CheckCircle, null,
-                        tint     = MaterialTheme.colorScheme.onTertiaryContainer,
-                        modifier = Modifier.size(28.dp)
-                    )
-                }
-            },
-            title = {
-                Text(
-                    "Finalizar cita",
-                    fontWeight = FontWeight.Bold,
-                    textAlign  = TextAlign.Center,
-                    modifier   = Modifier.fillMaxWidth()
+        FinalizarCitaDialog(
+            metodos = metodosPago,
+
+            onConfirm = { idMetodo, idDetalle ->
+
+                mostrarFinalizar = false
+
+                vm.finalizarCita(
+                    citaAccion!!.id,
+                    idMetodo,
+                    idDetalle
                 )
             },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(
-                        text      = "Selecciona el método de pago utilizado.",
-                        style     = MaterialTheme.typography.bodySmall,
-                        color     = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center,
-                        modifier  = Modifier.fillMaxWidth()
-                    )
-                    if (metodosPago.isEmpty()) {
-                        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                        }
-                    } else {
-                        metodosPago.forEach { metodo ->
-                            val seleccionado = metodoPagoSeleccionado?.id == metodo.id
-                            Surface(
-                                shape    = RoundedCornerShape(12.dp),
-                                color    = if (seleccionado) MaterialTheme.colorScheme.primaryContainer
-                                else MaterialTheme.colorScheme.surfaceVariant,
-                                border   = if (seleccionado)
-                                    BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary)
-                                else
-                                    BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier          = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 12.dp, vertical = 10.dp)
-                                ) {
-                                    RadioButton(
-                                        selected = seleccionado,
-                                        onClick  = { metodoPagoSeleccionado = metodo }
-                                    )
-                                    Spacer(Modifier.width(4.dp))
-                                    Text(
-                                        text       = metodo.nombre,
-                                        style      = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = if (seleccionado) FontWeight.SemiBold else FontWeight.Normal,
-                                        color      = if (seleccionado) MaterialTheme.colorScheme.onPrimaryContainer
-                                        else MaterialTheme.colorScheme.onSurface
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick  = {
-                        mostrarFinalizar = false
-                        vm.finalizarCita(citaAccion!!.id, metodoPagoSeleccionado!!.id)
-                        metodoPagoSeleccionado = null
-                    },
-                    enabled  = metodoPagoSeleccionado != null,
-                    shape    = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth(),
-                    colors   = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary)
-                ) {
-                    Icon(Icons.Default.CheckCircle, null, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text("Confirmar y finalizar", fontWeight = FontWeight.SemiBold)
-                }
-            },
-            dismissButton = {
-                OutlinedButton(
-                    onClick  = { mostrarFinalizar = false; metodoPagoSeleccionado = null },
-                    shape    = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text("Cancelar") }
+
+            onDismiss = {
+                mostrarFinalizar = false
             }
         )
     }
@@ -911,6 +828,239 @@ private fun EmptyMisCitas(
             textAlign = TextAlign.Center
         )
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun FinalizarCitaDialog(
+    metodos: List<MetodoPago>,
+    onConfirm: (Int, Int?) -> Unit,
+    onDismiss: () -> Unit
+) {
+
+    var seleccionado by remember {
+        mutableStateOf<MetodoPago?>(null)
+    }
+
+    var detalleSeleccionado by remember {
+        mutableStateOf<MetodoPagoDetalle?>(null)
+    }
+
+    var expanded by remember {
+        mutableStateOf(false)
+    }
+
+    var expandedDetalle by remember {
+        mutableStateOf(false)
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(20.dp),
+        containerColor = MaterialTheme.colorScheme.surface,
+
+        icon = {
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.tertiaryContainer),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Default.CheckCircle,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                    modifier = Modifier.size(28.dp)
+                )
+            }
+        },
+
+        title = {
+            Text(
+                text = "Finalizar cita",
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+        },
+
+        text = {
+
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+
+                Text(
+                    text = "Selecciona el método de pago aplicado:",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+
+                // ── Selector principal ────────────────────────────────
+
+                ExposedDropdownMenuBox(
+                    expanded = expanded,
+                    onExpandedChange = {
+                        expanded = it
+                    }
+                ) {
+
+                    OutlinedTextField(
+                        value = seleccionado?.nombre ?: "Seleccionar...",
+                        onValueChange = {},
+                        readOnly = true,
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded)
+                        },
+                        modifier = Modifier
+                            .menuAnchor()
+                            .fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+
+                    ExposedDropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = {
+                            expanded = false
+                        }
+                    ) {
+
+                        metodos.forEach { mp ->
+
+                            DropdownMenuItem(
+                                text = {
+                                    Text(mp.nombre)
+                                },
+                                onClick = {
+
+                                    seleccionado = mp
+
+                                    // Limpiar detalle si cambia método
+                                    detalleSeleccionado = null
+
+                                    expanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                // ── Selector detalle SOLO si es OTROS (ID = 8) ───────
+
+                if (seleccionado?.nombre == "Otro") {
+
+                    Text(
+                        text = "Especifique el método:",
+                        style = MaterialTheme.typography.labelSmall
+                    )
+
+                    ExposedDropdownMenuBox(
+                        expanded = expandedDetalle,
+                        onExpandedChange = {
+                            expandedDetalle = it
+                        }
+                    ) {
+
+                        OutlinedTextField(
+                            value = detalleSeleccionado?.nombre
+                                ?: "Seleccionar detalle...",
+                            onValueChange = {},
+                            readOnly = true,
+                            trailingIcon = {
+                                ExposedDropdownMenuDefaults
+                                    .TrailingIcon(expandedDetalle)
+                            },
+                            modifier = Modifier
+                                .menuAnchor()
+                                .fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+
+                        ExposedDropdownMenu(
+                            expanded = expandedDetalle,
+                            onDismissRequest = {
+                                expandedDetalle = false
+                            }
+                        ) {
+
+                            seleccionado
+                                ?.detalles
+                                ?.forEach { detalle ->
+
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text(detalle.nombre)
+                                        },
+                                        onClick = {
+
+                                            detalleSeleccionado = detalle
+
+                                            expandedDetalle = false
+                                        }
+                                    )
+                                }
+                        }
+                    }
+                }
+            }
+        },
+
+        confirmButton = {
+
+            Button(
+                onClick = {
+
+                    seleccionado?.let {
+
+                        onConfirm(
+                            it.id,
+                            detalleSeleccionado?.id
+                        )
+                    }
+                },
+
+                enabled =
+                seleccionado != null &&
+                        (
+                                seleccionado?.id != 8 ||
+                                        detalleSeleccionado != null
+                                ),
+
+                shape = RoundedCornerShape(12.dp),
+
+                modifier = Modifier.fillMaxWidth(),
+
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.tertiary
+                )
+            ) {
+
+                Icon(
+                    Icons.Default.CheckCircle,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp)
+                )
+
+                Spacer(Modifier.width(6.dp))
+
+                Text(
+                    text = "Confirmar y finalizar",
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        },
+
+        dismissButton = {
+
+            OutlinedButton(
+                onClick = onDismiss,
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Cancelar")
+            }
+        }
+    )
 }
 
 // ─── Helpers de formato ───────────────────────────────────────────────────────

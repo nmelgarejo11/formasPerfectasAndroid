@@ -58,8 +58,8 @@ class CitasRepository @Inject constructor(
     suspend fun getMetodosPago(): List<MetodoPago> =
         api.getMetodosPago()
 
-    suspend fun finalizarCita(idCita: Int, idMetodoPago: Int): AccionCitaResponse {
-        val resp = api.finalizarCita(FinalizarCitaRequest(idCita, idMetodoPago))
+    suspend fun finalizarCita(idCita: Int, idMetodoPago: Int, idMetodoPagoDetalle: Int?): AccionCitaResponse {
+        val resp = api.finalizarCita(FinalizarCitaRequest(idCita, idMetodoPago, idMetodoPagoDetalle))
         return AccionCitaResponse(ok = resp.ok, mensaje = resp.mensaje)
     }
 
