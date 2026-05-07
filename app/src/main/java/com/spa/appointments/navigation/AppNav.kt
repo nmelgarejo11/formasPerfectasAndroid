@@ -33,6 +33,9 @@ import com.spa.appointments.ui.admin.profesionales.ProfesionalDetalleScreen
 import com.spa.appointments.ui.admin.horarios.HorariosScreen
 import androidx.compose.runtime.collectAsState
 import com.spa.appointments.ui.admin.horarios.HorariosListaScreen
+import com.spa.appointments.ui.profesionales.ProfesionalesScreen
+import com.spa.appointments.ui.servicios.ServiciosScreen
+import com.spa.appointments.ui.profesionales.ProfesionalesViewModel
 
 @Composable
 fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
@@ -149,6 +152,49 @@ fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
                     sharedVm.clienteSeleccionado = cliente
                     nav.navigate(Routes.SERVICIOS)
                 }
+            )
+        }
+
+        composable(Routes.SERVICIOS) {
+            val backEntry = remember(it) {
+                try { nav.getBackStackEntry(Routes.SELECCIONAR_CLIENTE) }
+                catch (e: Exception) { it }
+            }
+            val sharedVm = hiltViewModel<ReservaSharedViewModel>(backEntry)
+
+            ServiciosScreen(
+                onBack = { nav.popBackStack() },
+                onSeleccionarServicio = { servicio ->
+                    sharedVm.servicioSeleccionado = servicio
+                    nav.navigate(Routes.PROFESIONALES)
+                }
+            )
+        }
+
+        composable(Routes.PROFESIONALES) {
+            val backEntry = remember(it) {
+                try { nav.getBackStackEntry(Routes.SELECCIONAR_CLIENTE) }
+                catch (e: Exception) { it }
+            }
+            val sharedVm = hiltViewModel<ReservaSharedViewModel>(backEntry)
+            val profVm   = hiltViewModel<ProfesionalesViewModel>()
+
+            // Pasamos el id directamente — no dependemos de servicioSeleccionado del profVm
+            LaunchedEffect(sharedVm.servicioSeleccionado?.id) {
+                profVm.iniciar(sharedVm.servicioSeleccionado?.id)
+            }
+
+            ProfesionalesScreen(
+                onBack = { nav.popBackStack() },
+                onSeleccionarProfesional = { profesional ->
+                    sharedVm.profesionalSeleccionado = profesional
+                    if (sharedVm.servicioSeleccionado != null) {
+                        nav.navigate(Routes.DISPONIBILIDAD)
+                    } else {
+                        nav.navigate(Routes.SERVICIOS)
+                    }
+                },
+                vm = profVm
             )
         }
 
