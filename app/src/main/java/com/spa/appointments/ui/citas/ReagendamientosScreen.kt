@@ -2,10 +2,14 @@
 package com.spa.appointments.ui.citas
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -17,6 +21,7 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -196,9 +201,10 @@ fun ReagendamientosScreen(
                     ) {
                         items(state.pendientes) { cita ->
                             CitaPendienteCard(
-                                cita      = cita,
-                                isLoading = actionState is ReagendamientoActionState.Loading,
-                                onAprobar = { nuevaInicio, nuevaFin ->
+                                cita       = cita,
+                                viewModel  = viewModel,            // ← NUEVO
+                                isLoading  = actionState is ReagendamientoActionState.Loading,
+                                onAprobar  = { nuevaInicio, nuevaFin ->
                                     viewModel.aprobar(cita.id, nuevaInicio, nuevaFin)
                                 },
                                 onRechazar = { motivo ->
@@ -218,6 +224,7 @@ fun ReagendamientosScreen(
 @Composable
 private fun CitaPendienteCard(
     cita:      CitaPendiente,
+    viewModel:  ReagendamientoViewModel,
     isLoading: Boolean,
     onAprobar: (String, String) -> Unit,
     onRechazar: (String) -> Unit
@@ -398,13 +405,17 @@ private fun CitaPendienteCard(
     }
 
     if (showAprobarDialog) {
-        AprobarDialog(
-            duracionMin = calcularDuracion(cita.fechaHoraInicio, cita.fechaHoraFin),
-            onConfirm   = { nuevaInicio, nuevaFin ->
+        AprobarConDisponibilidadDialog(
+            cita      = cita,
+            viewModel = viewModel,
+            onConfirm = { nuevaInicio, nuevaFin ->
                 showAprobarDialog = false
                 onAprobar(nuevaInicio, nuevaFin)
             },
-            onDismiss = { showAprobarDialog = false }
+            onDismiss = {
+                showAprobarDialog = false
+                viewModel.resetDisponibilidad()
+            }
         )
     }
 
@@ -423,145 +434,237 @@ private fun CitaPendienteCard(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AprobarDialog(
-    duracionMin: Int,
-    onConfirm:   (String, String) -> Unit,
-    onDismiss:   () -> Unit
+private fun AprobarConDisponibilidadDialog(
+    cita:      CitaPendiente,
+    viewModel: ReagendamientoViewModel,
+    onConfirm: (String, String) -> Unit,
+    onDismiss: () -> Unit
 ) {
-    var paso            by remember { mutableIntStateOf(0) }
-    val datePickerState = rememberDatePickerState(
-        initialSelectedDateMillis = System.currentTimeMillis()
-    )
-    val timePickerState = rememberTimePickerState(
-        initialHour   = 9,
-        initialMinute = 0,
-        is24Hour      = true
-    )
-    var errorMsg by remember { mutableStateOf("") }
+    val dispState         by viewModel.dispState.collectAsState()
+    val fechaSeleccionada by viewModel.fechaDialog.collectAsState()
+    val slotSeleccionado  by viewModel.slotDialog.collectAsState()
+    val duracionMin = calcularDuracion(cita.fechaHoraInicio, cita.fechaHoraFin)
 
-    if (paso == 0) {
-        DatePickerDialog(
-            onDismissRequest = onDismiss,
-            confirmButton    = {
-                Row(
-                    modifier              = Modifier
-                        .fillMaxWidth()
-                        .padding(PaddingValues(start = 16.dp,end = 16.dp,bottom = 8.dp)),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment     = Alignment.CenterVertically
-                ) {
-                    // Indicador de paso
-                    Text(
-                        text  = "Paso 1 de 2 · Fecha",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Row {
-                        TextButton(onClick = onDismiss) { Text("Cancelar") }
-                        Spacer(Modifier.width(4.dp))
-                        Button(
-                            onClick = {
-                                if (datePickerState.selectedDateMillis == null) {
-                                    errorMsg = "Selecciona una fecha"
-                                } else {
-                                    errorMsg = ""
-                                    paso = 1
-                                }
-                            },
-                            shape = RoundedCornerShape(10.dp)
-                        ) { Text("Siguiente →") }
-                    }
-                }
-            },
-            dismissButton = {}
-        ) {
-            DatePicker(state = datePickerState)
-            if (errorMsg.isNotEmpty()) {
-                Text(
-                    text     = errorMsg,
-                    color    = MaterialTheme.colorScheme.error,
-                    style    = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp)
-                )
-            }
-        }
-    } else {
-        AlertDialog(
-            onDismissRequest = onDismiss,
-            shape = RoundedCornerShape(16.dp),
-            icon  = {
-                Surface(
-                    shape = RoundedCornerShape(50),
-                    color = MaterialTheme.colorScheme.primaryContainer
-                ) {
-                    Icon(
-                        Icons.Default.Schedule, null,
-                        tint     = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.padding(10.dp).size(22.dp)
-                    )
-                }
-            },
-            title = {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Selecciona la hora", fontWeight = FontWeight.Bold)
-                    Text(
-                        text  = "Paso 2 de 2",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            },
-            text  = {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier            = Modifier.fillMaxWidth()
-                ) {
-                    TimePicker(state = timePickerState)
-                    if (errorMsg.isNotEmpty()) {
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            text  = errorMsg,
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        val millis = datePickerState.selectedDateMillis ?: return@Button
-                        val fecha  = java.time.Instant
-                            .ofEpochMilli(millis)
-                            .atZone(java.time.ZoneId.of("UTC"))
-                            .toLocalDate()
-                        val inicio = fecha.atTime(
-                            timePickerState.hour,
-                            timePickerState.minute
-                        )
-                        if (inicio.isBefore(java.time.LocalDateTime.now())) {
-                            errorMsg = "La fecha y hora deben ser futuras"
-                            return@Button
-                        }
-                        val fin       = inicio.plusMinutes(duracionMin.toLong())
-                        val isoFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")
-                        onConfirm(inicio.format(isoFormat), fin.format(isoFormat))
-                    },
-                    shape = RoundedCornerShape(10.dp)
-                ) { Text("Confirmar") }
-            },
-            dismissButton = {
-                OutlinedButton(
-                    onClick = { paso = 0; errorMsg = "" },
-                    shape   = RoundedCornerShape(10.dp)
-                ) {
-                    Icon(Icons.Default.ArrowBack, null, modifier = Modifier.size(14.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("Atrás")
-                }
-            }
+    // Extraer idProfesional e idSede de CitaPendiente
+    // (asegúrate de que CitaPendiente tenga estos campos; ver nota abajo)
+    LaunchedEffect(Unit) {
+        viewModel.cargarSlotsParaReagendar(
+            idProfesional = cita.idProfesional,
+            idSede        = cita.idSede,
+            duracionMin   = duracionMin
         )
     }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(16.dp),
+        icon = {
+            Surface(
+                shape = RoundedCornerShape(50),
+                color = MaterialTheme.colorScheme.primaryContainer
+            ) {
+                Icon(
+                    Icons.Default.EditCalendar, null,
+                    tint     = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.padding(10.dp).size(22.dp)
+                )
+            }
+        },
+        title = {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("Aprobar reagendamiento", fontWeight = FontWeight.Bold)
+                Text(
+                    text  = cita.cliente,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        },
+        text = {
+            Column(
+                modifier            = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // ── Selector de fecha (30 días) ────────────────────────────
+                Text(
+                    text       = "Selecciona una fecha",
+                    style      = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+
+                val dias = (0..29).map { LocalDate.now().plusDays(it.toLong()) }
+
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    contentPadding        = PaddingValues(vertical = 4.dp)
+                ) {
+                    items(dias) { dia ->
+                        val seleccionado = dia == fechaSeleccionada
+                        Surface(
+                            shape    = RoundedCornerShape(10.dp),
+                            color    = if (seleccionado) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.surfaceVariant,
+                            modifier = Modifier.clickable {
+                                viewModel.cargarSlotsParaReagendar(
+                                    idProfesional = cita.idProfesional,
+                                    idSede        = cita.idSede,
+                                    duracionMin   = duracionMin,
+                                    fecha         = dia
+                                )
+                            }
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier            = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                            ) {
+                                Text(
+                                    text     = dia.dayOfWeek
+                                        .getDisplayName(java.time.format.TextStyle.SHORT, java.util.Locale("es")),
+                                    fontSize = 9.sp,
+                                    color    = if (seleccionado) MaterialTheme.colorScheme.onPrimary
+                                    else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text       = dia.dayOfMonth.toString(),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize   = 16.sp,
+                                    color      = if (seleccionado) MaterialTheme.colorScheme.onPrimary
+                                    else MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
+                    }
+                }
+
+                HorizontalDivider()
+
+                // ── Slots ──────────────────────────────────────────────────
+                when (val state = dispState) {
+                    is DisponibilidadDialogState.Loading -> {
+                        Box(
+                            modifier         = Modifier.fillMaxWidth().height(80.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                        }
+                    }
+
+                    is DisponibilidadDialogState.Loaded -> {
+                        val disponibles = state.slots.filter { it.disponible }
+
+                        if (disponibles.isEmpty()) {
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant
+                            ) {
+                                Row(
+                                    modifier          = Modifier
+                                        .fillMaxWidth()
+                                        .padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        Icons.Default.EventBusy, null,
+                                        modifier = Modifier.size(16.dp),
+                                        tint     = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(
+                                        "Sin horarios disponibles para este día.",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        } else {
+                            Text(
+                                text  = "${disponibles.size} horarios disponibles",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            disponibles.chunked(3).forEach { fila ->
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    modifier              = Modifier.fillMaxWidth()
+                                ) {
+                                    fila.forEach { slot ->
+                                        val sel = slot == slotSeleccionado
+                                        Surface(
+                                            shape    = RoundedCornerShape(8.dp),
+                                            color    = if (sel) MaterialTheme.colorScheme.primary
+                                            else MaterialTheme.colorScheme.surfaceVariant,
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .clickable { viewModel.seleccionarSlotDialog(slot) }
+                                        ) {
+                                            Column(
+                                                horizontalAlignment = Alignment.CenterHorizontally,
+                                                modifier            = Modifier.padding(vertical = 10.dp)
+                                            ) {
+                                                Text(
+                                                    text       = slot.horaInicio.substring(0, 5),
+                                                    fontSize   = 13.sp,
+                                                    fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal,
+                                                    color      = if (sel) MaterialTheme.colorScheme.onPrimary
+                                                    else MaterialTheme.colorScheme.onSurface
+                                                )
+                                                if (sel) Icon(
+                                                    Icons.Default.Check, null,
+                                                    modifier = Modifier.size(11.dp),
+                                                    tint     = MaterialTheme.colorScheme.onPrimary
+                                                )
+                                            }
+                                        }
+                                    }
+                                    repeat(3 - fila.size) { Spacer(Modifier.weight(1f)) }
+                                }
+                            }
+                        }
+                    }
+
+                    is DisponibilidadDialogState.Error -> {
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = MaterialTheme.colorScheme.errorContainer
+                        ) {
+                            Text(
+                                text     = state.mensaje,
+                                color    = MaterialTheme.colorScheme.onErrorContainer,
+                                style    = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(12.dp)
+                            )
+                        }
+                    }
+
+                    else -> Unit
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick  = {
+                    val slot  = slotSeleccionado ?: return@Button
+                    val fecha = fechaSeleccionada
+                    val fmt   = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")
+                    val inicio = java.time.LocalDateTime.parse(
+                        "${fecha} ${slot.horaInicio}",
+                        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+                    )
+                    val fin = inicio.plusMinutes(duracionMin.toLong())
+                    onConfirm(inicio.format(fmt), fin.format(fmt))
+                },
+                enabled  = slotSeleccionado != null,
+                shape    = RoundedCornerShape(10.dp)
+            ) { Text("Confirmar") }
+        },
+        dismissButton = {
+            OutlinedButton(onClick = onDismiss, shape = RoundedCornerShape(10.dp)) {
+                Text("Cancelar")
+            }
+        }
+    )
 }
 
 // ─── Diálogo: Rechazar ────────────────────────────────────────────────────────

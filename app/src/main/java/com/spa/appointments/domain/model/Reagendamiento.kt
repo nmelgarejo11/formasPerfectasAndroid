@@ -16,7 +16,9 @@ data class CitaPendiente(
     @Json(name = "profesional")          val profesional: String,
     @Json(name = "sede")                 val sede: String,
     @Json(name = "servicios")            val servicios: String?,
-    @Json(name = "total")                val total: Double
+    @Json(name = "total")                val total: Double,
+    @Json(name = "idProfesional")        val idProfesional: Int,
+    @Json(name = "idSede")               val idSede: Int
 )
 
 @JsonClass(generateAdapter = true)
