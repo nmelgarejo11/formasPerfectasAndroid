@@ -2,6 +2,7 @@ package com.spa.appointments.data.repository
 
 import com.spa.appointments.data.remote.ApiService
 import com.spa.appointments.domain.model.CierreCajaResponse
+import com.spa.appointments.domain.model.IngresosVsGastosResponse
 import com.spa.appointments.domain.model.Sede
 import com.spa.appointments.domain.repository.FinancieroRepository
 import retrofit2.Response
@@ -23,5 +24,17 @@ class FinancieroRepositoryImpl @Inject constructor(
         val response = api.getSedes()
         return if (response.isSuccessful) response.body() ?: emptyList()
         else emptyList()
+    }
+
+    override suspend fun getIngresosVsGastos(
+        idSede      : Int,
+        fechaInicio : LocalDate,
+        fechaFin    : LocalDate
+    ): IngresosVsGastosResponse {
+        return api.getIngresosVsGastos(
+            idSede      = idSede,
+            fechaInicio = fechaInicio.toString(),
+            fechaFin    = fechaFin.toString()
+        )
     }
 }

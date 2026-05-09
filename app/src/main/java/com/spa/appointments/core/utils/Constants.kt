@@ -31,6 +31,7 @@ object Constants {
         const val ADMIN_HORARIOS = "admin_horarios"
         const val ADMIN_HORARIOS_LISTA = "admin_horarios_lista"
         const val GASTOS = "gastos"
+        const val INGRESOS_VS_GASTOS = "ingresos_vs_gastos"
     }
 
     // ID de sede por defecto (puedes hacerlo dinámico después)

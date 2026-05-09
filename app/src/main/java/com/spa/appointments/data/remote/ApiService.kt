@@ -314,4 +314,11 @@ interface ApiService {
         @Query("fecha")  fecha : String? = null
     ): CierreCajaResponse
 
+    @GET("financiero/ingresos-vs-gastos")
+    suspend fun getIngresosVsGastos(
+        @Query("idSede")      idSede      : Int,
+        @Query("fechaInicio") fechaInicio : String,
+        @Query("fechaFin")    fechaFin    : String
+    ): IngresosVsGastosResponse
+
 }

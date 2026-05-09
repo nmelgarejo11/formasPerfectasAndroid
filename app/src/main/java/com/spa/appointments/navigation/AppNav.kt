@@ -34,6 +34,8 @@ import com.spa.appointments.ui.admin.horarios.HorariosScreen
 import androidx.compose.runtime.collectAsState
 import com.spa.appointments.ui.admin.horarios.HorariosListaScreen
 import com.spa.appointments.ui.financiero.FinancieroViewModel
+import com.spa.appointments.ui.financiero.IngresosVsGastosScreen
+import com.spa.appointments.ui.financiero.IngresosVsGastosViewModel
 import com.spa.appointments.ui.profesionales.ProfesionalesScreen
 import com.spa.appointments.ui.servicios.ServiciosScreen
 import com.spa.appointments.ui.profesionales.ProfesionalesViewModel
@@ -60,6 +62,7 @@ fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
         Routes.ADMIN_PROFESIONALES,
         Routes.ADMIN_HORARIOS_LISTA,
         Routes.GASTOS,
+        Routes.INGRESOS_VS_GASTOS,
         "logout"
     )
 
@@ -248,6 +251,14 @@ fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
         composable(Routes.FINANCIERO) {
             val vm = hiltViewModel<FinancieroViewModel>()
             FinancieroScreen(
+                onBack = { nav.popBackStack() },
+                vm     = vm
+            )
+        }
+
+        composable(Routes.INGRESOS_VS_GASTOS) {
+            val vm = hiltViewModel<IngresosVsGastosViewModel>()
+            IngresosVsGastosScreen(
                 onBack = { nav.popBackStack() },
                 vm     = vm
             )
