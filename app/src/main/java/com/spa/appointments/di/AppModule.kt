@@ -18,6 +18,8 @@ import retrofit2.converter.moshi.MoshiConverterFactory
 import javax.inject.Singleton
 import javax.inject.Named
 import com.spa.appointments.BuildConfig
+import com.spa.appointments.data.repository.GastoRepositoryImpl
+import com.spa.appointments.domain.repository.GastoRepository
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -101,4 +103,13 @@ object AppModule {
             .addConverterFactory(MoshiConverterFactory.create(moshi))
             .build()
             .create(ApiService::class.java)
+
+    // ---------- Gasto Repository ----------
+    @Provides
+    @Singleton
+    fun provideGastoRepository(
+        api: ApiService
+    ): GastoRepository {
+        return GastoRepositoryImpl(api)
+    }
 }

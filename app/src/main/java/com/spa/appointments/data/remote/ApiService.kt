@@ -279,8 +279,6 @@ interface ApiService {
         @Path("id") id: Int
     )
 
-    // data/remote/ApiService.kt  (agregar dentro de la interfaz existente, sección Citas)
-
     @GET("Citas/metodos-pago")
     suspend fun getMetodosPago(): List<MetodoPago>
 
@@ -292,5 +290,22 @@ interface ApiService {
         @Path("idCita") idCita: Int
     ): Response<WhatsAppCitaResponse>
 
+
+    // Gastos
+    @POST("financiero/gastos")
+    suspend fun registrarGasto(@Body request: GastoRequest): Response<GastoResultado>
+
+    @GET("financiero/gastos")
+    suspend fun listarGastos(
+        @Query("idSede") idSede: Int?,
+        @Query("fechaDesde") fechaDesde: String?,
+        @Query("fechaHasta") fechaHasta: String?
+    ): Response<List<GastoResponse>>
+
+    @DELETE("financiero/gastos/{id}")
+    suspend fun eliminarGasto(@Path("id") id: Int): Response<GastoResultado>
+
+    @GET("admin/profesionales/sedes")
+    suspend fun getSedes(): Response<List<Sede>>
 
 }

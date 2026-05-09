@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 
 data class IconoOpcion(val clave: String, val icono: ImageVector, val etiqueta: String)
 
@@ -33,6 +34,7 @@ val ICONOS_DISPONIBLES = listOf(
     IconoOpcion("settings", Icons.Default.Settings, "Configuración"),
     IconoOpcion("admin_panel_settings", Icons.Default.AdminPanelSettings, "Administración"),
     IconoOpcion("category", Icons.Default.Category, "Categoría"),
+    IconoOpcion("receipt_long", Icons.AutoMirrored.Filled.ReceiptLong, "Factura larga"),
 
     // -------------------- BELLEZA Y SPA --------------------
     IconoOpcion("spa", Icons.Default.Spa, "Spa"),

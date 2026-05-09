@@ -36,6 +36,8 @@ import com.spa.appointments.ui.admin.horarios.HorariosListaScreen
 import com.spa.appointments.ui.profesionales.ProfesionalesScreen
 import com.spa.appointments.ui.servicios.ServiciosScreen
 import com.spa.appointments.ui.profesionales.ProfesionalesViewModel
+import com.spa.appointments.ui.gastos.GastoScreen
+import com.spa.appointments.ui.gastos.GastoViewModel
 
 @Composable
 fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
@@ -56,6 +58,7 @@ fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
         Routes.ADMIN_SERVICIOS,
         Routes.ADMIN_PROFESIONALES,
         Routes.ADMIN_HORARIOS_LISTA,
+        Routes.GASTOS,
         "logout"
     )
 
@@ -344,6 +347,11 @@ fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
                 profesional   = profesional,
                 onBack        = { nav.popBackStack() }
             )
+        }
+
+        // ── Gastos ───────────────────────────────────────────────────────────
+        composable(Routes.GASTOS) {
+            GastoScreen(onBack = { nav.popBackStack() })
         }
     }
 }
