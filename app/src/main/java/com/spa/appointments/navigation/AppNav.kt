@@ -33,6 +33,7 @@ import com.spa.appointments.ui.admin.profesionales.ProfesionalDetalleScreen
 import com.spa.appointments.ui.admin.horarios.HorariosScreen
 import androidx.compose.runtime.collectAsState
 import com.spa.appointments.ui.admin.horarios.HorariosListaScreen
+import com.spa.appointments.ui.financiero.FinancieroViewModel
 import com.spa.appointments.ui.profesionales.ProfesionalesScreen
 import com.spa.appointments.ui.servicios.ServiciosScreen
 import com.spa.appointments.ui.profesionales.ProfesionalesViewModel
@@ -245,7 +246,11 @@ fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
         // ── Financiero ───────────────────────────────────────────────────────
 
         composable(Routes.FINANCIERO) {
-            FinancieroScreen(onBack = { nav.popBackStack() })
+            val vm = hiltViewModel<FinancieroViewModel>()
+            FinancieroScreen(
+                onBack = { nav.popBackStack() },
+                vm     = vm
+            )
         }
 
         // ── Perfil ───────────────────────────────────────────────────────────

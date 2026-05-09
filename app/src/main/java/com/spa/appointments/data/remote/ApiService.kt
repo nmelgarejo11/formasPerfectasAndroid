@@ -308,4 +308,10 @@ interface ApiService {
     @GET("admin/profesionales/sedes")
     suspend fun getSedes(): Response<List<Sede>>
 
+    @GET("financiero/cierre-caja")
+    suspend fun getCierreCaja(
+        @Query("idSede") idSede: Int,
+        @Query("fecha")  fecha : String? = null
+    ): CierreCajaResponse
+
 }
