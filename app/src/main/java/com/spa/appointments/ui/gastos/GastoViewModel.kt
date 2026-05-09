@@ -12,12 +12,18 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
-// ui/gastos/GastoViewModel.kt
 @HiltViewModel
 class GastoViewModel @Inject constructor(
     private val repository: GastoRepository
 ) : ViewModel() {
+
+    // Función auxiliar para obtener la fecha de hoy en formato YYYY-MM-DD
+    private fun getFechaHoy(): String =
+        SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
 
     // --- Lista ---
     private val _gastos = MutableStateFlow<List<GastoResponse>>(emptyList())
@@ -37,15 +43,16 @@ class GastoViewModel @Inject constructor(
     private val _mensaje = MutableStateFlow<String?>(null)
     val mensaje: StateFlow<String?> = _mensaje
 
-    // --- Filtros activos ---
+    // --- Filtros activos (Inicializados con HOY) ---
     private var filtroIdSede: Int? = null
-    private var filtroFechaDesde: String? = null
-    private var filtroFechaHasta: String? = null
+    private val _fechaFiltro = MutableStateFlow(getFechaHoy())
+    val fechaFiltro: StateFlow<String> = _fechaFiltro
 
     init {
         cargarMetodosPago()
         cargarSedes()
-        cargarGastos()
+        // Carga automática al iniciar con la fecha de hoy
+        cargarGastos(fechaDesde = _fechaFiltro.value, fechaHasta = _fechaFiltro.value)
     }
 
     fun cargarSedes() {
@@ -56,14 +63,17 @@ class GastoViewModel @Inject constructor(
         }
     }
 
+    fun actualizarFechaFiltro(nuevaFecha: String) {
+        _fechaFiltro.value = nuevaFecha
+        cargarGastos(fechaDesde = nuevaFecha, fechaHasta = nuevaFecha)
+    }
+
     fun cargarGastos(
         idSede: Int? = filtroIdSede,
-        fechaDesde: String? = filtroFechaDesde,
-        fechaHasta: String? = filtroFechaHasta
+        fechaDesde: String? = _fechaFiltro.value,
+        fechaHasta: String? = _fechaFiltro.value
     ) {
         filtroIdSede = idSede
-        filtroFechaDesde = fechaDesde
-        filtroFechaHasta = fechaHasta
 
         viewModelScope.launch {
             _isLoading.value = true
@@ -88,7 +98,7 @@ class GastoViewModel @Inject constructor(
             repository.registrarGasto(request)
                 .onSuccess {
                     _mensaje.value = it.mensaje
-                    cargarGastos()
+                    cargarGastos() // Recarga usando los filtros actuales
                     onSuccess()
                 }
                 .onFailure { _mensaje.value = it.message }
