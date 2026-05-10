@@ -321,4 +321,10 @@ interface ApiService {
         @Query("fechaFin")    fechaFin    : String
     ): IngresosVsGastosResponse
 
+    @GET("api/tema")
+    suspend fun getTema(): Response<TemaEmpresa>
+
+    @PUT("api/tema")
+    suspend fun actualizarTema(@Body request: TemaEmpresaRequest): Response<Unit>
+
 }

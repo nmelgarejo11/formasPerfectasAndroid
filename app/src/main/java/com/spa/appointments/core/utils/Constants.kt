@@ -30,6 +30,7 @@ object Constants {
         const val ADMIN_PROFESIONAL_DETALLE  = "admin_profesional_detalle"
         const val ADMIN_HORARIOS = "admin_horarios"
         const val ADMIN_HORARIOS_LISTA = "admin_horarios_lista"
+        const val ADMIN_TEMA = "admin_tema"
         const val GASTOS = "gastos"
         const val INGRESOS_VS_GASTOS = "ingresos_vs_gastos"
     }

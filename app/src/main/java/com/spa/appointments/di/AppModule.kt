@@ -20,8 +20,10 @@ import javax.inject.Named
 import com.spa.appointments.BuildConfig
 import com.spa.appointments.data.repository.FinancieroRepositoryImpl
 import com.spa.appointments.data.repository.GastoRepositoryImpl
+import com.spa.appointments.data.repository.TemaRepositoryImpl
 import com.spa.appointments.domain.repository.FinancieroRepository
 import com.spa.appointments.domain.repository.GastoRepository
+import com.spa.appointments.domain.repository.TemaRepository
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -118,4 +120,12 @@ object AppModule {
     @Provides @Singleton
     fun provideFinancieroRepository(api: ApiService): FinancieroRepository =
         FinancieroRepositoryImpl(api)
+
+    @Provides
+    @Singleton
+    fun provideTemaRepository(
+        api: ApiService
+    ): TemaRepository {
+        return TemaRepositoryImpl(api)
+    }
 }
