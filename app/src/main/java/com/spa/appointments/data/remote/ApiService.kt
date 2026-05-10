@@ -117,6 +117,9 @@ interface ApiService {
     @GET("Tema")
     suspend fun getTemaEmpresa(): TemaEmpresa
 
+    @PUT("Tema")
+    suspend fun actualizarTema(@Body request: TemaEmpresaRequest): Response<Unit>
+
     // ── Notificaciones ────────────────────────────
     @POST("Notificaciones/registrar-token")
     suspend fun registrarFcmToken(@Body request: FcmTokenRequest)
@@ -321,10 +324,6 @@ interface ApiService {
         @Query("fechaFin")    fechaFin    : String
     ): IngresosVsGastosResponse
 
-    @GET("api/tema")
-    suspend fun getTema(): Response<TemaEmpresa>
 
-    @PUT("api/tema")
-    suspend fun actualizarTema(@Body request: TemaEmpresaRequest): Response<Unit>
 
 }

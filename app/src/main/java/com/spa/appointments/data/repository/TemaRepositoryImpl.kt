@@ -11,11 +11,7 @@ class TemaRepositoryImpl @Inject constructor(
 ) : TemaRepository {
 
     override suspend fun obtenerTema(): Result<TemaEmpresa> = runCatching {
-        val response = api.getTema()
-        android.util.Log.d("TemaRepo", "Code: ${response.code()}")
-        android.util.Log.d("TemaRepo", "Body: ${response.body()}")
-        android.util.Log.d("TemaRepo", "Error: ${response.errorBody()?.string()}")
-        response.body() ?: error("Respuesta vacía")
+        api.getTemaEmpresa()
     }
 
     override suspend fun actualizarTema(request: TemaEmpresaRequest): Result<Unit> = runCatching {

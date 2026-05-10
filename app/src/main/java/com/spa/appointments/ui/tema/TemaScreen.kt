@@ -2,6 +2,7 @@ package com.spa.appointments.ui.tema
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -151,34 +152,66 @@ private fun ColorField(
     value: String,
     onValueChange: (String) -> Unit
 ) {
+    var mostrarDialog by remember { mutableStateOf(false) }
+
     val colorParseado = runCatching {
         Color(android.graphics.Color.parseColor("#${value.trimStart('#')}"))
     }.getOrNull()
+
+    // Calcula si el color es claro para ajustar el texto
+    val esColorClaro = colorParseado?.let {
+        (it.red * 0.299 + it.green * 0.587 + it.blue * 0.114) > 0.7f
+    } ?: false
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
-        OutlinedTextField(
-            value = value,
-            onValueChange = { nuevo ->
-                // Solo hex válido: letras A-F y números, max 6 chars
-                if (nuevo.length <= 6 && nuevo.all { it.isDigit() || it.uppercaseChar() in "ABCDEF" })
-                    onValueChange(nuevo.uppercase())
-            },
-            label = { Text(label) },
-            prefix = { Text("#") },
-            modifier = Modifier.weight(1f),
-            singleLine = true
-        )
-        // Preview del color
+        // Caja clickeable que abre el picker
         Box(
+            contentAlignment = Alignment.Center,
             modifier = Modifier
-                .size(44.dp)
+                .size(52.dp)
                 .clip(CircleShape)
                 .background(colorParseado ?: Color.LightGray)
-                .border(1.dp, Color.Gray, CircleShape)
+                .border(1.dp, Color.Gray.copy(alpha = 0.5f), CircleShape)
+                .clickable { mostrarDialog = true }
+        ) {
+            Text(
+                text = "✎",
+                color = if (esColorClaro) Color.Black else Color.White,
+                style = MaterialTheme.typography.labelSmall
+            )
+        }
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = "#${value.uppercase()}",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium
+            )
+        }
+
+        TextButton(onClick = { mostrarDialog = true }) {
+            Text("Cambiar")
+        }
+    }
+
+    if (mostrarDialog) {
+        ColorPickerDialog(
+            label = label,
+            colorActual = value,
+            onColorSeleccionado = { hex ->
+                onValueChange(hex)
+                mostrarDialog = false
+            },
+            onDismiss = { mostrarDialog = false }
         )
     }
 }
