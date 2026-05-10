@@ -66,13 +66,6 @@ fun TemaScreen(
                         modifier = Modifier
                             .padding(start = 8.dp)
                             .size(36.dp)
-                            .clip(RoundedCornerShape(50))
-                            .border(
-                                0.5.dp,
-                                MaterialTheme.colorScheme.outlineVariant,
-                                RoundedCornerShape(50)
-                            )
-                            .background(MaterialTheme.colorScheme.surfaceVariant)
                             .clickable { onBack() }
                     ) {
                         Icon(
@@ -215,15 +208,15 @@ fun TemaScreen(
                 enabled = !state.guardando,
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.onSurface,
-                    contentColor = MaterialTheme.colorScheme.surface
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
                 )
             ) {
                 if (state.guardando) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(18.dp),
                         strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.surface
+                        color = MaterialTheme.colorScheme.onPrimary
                     )
                     Spacer(Modifier.width(10.dp))
                 } else {
@@ -234,8 +227,12 @@ fun TemaScreen(
                     )
                     Spacer(Modifier.width(10.dp))
                 }
+
                 Text(
-                    text = if (state.guardando) "Guardando..." else "Guardar cambios",
+                    text = if (state.guardando)
+                        "Guardando..."
+                    else
+                        "Guardar cambios",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium
                 )
@@ -315,28 +312,6 @@ private fun ColorRow(
                 style = MaterialTheme.typography.labelSmall,
                 fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-
-        // Botón editar pequeño
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .size(28.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant)
-                .border(
-                    0.5.dp,
-                    MaterialTheme.colorScheme.outlineVariant,
-                    RoundedCornerShape(8.dp)
-                )
-        ) {
-            Icon(
-                // Reemplaza con el ícono de lápiz que uses en tu proyecto
-                imageVector = Icons.Default.Save, // <- cambiar por Edit/Pencil
-                contentDescription = "Editar color",
-                modifier = Modifier.size(14.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
