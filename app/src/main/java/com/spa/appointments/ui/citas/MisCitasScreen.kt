@@ -377,47 +377,125 @@ fun MisCitasScreen(
             }
 
             Box(modifier = Modifier.fillMaxSize()) {
+
                 when (val state = uiState) {
+
                     is MisCitasUiState.Loading -> {
-                        Column(modifier = Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Column(
+                            modifier = Modifier.align(Alignment.Center),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
                             CircularProgressIndicator()
-                            Text("Cargando citas…", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+                            Text(
+                                text = "Cargando citas…",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
+
                     is MisCitasUiState.Empty -> {
-                        EmptyMisCitas(conFiltros = filtros.activo, modifier = Modifier.align(Alignment.Center))
+                        EmptyMisCitas(
+                            conFiltros = filtros.activo,
+                            modifier = Modifier.align(Alignment.Center)
+                        )
                     }
+
                     is MisCitasUiState.Error -> {
-                        Column(modifier = Modifier.align(Alignment.Center).padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Column(
+                            modifier = Modifier
+                                .align(Alignment.Center)
+                                .padding(32.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+
                             Box(
-                                modifier         = Modifier.size(72.dp).clip(CircleShape).background(MaterialTheme.colorScheme.errorContainer),
+                                modifier = Modifier
+                                    .size(72.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.errorContainer),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Icon(Icons.Default.CloudOff, null, modifier = Modifier.size(36.dp), tint = MaterialTheme.colorScheme.onErrorContainer)
+                                Icon(
+                                    Icons.Default.CloudOff,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(36.dp),
+                                    tint = MaterialTheme.colorScheme.onErrorContainer
+                                )
                             }
-                            Text("Sin conexión", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                            Text(state.mensaje, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodySmall)
-                            Button(onClick = { vm.cargar() }, shape = RoundedCornerShape(12.dp)) {
-                                Icon(Icons.Default.Refresh, null, modifier = Modifier.size(16.dp))
+
+                            Text(
+                                text = "Sin conexión",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+
+                            Text(
+                                text = state.mensaje,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+
+                            Button(
+                                onClick = { vm.cargar() },
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Refresh,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+
                                 Spacer(Modifier.width(6.dp))
+
                                 Text("Reintentar")
                             }
                         }
                     }
+
                     is MisCitasUiState.Success -> {
-                        LazyColumn(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            items(state.citas, key = { it.id }) { cita ->
+                        LazyColumn(
+                            contentPadding = PaddingValues(
+                                horizontal = 16.dp,
+                                vertical = 12.dp
+                            ),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+
+                            items(
+                                state.citas,
+                                key = { it.id }
+                            ) { cita ->
+
                                 CitaCard(
-                                    cita           = cita,
-                                    onCancelar     = { citaAccion = cita; mostrarCancelar  = true },
-                                    onReagendar    = { citaAccion = cita; mostrarReagendar = true },
-                                    onFinalizar    = { citaAccion = cita; mostrarFinalizar = true },
-                                    onWhatsApp     = { vm.abrirWhatsApp(cita.id, context) },
-                                    accionCargando = accionState is AccionUiState.Loading
+                                    cita = cita,
+                                    onCancelar = {
+                                        citaAccion = cita
+                                        mostrarCancelar = true
+                                    },
+                                    onReagendar = {
+                                        citaAccion = cita
+                                        mostrarReagendar = true
+                                    },
+                                    onFinalizar = {
+                                        citaAccion = cita
+                                        mostrarFinalizar = true
+                                    },
+                                    onWhatsApp = {
+                                        vm.abrirWhatsApp(cita.id, context)
+                                    },
+                                    accionCargando =
+                                    accionState is AccionUiState.Loading
                                 )
                             }
                         }
                     }
+
+                    else -> Unit
                 }
             }
         }
