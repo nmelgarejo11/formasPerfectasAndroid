@@ -40,7 +40,8 @@ import com.spa.appointments.ui.profesionales.ProfesionalesScreen
 import com.spa.appointments.ui.servicios.ServiciosScreen
 import com.spa.appointments.ui.profesionales.ProfesionalesViewModel
 import com.spa.appointments.ui.gastos.GastoScreen
-import com.spa.appointments.ui.gastos.GastoViewModel
+import com.spa.appointments.ui.metodopago.MetodoPagoDetalleScreen
+import com.spa.appointments.ui.metodopago.MetodoPagoScreen
 import com.spa.appointments.ui.tema.TemaScreen
 
 @Composable
@@ -65,6 +66,7 @@ fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
         Routes.GASTOS,
         Routes.INGRESOS_VS_GASTOS,
         Routes.ADMIN_TEMA,
+        Routes.METODOS_PAGO,
         "logout"
     )
 
@@ -374,6 +376,24 @@ fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
         // ── Gastos ───────────────────────────────────────────────────────────
         composable(Routes.GASTOS) {
             GastoScreen(onBack = { nav.popBackStack() })
+        }
+
+        // ── Métodos de Pago ──────────────────────────────────────────────────
+        composable(Routes.METODOS_PAGO) {
+            MetodoPagoScreen(
+                onVerDetalles = { metodo ->
+                    nav.navigate("${Routes.METODOS_PAGO_DETALLE}/${metodo.id}/${metodo.nombre}")
+                }
+            )
+        }
+
+        composable("${Routes.METODOS_PAGO_DETALLE}/{id}/{nombre}") { backEntry ->
+            val id     = backEntry.arguments?.getString("id")?.toIntOrNull() ?: return@composable
+            val nombre = backEntry.arguments?.getString("nombre") ?: ""
+            MetodoPagoDetalleScreen(
+                metodoId     = id,
+                metodoNombre = nombre
+            )
         }
     }
 }

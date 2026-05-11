@@ -20,9 +20,11 @@ import javax.inject.Named
 import com.spa.appointments.BuildConfig
 import com.spa.appointments.data.repository.FinancieroRepositoryImpl
 import com.spa.appointments.data.repository.GastoRepositoryImpl
+import com.spa.appointments.data.repository.MetodoPagoRepositoryImpl
 import com.spa.appointments.data.repository.TemaRepositoryImpl
 import com.spa.appointments.domain.repository.FinancieroRepository
 import com.spa.appointments.domain.repository.GastoRepository
+import com.spa.appointments.domain.repository.MetodoPagoRepository
 import com.spa.appointments.domain.repository.TemaRepository
 
 @Module
@@ -127,5 +129,14 @@ object AppModule {
         api: ApiService
     ): TemaRepository {
         return TemaRepositoryImpl(api)
+    }
+
+    // ---------- MetodoPago Repository ----------
+    @Provides
+    @Singleton
+    fun provideMetodoPagoRepository(
+        api: ApiService
+    ): MetodoPagoRepository {
+        return MetodoPagoRepositoryImpl(api)
     }
 }

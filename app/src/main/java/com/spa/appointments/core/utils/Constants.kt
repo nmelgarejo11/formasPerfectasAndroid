@@ -33,6 +33,8 @@ object Constants {
         const val ADMIN_TEMA = "admin_tema"
         const val GASTOS = "gastos"
         const val INGRESOS_VS_GASTOS = "ingresos_vs_gastos"
+        const val METODOS_PAGO = "admin_metodo_pago"
+        const val METODOS_PAGO_DETALLE = "metodos_pago_detalle"
     }
 
     // ID de sede por defecto (puedes hacerlo dinámico después)

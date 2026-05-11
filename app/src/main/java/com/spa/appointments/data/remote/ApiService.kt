@@ -324,6 +324,36 @@ interface ApiService {
         @Query("fechaFin")    fechaFin    : String
     ): IngresosVsGastosResponse
 
+    // Admin metodo pago
+    @GET("api/MetodoPago")
+    suspend fun listarMetodosPago(): Response<List<MetodoPagoAdmin>>
 
+    @GET("api/MetodoPago/{id}")
+    suspend fun obtenerMetodoPago(@Path("id") id: Int): Response<MetodoPagoAdmin>
+
+    @POST("api/MetodoPago")
+    suspend fun crearMetodoPago(@Body request: CrearMetodoPagoRequest): Response<IdResponse>
+
+    @PUT("api/MetodoPago/{id}")
+    suspend fun actualizarMetodoPago(
+        @Path("id") id: Int,
+        @Body request: ActualizarMetodoPagoRequest
+    ): Response<Unit>
+
+    // Detalles
+    @GET("api/MetodoPago/{id}/detalles")
+    suspend fun listarDetalles(@Path("id") idMetodoPago: Int): Response<List<MetodoPagoDetalleAdmin>>
+
+    @POST("api/MetodoPago/{id}/detalles")
+    suspend fun crearDetalle(
+        @Path("id") idMetodoPago: Int,
+        @Body request: CrearDetalleRequest
+    ): Response<IdResponse>
+
+    @PUT("api/MetodoPago/detalles/{idDetalle}")
+    suspend fun actualizarDetalle(
+        @Path("idDetalle") idDetalle: Int,
+        @Body request: ActualizarDetalleRequest
+    ): Response<Unit>
 
 }
