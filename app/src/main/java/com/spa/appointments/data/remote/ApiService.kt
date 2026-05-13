@@ -325,32 +325,32 @@ interface ApiService {
     ): IngresosVsGastosResponse
 
     // Admin metodo pago
-    @GET("api/MetodoPago")
+    @GET("MetodoPago")
     suspend fun listarMetodosPago(): Response<List<MetodoPagoAdmin>>
 
-    @GET("api/MetodoPago/{id}")
+    @GET("MetodoPago/{id}")
     suspend fun obtenerMetodoPago(@Path("id") id: Int): Response<MetodoPagoAdmin>
 
-    @POST("api/MetodoPago")
+    @POST("MetodoPago")
     suspend fun crearMetodoPago(@Body request: CrearMetodoPagoRequest): Response<IdResponse>
 
-    @PUT("api/MetodoPago/{id}")
+    @PUT("MetodoPago/{id}")
     suspend fun actualizarMetodoPago(
         @Path("id") id: Int,
         @Body request: ActualizarMetodoPagoRequest
     ): Response<Unit>
 
     // Detalles
-    @GET("api/MetodoPago/{id}/detalles")
+    @GET("MetodoPago/{id}/detalles")
     suspend fun listarDetalles(@Path("id") idMetodoPago: Int): Response<List<MetodoPagoDetalleAdmin>>
 
-    @POST("api/MetodoPago/{id}/detalles")
+    @POST("MetodoPago/{id}/detalles")
     suspend fun crearDetalle(
         @Path("id") idMetodoPago: Int,
         @Body request: CrearDetalleRequest
     ): Response<IdResponse>
 
-    @PUT("api/MetodoPago/detalles/{idDetalle}")
+    @PUT("MetodoPago/detalles/{idDetalle}")
     suspend fun actualizarDetalle(
         @Path("idDetalle") idDetalle: Int,
         @Body request: ActualizarDetalleRequest

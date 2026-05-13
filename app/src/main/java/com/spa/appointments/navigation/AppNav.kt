@@ -381,18 +381,20 @@ fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
         // ── Métodos de Pago ──────────────────────────────────────────────────
         composable(Routes.METODOS_PAGO) {
             MetodoPagoScreen(
+                onBack = { nav.popBackStack() },
                 onVerDetalles = { metodo ->
                     nav.navigate("${Routes.METODOS_PAGO_DETALLE}/${metodo.id}/${metodo.nombre}")
                 }
             )
         }
 
-        composable("${Routes.METODOS_PAGO_DETALLE}/{id}/{nombre}") { backEntry ->
-            val id     = backEntry.arguments?.getString("id")?.toIntOrNull() ?: return@composable
-            val nombre = backEntry.arguments?.getString("nombre") ?: ""
+        composable("${Routes.METODOS_PAGO_DETALLE}/{metodoId}/{metodoNombre}") { back ->
+            val id     = back.arguments?.getString("metodoId")?.toInt() ?: return@composable
+            val nombre = back.arguments?.getString("metodoNombre") ?: ""
             MetodoPagoDetalleScreen(
                 metodoId     = id,
-                metodoNombre = nombre
+                metodoNombre = nombre,
+                onBack       = { nav.popBackStack() }   // ← agrega esto
             )
         }
     }
