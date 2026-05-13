@@ -1,25 +1,27 @@
 package com.spa.appointments.ui.clientes
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.spa.appointments.domain.model.Cliente
@@ -39,9 +41,9 @@ fun SeleccionarClienteScreen(
     // ── Diálogo nuevo cliente ─────────────────────────────────────────────────
     if (mostrarFormNuevo) {
         NuevoClienteDialog(
-            creando = uiState is SeleccionarClienteUiState.Creando,
+            creando   = uiState is SeleccionarClienteUiState.Creando,
             onDismiss = { mostrarFormNuevo = false },
-            onCreate = { nombre, apellido, telefono, email ->
+            onCreate  = { nombre, apellido, telefono, email ->
                 vm.crearCliente(nombre, apellido, telefono, email) { cliente ->
                     mostrarFormNuevo = false
                     onClienteSeleccionado(cliente)
@@ -58,17 +60,14 @@ fun SeleccionarClienteScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Volver")
                     }
                 },
                 actions = {
                     IconButton(onClick = { mostrarFormNuevo = true }) {
-                        Icon(Icons.Outlined.PersonAdd, contentDescription = "Nuevo cliente")
+                        Icon(Icons.Outlined.PersonAdd, "Nuevo cliente")
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
+                }
             )
         }
     ) { padding ->
@@ -77,37 +76,35 @@ fun SeleccionarClienteScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // ── Buscador ──────────────────────────────────────────────────
+            // ── Buscador Estilizado (Igual a Profesionales) ──────────────
             OutlinedTextField(
                 value         = textoBusqueda,
                 onValueChange = { vm.buscar(it) },
-                placeholder   = { Text("Buscar cliente") },
-                leadingIcon   = { Icon(Icons.Outlined.Search, contentDescription = null) },
+                label         = { Text("Buscar cliente") },
+                leadingIcon   = { Icon(Icons.Default.Search, null) },
                 trailingIcon  = {
                     if (textoBusqueda.isNotEmpty()) {
                         IconButton(onClick = { vm.resetear() }) {
-                            Icon(Icons.Outlined.Close, contentDescription = "Limpiar")
+                            Icon(Icons.Outlined.Close, null)
                         }
                     }
                 },
-                modifier   = Modifier
+                modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                singleLine = true,
-                shape      = MaterialTheme.shapes.medium
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                shape      = RoundedCornerShape(12.dp),
+                singleLine = true
             )
 
-            // ── Estados ───────────────────────────────────────────────────
             Box(modifier = Modifier.fillMaxSize()) {
                 when (val state = uiState) {
-
                     is SeleccionarClienteUiState.Idle -> {
                         EstadoHint(
-                            icon     = Icons.Outlined.PersonSearch,
-                            titulo   = "Busca un cliente",
+                            icon      = Icons.Outlined.PersonSearch,
+                            titulo    = "Busca un cliente",
                             subtitulo = "Ingresa nombre o teléfono para comenzar",
-                            accionLabel = "Crear nuevo cliente",
-                            onAccion = { mostrarFormNuevo = true }
+                            accionLabel = "Crear nuevo",
+                            onAccion  = { mostrarFormNuevo = true }
                         )
                     }
 
@@ -120,25 +117,20 @@ fun SeleccionarClienteScreen(
                             icon      = Icons.Outlined.SearchOff,
                             titulo    = "Sin resultados",
                             subtitulo = "No hay clientes con \"$textoBusqueda\"",
-                            accionLabel = "Crear nuevo cliente",
+                            accionLabel = "Crear nuevo",
                             onAccion  = { mostrarFormNuevo = true }
                         )
                     }
 
                     is SeleccionarClienteUiState.Resultados -> {
                         LazyColumn(
-                            contentPadding = PaddingValues(
-                                horizontal = 16.dp,
-                                vertical   = 8.dp
-                            )
+                            contentPadding      = PaddingValues(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             items(state.clientes, key = { it.id }) { cliente ->
                                 ClienteSelectItem(
                                     cliente = cliente,
                                     onClick = { onClienteSeleccionado(cliente) }
-                                )
-                                HorizontalDivider(
-                                    modifier = Modifier.padding(horizontal = 56.dp)
                                 )
                             }
                         }
@@ -154,7 +146,6 @@ fun SeleccionarClienteScreen(
                             onAccion  = { vm.buscar(textoBusqueda) }
                         )
                     }
-
                     else -> Unit
                 }
             }
@@ -162,7 +153,113 @@ fun SeleccionarClienteScreen(
     }
 }
 
-// ── Diálogo nuevo cliente (extraído para tener su propio scroll) ──────────────
+@Composable
+private fun ClienteSelectItem(cliente: Cliente, onClick: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape    = RoundedCornerShape(14.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors    = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border    = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+    ) {
+        Row(
+            modifier = Modifier
+                .clickable(onClick = onClick)
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Avatar con inicial
+            Surface(
+                modifier = Modifier.size(48.dp),
+                shape    = CircleShape,
+                color    = MaterialTheme.colorScheme.primaryContainer
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text(
+                        text  = cliente.nombre.firstOrNull()?.uppercase() ?: "?",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+            }
+
+            Spacer(Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text       = cliente.nombreCompleto,
+                    style      = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold
+                )
+                if (!cliente.telefono.isNullOrBlank()) {
+                    Text(
+                        text  = cliente.telefono,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Icon(
+                Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                null,
+                tint     = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun EstadoHint(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    titulo: String,
+    subtitulo: String,
+    esError: Boolean = false,
+    accionLabel: String? = null,
+    onAccion: (() -> Unit)? = null
+) {
+    Column(
+        modifier            = Modifier.fillMaxSize().padding(40.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Surface(
+            shape = RoundedCornerShape(24.dp),
+            color = if (esError) MaterialTheme.colorScheme.errorContainer
+            else MaterialTheme.colorScheme.surfaceVariant
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.padding(20.dp).size(48.dp),
+                tint = if (esError) MaterialTheme.colorScheme.error
+                else MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Spacer(Modifier.height(16.dp))
+        Text(
+            text       = titulo,
+            style      = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            textAlign  = TextAlign.Center
+        )
+        Text(
+            text      = subtitulo,
+            style     = MaterialTheme.typography.bodyMedium,
+            color     = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
+        if (accionLabel != null && onAccion != null) {
+            Spacer(Modifier.height(16.dp))
+            Button(onClick = onAccion) {
+                Text(accionLabel)
+            }
+        }
+    }
+}
+
 @Composable
 private fun NuevoClienteDialog(
     creando: Boolean,
@@ -179,224 +276,63 @@ private fun NuevoClienteDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        icon  = {
-            Icon(Icons.Outlined.PersonAdd, contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary)
-        },
-        title = {
-            Text("Nuevo cliente", fontWeight = FontWeight.Bold)
-        },
+        title = { Text("Nuevo cliente", fontWeight = FontWeight.Bold) },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 OutlinedTextField(
-                    value         = nombre,
+                    value = nombre,
                     onValueChange = { nombre = it; nombreError = false },
-                    label         = { Text("Nombre *") },
-                    leadingIcon   = { Icon(Icons.Outlined.Person, null) },
-                    isError       = nombreError,
-                    supportingText = if (nombreError) ({ Text("Requerido") }) else null,
-                    modifier      = Modifier.fillMaxWidth(),
-                    singleLine    = true,
-                    keyboardOptions = KeyboardOptions(
-                        capitalization = KeyboardCapitalization.Words
-                    )
+                    label = { Text("Nombre *") },
+                    isError = nombreError,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
-                    value         = apellido,
+                    value = apellido,
                     onValueChange = { apellido = it; apellidoError = false },
-                    label         = { Text("Apellido *") },
-                    leadingIcon   = { Icon(Icons.Outlined.Person, null) },
-                    isError       = apellidoError,
-                    supportingText = if (apellidoError) ({ Text("Requerido") }) else null,
-                    modifier      = Modifier.fillMaxWidth(),
-                    singleLine    = true,
-                    keyboardOptions = KeyboardOptions(
-                        capitalization = KeyboardCapitalization.Words
-                    )
+                    label = { Text("Apellido *") },
+                    isError = apellidoError,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
-                    value         = telefono,
-                    onValueChange = { if (it.length <= 15) telefono = it },
-                    label         = { Text("Teléfono") },
-                    leadingIcon   = { Icon(Icons.Outlined.Phone, null) },
-                    modifier      = Modifier.fillMaxWidth(),
-                    singleLine    = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
+                    value = telefono,
+                    onValueChange = { telefono = it },
+                    label = { Text("Teléfono") },
+                    shape = RoundedCornerShape(12.dp),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                    modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
-                    value         = email,
+                    value = email,
                     onValueChange = { email = it },
-                    label         = { Text("Email") },
-                    leadingIcon   = { Icon(Icons.Outlined.Email, null) },
-                    modifier      = Modifier.fillMaxWidth(),
-                    singleLine    = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
-                )
-                Text(
-                    "* Campos requeridos",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    label = { Text("Email") },
+                    shape = RoundedCornerShape(12.dp),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
         },
         confirmButton = {
             Button(
                 onClick = {
-                    nombreError   = nombre.isBlank()
-                    apellidoError = apellido.isBlank()
+                    if (nombre.isBlank()) nombreError = true
+                    if (apellido.isBlank()) apellidoError = true
                     if (!nombreError && !apellidoError) {
-                        onCreate(
-                            nombre.trim(),
-                            apellido.trim(),
-                            telefono.trim(),
-                            email.trim()
-                        )
+                        onCreate(nombre, apellido, telefono, email)
                     }
                 },
                 enabled = !creando
             ) {
-                if (creando) {
-                    CircularProgressIndicator(
-                        modifier    = Modifier.size(16.dp),
-                        strokeWidth = 2.dp,
-                        color       = MaterialTheme.colorScheme.onPrimary
-                    )
-                } else {
-                    Text("Crear cliente")
-                }
+                if (creando) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                else Text("Crear")
             }
         },
         dismissButton = {
-            OutlinedButton(onClick = onDismiss) {
-                Text("Cancelar")
-            }
+            TextButton(onClick = onDismiss) { Text("Cancelar") }
         }
     )
-}
-
-// ── Item de cliente en lista de selección ─────────────────────────────────────
-@Composable
-private fun ClienteSelectItem(cliente: Cliente, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 12.dp, horizontal = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // Avatar con inicial
-        Surface(
-            modifier = Modifier
-                .size(42.dp)
-                .clip(CircleShape),
-            color = MaterialTheme.colorScheme.primaryContainer
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Text(
-                    text  = cliente.nombre.firstOrNull()?.uppercaseChar()?.toString() ?: "?",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            }
-        }
-
-        Spacer(Modifier.width(12.dp))
-
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text       = cliente.nombreCompleto,
-                style      = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.SemiBold
-            )
-            cliente.telefono?.let {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Outlined.Phone,
-                        contentDescription = null,
-                        modifier = Modifier.size(12.dp),
-                        tint     = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    Text(
-                        it,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-            cliente.email?.let {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Outlined.Email,
-                        contentDescription = null,
-                        modifier = Modifier.size(12.dp),
-                        tint     = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    Text(
-                        it,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        }
-
-        Icon(
-            Icons.AutoMirrored.Filled.KeyboardArrowRight,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}
-
-// ── Estado vacío / error reutilizable ────────────────────────────────────────
-@Composable
-private fun EstadoHint(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    titulo: String,
-    subtitulo: String,
-    esError: Boolean = false,
-    accionLabel: String? = null,
-    onAccion: (() -> Unit)? = null
-) {
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.padding(32.dp)
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier.size(56.dp),
-                tint = if (esError) MaterialTheme.colorScheme.error
-                else MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                titulo,
-                style      = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color      = if (esError) MaterialTheme.colorScheme.error
-                else MaterialTheme.colorScheme.onSurface
-            )
-            Text(
-                subtitulo,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            if (accionLabel != null && onAccion != null) {
-                Spacer(Modifier.height(4.dp))
-                OutlinedButton(onClick = onAccion) {
-                    Icon(Icons.Outlined.PersonAdd, null, Modifier.size(16.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text(accionLabel)
-                }
-            }
-        }
-    }
 }
