@@ -9,7 +9,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.spa.appointments.domain.model.Cliente
@@ -38,15 +39,21 @@ fun ClientesScreen(
                 title = {
                     Column {
                         Text(
-                            text = "Clientes",
+                            text  = "Clientes",
                             style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Medium
                         )
-                        // Subtítulo con contador dinámico basado en la lógica existente
-                        if (listState is ClientesUiState.Results) {
-                            val total = (listState as ClientesUiState.Results).clientes.size
+                        val subtitulo = when (listState) {
+                            is ClientesUiState.Results -> {
+                                val total = (listState as ClientesUiState.Results).clientes.size
+                                "$total ${if (total == 1) "cliente encontrado" else "clientes encontrados"}"
+                            }
+                            is ClientesUiState.Idle    -> "Busca por nombre o teléfono"
+                            else -> ""
+                        }
+                        if (subtitulo.isNotEmpty()) {
                             Text(
-                                text = "$total ${if (total == 1) "cliente" else "clientes"}",
+                                text  = subtitulo,
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -57,14 +64,17 @@ fun ClientesScreen(
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Volver")
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
             )
         },
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = onCrearCliente,
-                icon = { Icon(Icons.Default.Add, null) },
-                text = { Text("Nuevo cliente") }
+                icon    = { Icon(Icons.Outlined.PersonAdd, null) },
+                text    = { Text("Nuevo cliente") }
             )
         }
     ) { padding ->
@@ -73,37 +83,42 @@ fun ClientesScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // ── Buscador Estilizado (12.dp) ───────────────────────────────
+            // ── Buscador ──────────────────────────────────────────────────
             OutlinedTextField(
-                value = query,
+                value         = query,
                 onValueChange = viewModel::onQueryChange,
-                label = { Text("Buscar cliente") },
-                leadingIcon = { Icon(Icons.Default.Search, null) },
-                trailingIcon = {
+                placeholder   = { Text("Nombre, teléfono o email...") },
+                leadingIcon   = { Icon(Icons.Outlined.Search, null, modifier = Modifier.size(20.dp)) },
+                trailingIcon  = {
                     if (query.isNotEmpty()) {
                         IconButton(onClick = { viewModel.onQueryChange("") }) {
-                            Icon(Icons.Default.Clear, null)
+                            Icon(Icons.Outlined.Close, "Limpiar", modifier = Modifier.size(18.dp))
                         }
                     }
                 },
-                modifier = Modifier
+                modifier  = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                shape = RoundedCornerShape(12.dp),
-                singleLine = true
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                shape     = RoundedCornerShape(14.dp),
+                singleLine = true,
+                colors    = OutlinedTextFieldDefaults.colors(
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                )
             )
 
+            // ── Contenido ─────────────────────────────────────────────────
             Box(modifier = Modifier.fillMaxSize()) {
                 when (listState) {
+
                     is ClientesUiState.Loading -> {
                         Column(
                             modifier = Modifier.align(Alignment.Center),
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            CircularProgressIndicator()
+                            CircularProgressIndicator(strokeWidth = 2.5.dp)
                             Text(
-                                "Buscando...",
+                                "Buscando clientes...",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -112,20 +127,20 @@ fun ClientesScreen(
 
                     is ClientesUiState.Idle -> {
                         ClienteEmptyState(
-                            icon = Icons.Default.PersonSearch,
-                            titulo = "Busca un cliente",
-                            subtitulo = "Ingresa nombre, apellido o email para comenzar."
+                            icon      = Icons.Outlined.PersonSearch,
+                            titulo    = "Busca un cliente",
+                            subtitulo = "Escribe un nombre, teléfono o correo\npara encontrar resultados."
                         )
                     }
 
                     is ClientesUiState.Error -> {
                         ClienteEmptyState(
-                            icon = Icons.Default.ErrorOutline,
-                            titulo = "Ocurrió un error",
-                            subtitulo = (listState as ClientesUiState.Error).mensaje,
-                            colorIcono = MaterialTheme.colorScheme.error,
+                            icon        = Icons.Outlined.ErrorOutline,
+                            titulo      = "Ocurrió un error",
+                            subtitulo   = (listState as ClientesUiState.Error).mensaje,
+                            colorIcono  = MaterialTheme.colorScheme.error,
                             accionLabel = "Reintentar",
-                            onAccion = { viewModel.onQueryChange(query) }
+                            onAccion    = { viewModel.onQueryChange(query) }
                         )
                     }
 
@@ -133,23 +148,23 @@ fun ClientesScreen(
                         val clientes = (listState as ClientesUiState.Results).clientes
                         if (clientes.isEmpty()) {
                             ClienteEmptyState(
-                                icon = Icons.Default.SearchOff,
-                                titulo = "Sin resultados",
-                                subtitulo = "No encontramos clientes que coincidan con \"$query\"."
+                                icon      = Icons.Outlined.SearchOff,
+                                titulo    = "Sin resultados",
+                                subtitulo = "No encontramos clientes que coincidan\ncon \"$query\"."
                             )
                         } else {
                             LazyColumn(
                                 contentPadding = PaddingValues(
-                                    start = 16.dp,
-                                    end = 16.dp,
-                                    top = 4.dp,
-                                    bottom = 88.dp
+                                    start  = 16.dp,
+                                    end    = 16.dp,
+                                    top    = 4.dp,
+                                    bottom = 96.dp
                                 ),
-                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 items(clientes, key = { it.id }) { cliente ->
                                     ClienteCard(
-                                        cliente = cliente,
+                                        cliente     = cliente,
                                         onVerDetalle = { onVerCliente(cliente.id) }
                                     )
                                 }
@@ -170,104 +185,130 @@ private fun ClienteCard(
     onVerDetalle: () -> Unit
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
-    val inicial = (cliente.nombre.firstOrNull()?.toString() ?: "?").uppercase()
+    val iniciales = buildString {
+        append(cliente.nombre.firstOrNull() ?: "")
+        append(cliente.apellido.firstOrNull() ?: "")
+    }.uppercase().ifBlank { "?" }
 
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onVerDetalle() },
-        shape = RoundedCornerShape(14.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+        modifier  = Modifier.fillMaxWidth(),
+        shape     = RoundedCornerShape(14.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        colors    = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border    = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Row(
-            modifier = Modifier
+            modifier          = Modifier
                 .fillMaxWidth()
+                .clickable { onVerDetalle() }
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Avatar (Estilo 56.dp)
+            // Avatar con iniciales
             Surface(
-                modifier = Modifier.size(56.dp),
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.primaryContainer
+                modifier = Modifier.size(48.dp),
+                shape    = CircleShape,
+                color    = MaterialTheme.colorScheme.primaryContainer
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Text(
-                        text = inicial,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                        text       = iniciales,
+                        style      = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Medium,
+                        color      = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 }
             }
 
             Spacer(Modifier.width(12.dp))
 
-            // Información
+            // Datos
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "${cliente.nombre} ${cliente.apellido}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold
+                    text       = "${cliente.nombre} ${cliente.apellido}".trim(),
+                    style      = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    maxLines   = 1,
+                    overflow   = TextOverflow.Ellipsis
                 )
 
-                cliente.telefono?.let {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Default.Phone, null,
-                            modifier = Modifier.size(11.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(Modifier.width(4.dp))
-                        Text(
-                            text = it,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
+                Spacer(Modifier.height(3.dp))
 
-                cliente.email?.let {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Default.Email, null,
-                            modifier = Modifier.size(11.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(Modifier.width(4.dp))
-                        Text(
-                            text = it,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                // Teléfono y email en una sola fila si ambos existen
+                val contacto = listOfNotNull(cliente.telefono, cliente.email)
+                if (contacto.isNotEmpty()) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        cliente.telefono?.let {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.Outlined.Phone, null,
+                                    modifier = Modifier.size(11.dp),
+                                    tint     = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(Modifier.width(3.dp))
+                                Text(
+                                    text     = it,
+                                    style    = MaterialTheme.typography.bodySmall,
+                                    color    = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1
+                                )
+                            }
+                        }
+                        cliente.email?.let {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.Outlined.Email, null,
+                                    modifier = Modifier.size(11.dp),
+                                    tint     = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(Modifier.width(3.dp))
+                                Text(
+                                    text     = it,
+                                    style    = MaterialTheme.typography.bodySmall,
+                                    color    = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
                     }
+                } else {
+                    Text(
+                        text  = "Sin información de contacto",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    )
                 }
             }
 
-            // Menú contextual (Estilo base)
+            // Menú contextual
             Box {
-                IconButton(onClick = { menuExpanded = true }) {
+                IconButton(
+                    onClick  = { menuExpanded = true },
+                    modifier = Modifier.size(36.dp)
+                ) {
                     Icon(
-                        Icons.Default.MoreVert, "Opciones",
-                        modifier = Modifier.size(20.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        Icons.Outlined.MoreVert, "Opciones",
+                        modifier = Modifier.size(18.dp),
+                        tint     = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 DropdownMenu(
-                    expanded = menuExpanded,
-                    onDismissRequest = { menuExpanded = false }
+                    expanded          = menuExpanded,
+                    onDismissRequest  = { menuExpanded = false }
                 ) {
                     DropdownMenuItem(
-                        text = { Text("Ver perfil") },
-                        leadingIcon = { Icon(Icons.Default.AccountCircle, null) },
-                        onClick = { menuExpanded = false; onVerDetalle() }
+                        text         = { Text("Ver perfil") },
+                        leadingIcon  = { Icon(Icons.Outlined.AccountCircle, null, modifier = Modifier.size(18.dp)) },
+                        onClick      = { menuExpanded = false; onVerDetalle() }
                     )
                     DropdownMenuItem(
-                        text = { Text("Nueva cita") },
-                        leadingIcon = { Icon(Icons.Default.Event, null) },
-                        onClick = { menuExpanded = false; /* Implementar si existe */ }
+                        text         = { Text("Nueva cita") },
+                        leadingIcon  = { Icon(Icons.Outlined.CalendarMonth, null, modifier = Modifier.size(18.dp)) },
+                        onClick      = { menuExpanded = false }
                     )
                 }
             }
@@ -275,16 +316,16 @@ private fun ClienteCard(
     }
 }
 
-// ─── Empty State Estilizado ──────────────────────────────────────────────────
+// ─── Empty State ──────────────────────────────────────────────────────────────
 
 @Composable
 private fun ClienteEmptyState(
-    icon: ImageVector,
-    titulo: String,
-    subtitulo: String,
-    colorIcono: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurfaceVariant,
-    accionLabel: String? = null,
-    onAccion: (() -> Unit)? = null
+    icon        : ImageVector,
+    titulo      : String,
+    subtitulo   : String,
+    colorIcono  : androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurfaceVariant,
+    accionLabel : String? = null,
+    onAccion    : (() -> Unit)? = null
 ) {
     Column(
         modifier = Modifier
@@ -294,32 +335,46 @@ private fun ClienteEmptyState(
         verticalArrangement = Arrangement.Center
     ) {
         Surface(
-            shape = RoundedCornerShape(24.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant
+            shape = RoundedCornerShape(20.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
         ) {
             Icon(
-                imageVector = icon,
+                imageVector        = icon,
                 contentDescription = null,
-                modifier = Modifier.padding(20.dp).size(48.dp),
+                modifier           = Modifier
+                    .padding(20.dp)
+                    .size(40.dp),
                 tint = colorIcono
             )
         }
+
         Spacer(Modifier.height(16.dp))
+
+        if (titulo.isNotBlank()) {
+            Text(
+                text       = titulo,
+                style      = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Medium,
+                textAlign  = TextAlign.Center
+            )
+            Spacer(Modifier.height(4.dp))
+        }
+
         Text(
-            text = titulo,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
+            text      = subtitulo,
+            style     = MaterialTheme.typography.bodySmall,
+            color     = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
         )
-        Text(
-            text = subtitulo,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
-        )
+
         if (accionLabel != null && onAccion != null) {
-            Spacer(Modifier.height(16.dp))
-            Button(onClick = onAccion) {
+            Spacer(Modifier.height(20.dp))
+            OutlinedButton(
+                onClick = onAccion,
+                shape   = RoundedCornerShape(12.dp)
+            ) {
+                Icon(Icons.Outlined.Refresh, null, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(6.dp))
                 Text(accionLabel)
             }
         }

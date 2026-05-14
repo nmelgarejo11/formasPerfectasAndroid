@@ -45,7 +45,7 @@ fun ProfesionalesScreen(
                 title = {
                     Column {
                         Text(
-                            text = "Seleccionar profesional",
+                            text = "Profesional",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
@@ -76,7 +76,7 @@ fun ProfesionalesScreen(
             OutlinedTextField(
                 value = busqueda,
                 onValueChange = { busqueda = it },
-                label = { Text("Buscar por nombre o especialidad") },
+                label = { Text("Buscar") },
                 leadingIcon = { Icon(Icons.Default.Search, null) },
                 trailingIcon = {
                     if (busqueda.isNotBlank()) {
