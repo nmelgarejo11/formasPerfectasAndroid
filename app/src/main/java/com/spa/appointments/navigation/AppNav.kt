@@ -24,7 +24,6 @@ import com.spa.appointments.ui.splash.SplashEmpresaScreen
 import com.spa.appointments.ui.splash.SplashScreen
 import com.spa.appointments.ui.clientes.SeleccionarClienteScreen
 import com.spa.appointments.ui.clientes.ClientesScreen
-import com.spa.appointments.ui.clientes.ClienteDetalleScreen
 import com.spa.appointments.ui.citas.ReagendamientosScreen
 import com.spa.appointments.ui.admin.catalogos.CategoriasScreen
 import com.spa.appointments.ui.admin.catalogos.ServiciosAdminScreen
@@ -297,23 +296,6 @@ fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
         composable(Routes.CLIENTES) {
             ClientesScreen(
                 onBack         = { nav.popBackStack() }
-            )
-        }
-
-        composable("${Routes.CLIENTE_DETALLE}/{id}") { backEntry ->
-            val id = backEntry.arguments?.getString("id")?.toIntOrNull() ?: return@composable
-            ClienteDetalleScreen(
-                idCliente = id,
-                esNuevo   = false,
-                onBack    = { nav.popBackStack() }
-            )
-        }
-
-        composable(Routes.CLIENTE_NUEVO) {
-            ClienteDetalleScreen(
-                idCliente = 0,
-                esNuevo   = true,
-                onBack    = { nav.popBackStack() }
             )
         }
 
