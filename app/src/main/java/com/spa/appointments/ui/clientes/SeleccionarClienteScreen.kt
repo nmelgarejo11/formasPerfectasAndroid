@@ -38,21 +38,79 @@ fun SeleccionarClienteScreen(
 
     Scaffold(
         topBar = {
+
             TopAppBar(
                 title = {
-                    Text(
-                        text = "Cliente",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
+
+                    Column {
+
+                        Text(
+                            text = "Clientes",
+                            style =
+                            MaterialTheme.typography
+                                .titleMedium,
+                            fontWeight =
+                            FontWeight.SemiBold
+                        )
+
+                        val subtitulo = when (uiState) {
+
+                            is SeleccionarClienteUiState.Resultados -> {
+
+                                val total =
+                                    (uiState as
+                                            SeleccionarClienteUiState.Resultados)
+                                        .clientes.size
+
+                                "$total ${
+                                    if (total == 1)
+                                        "cliente encontrado"
+                                    else
+                                        "clientes encontrados"
+                                }"
+                            }
+
+                            is SeleccionarClienteUiState.Idle ->
+                                "Busca por nombre o teléfono"
+
+                            is SeleccionarClienteUiState.Buscando ->
+                                "Buscando clientes..."
+
+                            is SeleccionarClienteUiState.SinResultados ->
+                                "Sin coincidencias"
+
+                            else -> ""
+                        }
+
+                        if (subtitulo.isNotBlank()) {
+
+                            Text(
+                                text = subtitulo,
+                                style =
+                                MaterialTheme.typography
+                                    .labelSmall,
+                                color =
+                                MaterialTheme.colorScheme
+                                    .onSurfaceVariant
+                            )
+                        }
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
+
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Volver"
+                        )
+                    }
+                },
+
+                colors =
+                TopAppBarDefaults.topAppBarColors(
+                    containerColor =
+                    MaterialTheme.colorScheme
+                        .surface
                 )
             )
         }

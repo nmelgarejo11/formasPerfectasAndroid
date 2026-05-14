@@ -48,29 +48,123 @@ fun ServiciosScreen(
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
+
             Column {
+
                 TopAppBar(
                     title = {
-                        Text(
-                            text = "Servicios",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = onBack) {
-                            Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
+
+                        Column {
+
+                            Text(
+                                text = "Servicios",
+                                style =
+                                MaterialTheme.typography
+                                    .titleMedium,
+                                fontWeight =
+                                FontWeight.SemiBold
+                            )
+
+                            val subtitulo = when (val state = uiState) {
+
+                                is ServiciosUiState.Loading ->
+                                    "Cargando servicios..."
+
+                                is ServiciosUiState.Error ->
+                                    "Ocurrió un error"
+
+                                is ServiciosUiState.Success -> {
+
+                                    val filtrados =
+                                        if (query.isBlank())
+                                            state.items
+                                        else
+                                            state.items.filter { servicio ->
+
+                                                servicio.nombre.contains(
+                                                    query,
+                                                    ignoreCase = true
+                                                ) ||
+
+                                                        servicio.categoria.contains(
+                                                            query,
+                                                            ignoreCase = true
+                                                        ) ||
+
+                                                        servicio.descripcion
+                                                            ?.contains(
+                                                                query,
+                                                                ignoreCase = true
+                                                            ) == true
+                                            }
+
+                                    val total =
+                                        filtrados.size
+
+                                    when {
+                                        query.isBlank() ->
+
+                                            "$total ${
+                                                if (total == 1)
+                                                    "servicio disponible"
+                                                else
+                                                    "servicios disponibles"
+                                            }"
+
+                                        total == 0 ->
+                                            "Sin coincidencias"
+
+                                        else ->
+
+                                            "$total ${
+                                                if (total == 1)
+                                                    "servicio encontrado"
+                                                else
+                                                    "servicios encontrados"
+                                            }"
+                                    }
+                                }
+                            }
+
+                            if (subtitulo.isNotBlank()) {
+
+                                Text(
+                                    text = subtitulo,
+                                    style =
+                                    MaterialTheme.typography
+                                        .labelSmall,
+
+                                    color =
+                                    MaterialTheme.colorScheme
+                                        .onSurfaceVariant
+                                )
+                            }
                         }
                     },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.background
+
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(
+                                Icons.Default.ArrowBack,
+                                contentDescription = "Volver"
+                            )
+                        }
+                    },
+
+                    colors =
+                    TopAppBarDefaults.topAppBarColors(
+                        containerColor =
+                        MaterialTheme.colorScheme
+                            .background
                     )
                 )
 
-                // Buscador
+                // ── Buscador ───────────────────────────────
                 SearchBar(
                     query = query,
-                    onQueryChange = { query = it },
+                    onQueryChange = {
+                        query = it
+                    },
                     onClear = {
                         query = ""
                         focusManager.clearFocus()
@@ -84,7 +178,9 @@ fun ServiciosScreen(
 
                 HorizontalDivider(
                     thickness = 0.5.dp,
-                    color = MaterialTheme.colorScheme.outlineVariant
+                    color =
+                    MaterialTheme.colorScheme
+                        .outlineVariant
                 )
             }
         }
