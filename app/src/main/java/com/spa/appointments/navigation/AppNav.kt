@@ -296,9 +296,7 @@ fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
         // ── Clientes ─────────────────────────────────────────────────────────
         composable(Routes.CLIENTES) {
             ClientesScreen(
-                onBack         = { nav.popBackStack() },
-                onVerCliente   = { id -> nav.navigate("${Routes.CLIENTE_DETALLE}/$id") },
-                onCrearCliente = { nav.navigate(Routes.CLIENTE_NUEVO) }
+                onBack         = { nav.popBackStack() }
             )
         }
 
