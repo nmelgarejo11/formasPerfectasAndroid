@@ -88,12 +88,35 @@ fun ClienteDetalleDialog(
     }
 
     fun validar(): Boolean {
-        nombreError   = if (nombre.isBlank()) "Requerido" else null
-        apellidoError = if (apellido.isBlank()) "Requerido" else null
-        emailError    = if (email.isNotBlank() &&
-            !android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()
-        ) "Email inválido" else null
-        return nombreError == null && apellidoError == null && emailError == null
+
+        nombreError =
+            if (nombre.isBlank())
+                "Requerido"
+            else
+                null
+
+        apellidoError =
+            if (apellido.isBlank())
+                "Requerido"
+            else
+                null
+
+        emailError = when {
+            email.isBlank() ->
+                "Requerido"
+
+            !android.util.Patterns
+                .EMAIL_ADDRESS
+                .matcher(email)
+                .matches() ->
+                "Email inválido"
+
+            else -> null
+        }
+
+        return nombreError == null &&
+                apellidoError == null &&
+                emailError == null
     }
 
     // ── Dialog principal ──────────────────────────────────────────────────────
@@ -186,7 +209,7 @@ fun ClienteDetalleDialog(
                     OutlinedTextField(
                         value         = email,
                         onValueChange = { email = it; emailError = null },
-                        label         = { Text("Correo electrónico") },
+                        label         = { Text("Correo electrónico *") },
                         leadingIcon   = { Icon(Icons.Outlined.Email, null) },
                         isError       = emailError != null,
                         supportingText = emailError?.let { { Text(it) } },
