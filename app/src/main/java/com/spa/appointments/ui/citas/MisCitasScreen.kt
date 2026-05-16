@@ -2,6 +2,7 @@ package com.spa.appointments.ui.citas
 
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
+import android.widget.Toast
 import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -38,7 +39,10 @@ import com.spa.appointments.domain.model.ServicioCita
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
+import java.time.LocalDate
+import java.time.ZoneId
 import java.util.Calendar
+import java.util.TimeZone
 
 // ─── Screen principal ─────────────────────────────────────────────────────────
 
@@ -1168,71 +1172,104 @@ private fun parsearServicios(json: String?): List<ServicioCita> {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AsignarCitaGrupalDialog(
-    cita:      Cita,
+    cita: Cita,
     onConfirm: (idsProfesionales: List<Int>?, fechaHoraInicio: String?, fechaHoraFin: String?) -> Unit,
     onDismiss: () -> Unit
 ) {
-    val context   = LocalContext.current
-    val calendar  = remember { Calendar.getInstance() }
+    val context = LocalContext.current
     val servicios = remember(cita.servicios) { parsearServicios(cita.servicios) }
-    val duracion  = servicios.firstOrNull()?.duracion ?: 60
+    val duracion = servicios.firstOrNull()?.duracion ?: 60
+
+    // 1. Calculamos el inicio del día de hoy directamente en UTC para el DatePicker
+    val hoyUtcMillis = remember {
+        Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply {
+            val local = Calendar.getInstance()
+            clear()
+            set(local.get(Calendar.YEAR), local.get(Calendar.MONTH), local.get(Calendar.DAY_OF_MONTH))
+        }.timeInMillis
+    }
+
+    // 2. Bloqueo de días pasados
+    val datePickerState = rememberDatePickerState(
+        selectableDates = object : SelectableDates {
+            override fun isSelectableDate(utcTimeMillis: Long): Boolean {
+                return utcTimeMillis >= hoyUtcMillis
+            }
+        }
+    )
+
+    // 3. MEJORA: El reloj ahora abre por defecto en la hora y minutos actuales del sistema
+    val ahoraInstante = remember { Calendar.getInstance() }
+    val timePickerState = rememberTimePickerState(
+        initialHour = ahoraInstante.get(Calendar.HOUR_OF_DAY),
+        initialMinute = ahoraInstante.get(Calendar.MINUTE),
+        is24Hour = false
+    )
+
+    var mostrarDatePicker by remember { mutableStateOf(false) }
+    var mostrarTimePicker by remember { mutableStateOf(false) }
 
     var fechaSeleccionada by remember { mutableStateOf<String?>(null) }
-    var horaSeleccionada  by remember { mutableStateOf<String?>(null) }
-    var profesionalesSel  by remember { mutableStateOf<List<Int>>(emptyList()) }
-    var mostrarSelProf    by remember { mutableStateOf(false) }
+    var horaSeleccionada by remember { mutableStateOf<String?>(null) }
+    var profesionalesSel by remember { mutableStateOf<List<Int>>(emptyList()) }
+    var mostrarSelProf by remember { mutableStateOf(false) }
+
+    // Convertir la fecha seleccionada a String cuando cambie
+    LaunchedEffect(datePickerState.selectedDateMillis) {
+        datePickerState.selectedDateMillis?.let { millis ->
+            val cal = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply { timeInMillis = millis }
+            fechaSeleccionada = "%04d-%02d-%02d".format(
+                cal.get(Calendar.YEAR),
+                cal.get(Calendar.MONTH) + 1,
+                cal.get(Calendar.DAY_OF_MONTH)
+            )
+            horaSeleccionada = null // Resetea la hora para forzar a elegir una nueva válida
+        }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        shape            = RoundedCornerShape(25.dp),
-        containerColor   = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(25.dp),
+        containerColor = MaterialTheme.colorScheme.surface,
         title = {
             Text(
                 "Asignar Horario",
                 fontWeight = FontWeight.Bold,
-                textAlign  = TextAlign.Center,
-                modifier   = Modifier.fillMaxWidth()
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
             )
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                // Selector de Fecha
+                // Botón Selector de Fecha
                 OutlinedButton(
-                    onClick = {
-                        DatePickerDialog(context, { _, y, m, d ->
-                            fechaSeleccionada = "%04d-%02d-%02d".format(y, m + 1, d)
-                        }, calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH)).show()
-                    },
+                    onClick = { mostrarDatePicker = true },
                     modifier = Modifier.fillMaxWidth(),
-                    shape    = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(12.dp)
                 ) {
                     Icon(Icons.Default.CalendarMonth, null)
                     Spacer(Modifier.width(8.dp))
                     Text(fechaSeleccionada?.let { formatearFecha(it) } ?: "Seleccionar Fecha")
                 }
 
-                // Selector de Hora
+                // Botón Selector de Hora
                 OutlinedButton(
-                    onClick = {
-                        TimePickerDialog(context, { _, h, m ->
-                            horaSeleccionada = "%02d:%02d".format(h, m)
-                        }, calendar.get(Calendar.HOUR_OF_DAY), calendar.get(Calendar.MINUTE), true).show()
-                    },
-                    enabled  = fechaSeleccionada != null,
+                    onClick = { mostrarTimePicker = true },
+                    enabled = fechaSeleccionada != null,
                     modifier = Modifier.fillMaxWidth(),
-                    shape    = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(12.dp)
                 ) {
                     Icon(Icons.Default.Schedule, null)
                     Spacer(Modifier.width(8.dp))
                     Text(horaSeleccionada ?: "Seleccionar Hora de Inicio")
                 }
 
-                // Botón para desplegar selección de Profesionales
+                // Botón Profesionales
                 OutlinedButton(
-                    onClick  = { mostrarSelProf = true },
-                    enabled  = horaSeleccionada != null,
+                    onClick = { mostrarSelProf = true },
+                    enabled = horaSeleccionada != null,
                     modifier = Modifier.fillMaxWidth(),
-                    shape    = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(12.dp)
                 ) {
                     Icon(Icons.Default.People, null)
                     Spacer(Modifier.width(8.dp))
@@ -1241,13 +1278,13 @@ private fun AsignarCitaGrupalDialog(
 
                 if (mostrarSelProf) {
                     ProfesionalesSeleccionDialog(
-                        sedeId       = cita.idSede,
-                        fecha        = fechaSeleccionada!!,
-                        hora         = horaSeleccionada!!,
-                        duracion     = duracion,
+                        sedeId = cita.idSede,
+                        fecha = fechaSeleccionada!!,
+                        hora = horaSeleccionada!!,
+                        duracion = duracion,
                         seleccionados = profesionalesSel,
-                        onDismiss    = { mostrarSelProf = false },
-                        onConfirm    = {
+                        onDismiss = { mostrarSelProf = false },
+                        onConfirm = {
                             profesionalesSel = it
                             mostrarSelProf = false
                         }
@@ -1259,7 +1296,6 @@ private fun AsignarCitaGrupalDialog(
             Button(
                 onClick = {
                     val inicioIso = "${fechaSeleccionada}T${horaSeleccionada}:00"
-                    // Cálculo de la hora de fin sumando la duración en minutos
                     val calFin = Calendar.getInstance().apply {
                         val partesF = fechaSeleccionada!!.split("-")
                         val partesH = horaSeleccionada!!.split(":")
@@ -1272,9 +1308,9 @@ private fun AsignarCitaGrupalDialog(
                     )
                     onConfirm(profesionalesSel.ifEmpty { null }, inicioIso, finIso)
                 },
-                enabled  = fechaSeleccionada != null && horaSeleccionada != null,
+                enabled = fechaSeleccionada != null && horaSeleccionada != null,
                 modifier = Modifier.fillMaxWidth(),
-                shape    = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp)
             ) {
                 Text("Confirmar Asignación")
             }
@@ -1285,6 +1321,64 @@ private fun AsignarCitaGrupalDialog(
             }
         }
     )
+
+    // --- DIÁLOGO DE FECHA (M3) ---
+    if (mostrarDatePicker) {
+        DatePickerDialog(
+            onDismissRequest = { mostrarDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = { mostrarDatePicker = false }) { Text("Aceptar") }
+            },
+            dismissButton = {
+                TextButton(onClick = { mostrarDatePicker = false }) { Text("Cancelar") }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
+    // --- DIÁLOGO DE HORA CON CONTROL DE HORAS PASADAS ---
+    if (mostrarTimePicker) {
+        AlertDialog(
+            onDismissRequest = { mostrarTimePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    val horaElegida = timePickerState.hour
+                    val minutoElegido = timePickerState.minute
+
+                    // 1. Verificamos si la fecha seleccionada en el calendario es HOY
+                    val esHoy = datePickerState.selectedDateMillis?.let {
+                        val calSel = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply { timeInMillis = it }
+                        val calActual = Calendar.getInstance()
+                        calSel.get(Calendar.YEAR) == calActual.get(Calendar.YEAR) &&
+                                calSel.get(Calendar.DAY_OF_YEAR) == calActual.get(Calendar.DAY_OF_YEAR)
+                    } ?: false
+
+                    // 2. Si es hoy, validamos que la hora/minuto no sean menores al tiempo actual
+                    if (esHoy) {
+                        val ahora = Calendar.getInstance()
+                        val horaActual = ahora.get(Calendar.HOUR_OF_DAY)
+                        val minutoActual = ahora.get(Calendar.MINUTE)
+
+                        if (horaElegida < horaActual || (horaElegida == horaActual && minutoElegido < minutoActual)) {
+                            Toast.makeText(context, "No puedes elegir una hora pasada", Toast.LENGTH_SHORT).show()
+                            return@TextButton // Rompe la ejecución aquí, impidiendo que cierre el diálogo
+                        }
+                    }
+
+                    // Si pasa el filtro (o es un día futuro), se guarda el dato exitosamente
+                    horaSeleccionada = "%02d:%02d".format(horaElegida, minutoElegido)
+                    mostrarTimePicker = false
+                }) { Text("Aceptar") }
+            },
+            dismissButton = {
+                TextButton(onClick = { mostrarTimePicker = false }) { Text("Cancelar") }
+            },
+            text = {
+                TimePicker(state = timePickerState)
+            }
+        )
+    }
 }
 
 // ─── ProfesionalesSeleccionDialog (NUEVO) ──────────────────────────────────
