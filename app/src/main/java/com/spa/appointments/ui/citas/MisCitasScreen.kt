@@ -1106,7 +1106,8 @@ private fun FinalizarCitaDialog(
                     text  = "Selecciona el método de pago aplicado:",
                     style = MaterialTheme.typography.bodyMedium
                 )
-                // ── Selector principal ────────────────────────────────
+
+                // ── Selector Principal: Método de Pago ────────────────────────────────
                 ExposedDropdownMenuBox(
                     expanded = expanded,
                     onExpandedChange = { expanded = it }
@@ -1128,17 +1129,18 @@ private fun FinalizarCitaDialog(
                                 text = { Text(mp.nombre) },
                                 onClick = {
                                     seleccionado = mp
-                                    detalleSeleccionado = null
+                                    detalleSeleccionado = null // Limpia el detalle previo al cambiar de método
                                     expanded = false
                                 }
                             )
                         }
                     }
                 }
-                // ── Selector detalle SOLO si es OTROS (ID = 8) ───────
-                if (seleccionado?.nombre == "Otro") {
+
+                // ── Selector Detalle: Uso seguro con ?. y ?.isNotEmpty() ───
+                if (seleccionado?.detalles?.isNotEmpty() == true) {
                     Text(
-                        text  = "Especifique el método:",
+                        text  = "Especifique el detalle:",
                         style = MaterialTheme.typography.labelSmall
                     )
                     ExposedDropdownMenuBox(
@@ -1157,7 +1159,8 @@ private fun FinalizarCitaDialog(
                             expanded = expandedDetalle,
                             onDismissRequest = { expandedDetalle = false }
                         ) {
-                            seleccionado?.detalles?.forEach { detalle ->
+                            // Si detalles es nulo, usamos una lista vacía por defecto para evitar el error
+                            (seleccionado?.detalles ?: emptyList()).forEach { detalle ->
                                 DropdownMenuItem(
                                     text = { Text(detalle.nombre) },
                                     onClick = {
@@ -1174,7 +1177,8 @@ private fun FinalizarCitaDialog(
         confirmButton = {
             Button(
                 onClick  = { seleccionado?.let { onConfirm(it.id, detalleSeleccionado?.id) } },
-                enabled  = seleccionado != null && (seleccionado?.id != 8 || detalleSeleccionado != null),
+                // Validación segura: Si es nulo o vacío habilitará directamente el botón, a menos que exija detalle
+                enabled  = seleccionado != null && (seleccionado?.detalles?.isEmpty() == true || detalleSeleccionado != null),
                 shape    = RoundedCornerShape(12.dp),
                 modifier = Modifier.fillMaxWidth(),
                 colors   = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary)
