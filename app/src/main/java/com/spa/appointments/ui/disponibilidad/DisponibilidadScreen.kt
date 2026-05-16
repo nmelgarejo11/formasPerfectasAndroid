@@ -1,8 +1,6 @@
-// Ruta: app/src/main/java/com/spa/appointments/ui/disponibilidad/DisponibilidadScreen.kt
 package com.spa.appointments.ui.disponibilidad
 
 import androidx.compose.animation.*
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -27,6 +25,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.spa.appointments.domain.model.Profesional
 import com.spa.appointments.domain.model.Servicio
 import com.spa.appointments.domain.model.SlotDisponible
+import com.spa.appointments.ui.reserva.ReservaSharedViewModel
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
@@ -36,9 +35,10 @@ import java.util.Locale
 @Composable
 fun DisponibilidadScreen(
     servicio:     Servicio,
-    profesional:  Profesional,
+    profesional:  Profesional?, // Permitimos nulo si es una asignación grupal abierta
     onBack:       () -> Unit,
     onCitaCreada: () -> Unit,
+    sharedVm:     ReservaSharedViewModel, // Recibimos el SharedViewModel desde el AppNav
     vm: DisponibilidadViewModel = hiltViewModel()
 ) {
     LaunchedEffect(Unit) {
@@ -59,7 +59,9 @@ fun DisponibilidadScreen(
         if (uiState is DisponibilidadUiState.CitaCreada) mostrarExito = true
     }
 
-    // ── Diálogo de confirmación ───────────────────────────────────────────────
+    // Botón habilitado si se seleccionó slot (Individual) o si es un flujo de Cita Grupal (Solo requiere fecha)
+    val botonHabilitado = (slotSeleccionado != null || sharedVm.esGrupal) && uiState !is DisponibilidadUiState.CreandoCita
+
     if (mostrarDialogo) {
         AlertDialog(
             onDismissRequest = { mostrarDialogo = false },
@@ -76,46 +78,68 @@ fun DisponibilidadScreen(
                     )
                 }
             },
-            title = { Text("Confirmar reserva", fontWeight = FontWeight.Bold) },
+            title = { Text(if(sharedVm.esGrupal) "Confirmar Cita Grupal" else "Confirmar reserva", fontWeight = FontWeight.Bold) },
             text  = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-
                     ConfirmacionFila(
                         icono  = Icons.Default.Spa,
                         label  = "Servicio",
                         valor  = servicio.nombre
                     )
-                    ConfirmacionFila(
-                        icono  = Icons.Default.Badge,
-                        label  = "Profesional",
-                        valor  = profesional.nombreCompleto
-                    )
+
+                    if (sharedVm.esGrupal) {
+                        ConfirmacionFila(
+                            icono  = Icons.Default.Person,
+                            label  = "Responsable",
+                            valor  = sharedVm.responsableNombre
+                        )
+                        ConfirmacionFila(
+                            icono  = Icons.Default.Group,
+                            label  = "Asistentes",
+                            valor  = "${sharedVm.cantidadPersonas} personas"
+                        )
+                    } else {
+                        ConfirmacionFila(
+                            icono  = Icons.Default.Badge,
+                            label  = "Profesional",
+                            valor  = profesional?.nombreCompleto ?: ""
+                        )
+                    }
+
                     ConfirmacionFila(
                         icono  = Icons.Default.CalendarToday,
                         label  = "Fecha",
-                        valor  = fechaSeleccionada.format(
-                            DateTimeFormatter.ofPattern("dd/MM/yyyy")
+                        valor  = fechaSeleccionada.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+                    )
+
+                    if (!sharedVm.esGrupal) {
+                        ConfirmacionFila(
+                            icono  = Icons.Default.Schedule,
+                            label  = "Hora",
+                            valor  = "${slotSeleccionado?.horaInicio?.substring(0,5)} – ${slotSeleccionado?.horaFin?.substring(0,5)}"
                         )
-                    )
-                    ConfirmacionFila(
-                        icono  = Icons.Default.Schedule,
-                        label  = "Hora",
-                        valor  = "${slotSeleccionado?.horaInicio?.substring(0,5)} – ${slotSeleccionado?.horaFin?.substring(0,5)}"
-                    )
+                    }
+
                     HorizontalDivider()
+
+                    // Cálculo multiplicador del total para grupos
+                    val precioCalculado = if (sharedVm.esGrupal) servicio.precioBase * sharedVm.cantidadPersonas else servicio.precioBase
                     ConfirmacionFila(
                         icono  = Icons.Default.AttachMoney,
                         label  = "Total",
-                        valor  = "${"$%,.0f".format(servicio.precioBase)}",
+                        valor  = "${"$%,.0f".format(precioCalculado)}",
                         negrita = true
                     )
                 }
             },
             confirmButton = {
                 Button(
-                    onClick = { mostrarDialogo = false; vm.confirmarCita(notas.ifBlank { null }) },
+                    onClick = {
+                        mostrarDialogo = false
+                        vm.confirmarCita(sharedVm, notas.ifBlank { null })
+                    },
                     shape   = RoundedCornerShape(10.dp)
-                ) { Text("Confirmar reserva") }
+                ) { Text("Confirmar") }
             },
             dismissButton = {
                 OutlinedButton(
@@ -126,7 +150,6 @@ fun DisponibilidadScreen(
         )
     }
 
-    // ── Diálogo de éxito ──────────────────────────────────────────────────────
     if (mostrarExito) {
         AlertDialog(
             onDismissRequest = {},
@@ -153,8 +176,7 @@ fun DisponibilidadScreen(
             },
             text  = {
                 Text(
-                    text      = (uiState as? DisponibilidadUiState.CitaCreada)?.mensaje
-                        ?: "Tu cita fue creada exitosamente.",
+                    text      = (uiState as? DisponibilidadUiState.CitaCreada)?.mensaje ?: "Tu cita fue creada exitosamente.",
                     textAlign = TextAlign.Center,
                     color     = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier  = Modifier.fillMaxWidth()
@@ -162,7 +184,12 @@ fun DisponibilidadScreen(
             },
             confirmButton = {
                 Button(
-                    onClick = { mostrarExito = false; vm.resetear(); onCitaCreada() },
+                    onClick = {
+                        mostrarExito = false
+                        vm.resetear()
+                        sharedVm.limpiarReserva() // Limpieza del estado global al terminar
+                        onCitaCreada()
+                    },
                     shape   = RoundedCornerShape(10.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) { Text("Ver mis citas") }
@@ -176,7 +203,7 @@ fun DisponibilidadScreen(
                 title = {
                     Column {
                         Text(
-                            text       = "Elige fecha y hora",
+                            text       = if (sharedVm.esGrupal) "Elige la fecha grupal" else "Elige fecha y hora",
                             style      = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
@@ -205,7 +232,7 @@ fun DisponibilidadScreen(
                 ) { slot ->
                     Button(
                         onClick  = { mostrarDialogo = true },
-                        enabled  = slot != null && uiState !is DisponibilidadUiState.CreandoCita,
+                        enabled  = botonHabilitado,
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp, vertical = 12.dp)
@@ -220,15 +247,14 @@ fun DisponibilidadScreen(
                             )
                         } else {
                             Icon(
-                                imageVector        = if (slot != null) Icons.Default.EventAvailable
-                                else Icons.Default.Schedule,
+                                imageVector        = Icons.Default.EventAvailable,
                                 contentDescription = null,
                                 modifier           = Modifier.size(18.dp)
                             )
                             Spacer(Modifier.width(8.dp))
                             Text(
-                                text       = slot?.let { "Reservar a las ${it.horaInicio.substring(0,5)}" }
-                                    ?: "Selecciona un horario",
+                                text       = if (sharedVm.esGrupal) "Solicitar Cita Grupal"
+                                else slot?.let { "Reservar a las ${it.horaInicio.substring(0,5)}" } ?: "Selecciona un horario",
                                 fontWeight = FontWeight.SemiBold
                             )
                         }
@@ -237,7 +263,6 @@ fun DisponibilidadScreen(
             }
         }
     ) { padding ->
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -245,6 +270,7 @@ fun DisponibilidadScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(bottom = 8.dp)
         ) {
+            // Reutilizamos el card superior, enviando datos dummy de profesional si es grupal
             ResumenReserva(servicio = servicio, profesional = profesional)
 
             Spacer(Modifier.height(8.dp))
@@ -256,63 +282,64 @@ fun DisponibilidadScreen(
 
             Spacer(Modifier.height(16.dp))
 
-            // ── Slots ─────────────────────────────────────────────────────
-            when (val state = uiState) {
-                is DisponibilidadUiState.LoadingSlots -> {
-                    Box(
-                        modifier         = Modifier.fillMaxWidth().height(180.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
+            // ── Bloque condicional de slots: Solo renderiza si NO es una cita grupal ───────────────────
+            if (!sharedVm.esGrupal) {
+                when (val state = uiState) {
+                    is DisponibilidadUiState.LoadingSlots -> {
+                        Box(
+                            modifier         = Modifier.fillMaxWidth().height(180.dp),
+                            contentAlignment = Alignment.Center
                         ) {
-                            CircularProgressIndicator()
-                            Text(
-                                "Buscando horarios disponibles…",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                CircularProgressIndicator()
+                                Text("Buscando horarios disponibles…", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                         }
                     }
-                }
-
-                is DisponibilidadUiState.SlotsLoaded -> {
-                    SlotsGrid(
-                        slots            = state.slots,
-                        slotSeleccionado = slotSeleccionado,
-                        onSlotClick      = { vm.seleccionarSlot(it) }
-                    )
-                }
-
-                is DisponibilidadUiState.Error -> {
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.errorContainer
-                    ) {
-                        Row(
-                            modifier          = Modifier.padding(14.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                    is DisponibilidadUiState.SlotsLoaded -> {
+                        SlotsGrid(
+                            slots            = state.slots,
+                            slotSeleccionado = slotSeleccionado,
+                            onSlotClick      = { vm.seleccionarSlot(it) }
+                        )
+                    }
+                    is DisponibilidadUiState.Error -> {
+                        Surface(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.errorContainer
                         ) {
-                            Icon(
-                                Icons.Default.CloudOff, null,
-                                modifier = Modifier.size(18.dp),
-                                tint     = MaterialTheme.colorScheme.onErrorContainer
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text(
-                                text  = state.mensaje,
-                                color = MaterialTheme.colorScheme.onErrorContainer,
-                                style = MaterialTheme.typography.bodySmall
-                            )
+                            Row(
+                                modifier          = Modifier.padding(14.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Icons.Default.CloudOff, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onErrorContainer)
+                                Spacer(Modifier.width(8.dp))
+                                Text(text = state.mensaje, color = MaterialTheme.colorScheme.onErrorContainer, style = MaterialTheme.typography.bodySmall)
+                            }
                         }
                     }
+                    else -> Unit
                 }
-
-                else -> Unit
+            } else {
+                // Info para la vista grupal indicando que el día queda registrado para gestión administrativa
+                Card(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                ) {
+                    Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Info, null, tint = MaterialTheme.colorScheme.primary)
+                        Spacer(Modifier.width(12.dp))
+                        Text(
+                            text = "Las citas grupales se agendan para el día seleccionado. El equipo se contactará para coordinar la hora exacta del bloque.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
             }
 
             // ── Notas ─────────────────────────────────────────────────────
@@ -323,20 +350,16 @@ fun DisponibilidadScreen(
                 label         = { Text("Notas (opcional)") },
                 placeholder   = { Text("Ej: Alergia a ciertos productos…") },
                 leadingIcon   = { Icon(Icons.Default.Notes, null) },
-                modifier      = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
+                modifier      = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                 shape         = RoundedCornerShape(12.dp),
                 minLines      = 2,
                 maxLines      = 4
             )
-
             Spacer(Modifier.height(16.dp))
         }
     }
 }
 
-// ── Fila de confirmación ──────────────────────────────────────────────────────
 @Composable
 private fun ConfirmacionFila(
     icono:   androidx.compose.ui.graphics.vector.ImageVector,
@@ -344,36 +367,16 @@ private fun ConfirmacionFila(
     valor:   String,
     negrita: Boolean = false
 ) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier          = Modifier.fillMaxWidth()
-    ) {
-        Icon(
-            imageVector        = icono,
-            contentDescription = null,
-            modifier           = Modifier.size(16.dp),
-            tint               = MaterialTheme.colorScheme.primary
-        )
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        Icon(imageVector = icono, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
         Spacer(Modifier.width(8.dp))
-        Text(
-            text  = "$label:",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.width(80.dp)
-        )
-        Text(
-            text       = valor,
-            style      = MaterialTheme.typography.bodySmall,
-            fontWeight = if (negrita) FontWeight.Bold else FontWeight.Normal,
-            color      = if (negrita) MaterialTheme.colorScheme.primary
-            else MaterialTheme.colorScheme.onSurface
-        )
+        Text(text = "$label:", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(85.dp))
+        Text(text = valor, style = MaterialTheme.typography.bodySmall, fontWeight = if (negrita) FontWeight.Bold else FontWeight.Normal, color = if (negrita) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
     }
 }
 
-// ── Resumen de reserva ────────────────────────────────────────────────────────
 @Composable
-private fun ResumenReserva(servicio: Servicio, profesional: Profesional) {
+private fun ResumenReserva(servicio: Servicio, profesional: Profesional?) { // <-- Ahora acepta null
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -402,7 +405,8 @@ private fun ResumenReserva(servicio: Servicio, profesional: Profesional) {
                 )
                 Spacer(Modifier.width(4.dp))
                 Text(
-                    text  = profesional.nombreCompleto,
+                    // Muestra el nombre del profesional o el aviso de asignación abierta si es grupal
+                    text  = profesional?.nombreCompleto ?: "Asignación Abierta (Grupal)",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
@@ -437,7 +441,7 @@ private fun ResumenReserva(servicio: Servicio, profesional: Profesional) {
                         text       = "${"$%,.0f".format(servicio.precioBase)}",
                         style      = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.Bold,
-                        color      = MaterialTheme.colorScheme.onPrimaryContainer
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 }
             }
@@ -445,85 +449,37 @@ private fun ResumenReserva(servicio: Servicio, profesional: Profesional) {
     }
 }
 
-// ── Selector de fecha ─────────────────────────────────────────────────────────
 @Composable
-private fun SelectorFecha(
-    fechaSeleccionada:   LocalDate,
-    onFechaSeleccionada: (LocalDate) -> Unit
-) {
+private fun SelectorFecha(fechaSeleccionada: LocalDate, onFechaSeleccionada: (LocalDate) -> Unit) {
     val dias  = (0..29).map { LocalDate.now().plusDays(it.toLong()) }
     val today = LocalDate.now()
 
     Column {
-        Text(
-            text       = "Selecciona la fecha",
-            style      = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Bold,
-            modifier   = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-        )
-
-        LazyRow(
-            contentPadding        = PaddingValues(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
+        Text(text = "Selecciona la fecha", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+        LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             items(dias) { dia ->
                 val seleccionado = dia == fechaSeleccionada
                 val esHoy        = dia == today
-
-                // Agrupa el cambio de mes: muestra etiqueta si es el 1 del mes
-                // o el primer día de la lista
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    // Mini etiqueta de mes cuando cambia
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     if (dia.dayOfMonth == 1 || dia == today) {
                         Text(
-                            text     = if (esHoy) "HOY"
-                            else dia.month.getDisplayName(TextStyle.SHORT, Locale("es"))
-                                .uppercase(),
-                            fontSize = 8.sp,
-                            fontWeight = FontWeight.Bold,
-                            color    = if (seleccionado) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            text     = if (esHoy) "HOY" else dia.month.getDisplayName(TextStyle.SHORT, Locale("es")).uppercase(),
+                            fontSize = 8.sp, fontWeight = FontWeight.Bold, color = if (seleccionado) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                             modifier = Modifier.padding(bottom = 2.dp)
                         )
-                    } else {
-                        Spacer(Modifier.height(12.dp)) // alinea chips sin etiqueta
-                    }
+                    } else { Spacer(Modifier.height(12.dp)) }
 
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier
                             .clip(RoundedCornerShape(12.dp))
-                            .background(
-                                if (seleccionado) MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.surfaceVariant
-                            )
-                            .then(
-                                if (!seleccionado && esHoy)
-                                    Modifier.border(
-                                        1.5.dp,
-                                        MaterialTheme.colorScheme.primary,
-                                        RoundedCornerShape(12.dp)
-                                    )
-                                else Modifier
-                            )
+                            .background(if (seleccionado) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant)
+                            .then(if (!seleccionado && esHoy) Modifier.border(1.5.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp)) else Modifier)
                             .clickable { onFechaSeleccionada(dia) }
                             .padding(horizontal = 12.dp, vertical = 8.dp)
                     ) {
-                        Text(
-                            text     = dia.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale("es")),
-                            fontSize = 10.sp,
-                            color    = if (seleccionado) MaterialTheme.colorScheme.onPrimary
-                            else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text       = dia.dayOfMonth.toString(),
-                            fontWeight = FontWeight.Bold,
-                            fontSize   = 18.sp,
-                            color      = if (seleccionado) MaterialTheme.colorScheme.onPrimary
-                            else MaterialTheme.colorScheme.onSurface
-                        )
+                        Text(text = dia.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale("es")), fontSize = 10.sp, color = if (seleccionado) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(text = dia.dayOfMonth.toString(), fontWeight = FontWeight.Bold, fontSize = 18.sp, color = if (seleccionado) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface)
                     }
                 }
             }
@@ -531,115 +487,43 @@ private fun SelectorFecha(
     }
 }
 
-// ── Grid de slots ─────────────────────────────────────────────────────────────
 @Composable
-private fun SlotsGrid(
-    slots:            List<SlotDisponible>,
-    slotSeleccionado: SlotDisponible?,
-    onSlotClick:      (SlotDisponible) -> Unit
-) {
+private fun SlotsGrid(slots: List<SlotDisponible>, slotSeleccionado: SlotDisponible?, onSlotClick: (SlotDisponible) -> Unit) {
     val slotsDisponibles = slots.filter { it.disponible }
-
-    Column(
-        modifier = Modifier.padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Row(
-            modifier              = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment     = Alignment.CenterVertically
-        ) {
-            Text(
-                text       = "Horarios disponibles",
-                style      = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold
-            )
+    Column(modifier = Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Text(text = "Horarios disponibles", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
             if (slotsDisponibles.isNotEmpty()) {
-                Text(
-                    text  = "${slotsDisponibles.size} disponibles",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Text(text = "${slotsDisponibles.size} disponibles", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
 
         if (slotsDisponibles.isEmpty()) {
-            Surface(
-                shape    = RoundedCornerShape(12.dp),
-                color    = MaterialTheme.colorScheme.surfaceVariant,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier          = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        Icons.Default.EventBusy, null,
-                        modifier = Modifier.size(20.dp),
-                        tint     = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+            Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.fillMaxWidth()) {
+                Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.EventBusy, null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.width(10.dp))
-                    Text(
-                        text  = "No hay horarios disponibles para este día.",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.bodySmall
-                    )
+                    Text(text = "No hay horarios disponibles para este día.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                 }
             }
             return
         }
 
         val filas = slotsDisponibles.chunked(3)
-
         filas.forEach { fila ->
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier              = Modifier.fillMaxWidth()
-            ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                 fila.forEach { slot ->
                     val seleccionado = slot == slotSeleccionado
-
                     Surface(
-                        shape    = RoundedCornerShape(10.dp),
-                        color    = if (seleccionado) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.surfaceVariant,
-                        border   = if (seleccionado) null
-                        else androidx.compose.foundation.BorderStroke(
-                            1.dp,
-                            MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
-                        ),
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable { onSlotClick(slot) }
+                        shape = RoundedCornerShape(10.dp),
+                        color = if (seleccionado) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                        border = if (seleccionado) null else androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)),
+                        modifier = Modifier.weight(1f).clickable { onSlotClick(slot) }
                     ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier            = Modifier.padding(vertical = 12.dp)
-                        ) {
-                            Text(
-                                text       = slot.horaInicio.substring(0, 5),
-                                textAlign  = TextAlign.Center,
-                                fontWeight = if (seleccionado) FontWeight.Bold else FontWeight.Normal,
-                                fontSize   = 14.sp,
-                                color      = if (seleccionado) MaterialTheme.colorScheme.onPrimary
-                                else MaterialTheme.colorScheme.onSurface
-                            )
-                            if (seleccionado) {
-                                Icon(
-                                    Icons.Default.Check, null,
-                                    modifier = Modifier
-                                        .padding(top = 2.dp)
-                                        .size(12.dp),
-                                    tint     = MaterialTheme.colorScheme.onPrimary
-                                )
-                            }
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(vertical = 12.dp)) {
+                            Text(text = slot.horaInicio.substring(0, 5), textAlign = TextAlign.Center, fontWeight = if (seleccionado) FontWeight.Bold else FontWeight.Normal, fontSize = 14.sp, color = if (seleccionado) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface)
                         }
                     }
-                }
-
-                // Relleno para filas incompletas
-                repeat(3 - fila.size) {
-                    Spacer(modifier = Modifier.weight(1f))
                 }
             }
         }

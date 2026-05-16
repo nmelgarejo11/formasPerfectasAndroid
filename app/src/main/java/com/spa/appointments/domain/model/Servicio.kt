@@ -12,5 +12,6 @@ data class Servicio(
     @Json(name = "precioBase")      val precioBase: Double,
     @Json(name = "icono")           val icono: String?,
     @Json(name = "idCategoria")     val idCategoria: Int,
-    @Json(name = "categoria")       val categoria: String
+    @Json(name = "categoria")       val categoria: String,
+    @Json(name = "esGrupal")        val esGrupal: Boolean
 )

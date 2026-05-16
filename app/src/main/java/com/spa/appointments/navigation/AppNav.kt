@@ -42,16 +42,17 @@ import com.spa.appointments.ui.gastos.GastoScreen
 import com.spa.appointments.ui.metodopago.MetodoPagoDetalleScreen
 import com.spa.appointments.ui.metodopago.MetodoPagoScreen
 import com.spa.appointments.ui.tema.TemaScreen
+import com.spa.appointments.ui.citas.ResponsableGrupalScreen
 
 @Composable
 fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
     val nav = rememberNavController()
 
     val rutasConocidas = setOf(
-        Routes.CLIENTES,
-        Routes.SELECCIONAR_CLIENTE,
         Routes.SERVICIOS,
         Routes.PROFESIONALES,
+        Routes.SELECCIONAR_CLIENTE,
+        Routes.RESPONSABLE_GRUPAL,
         Routes.DISPONIBILIDAD,
         Routes.MIS_CITAS,
         Routes.HISTORIAL,
@@ -66,77 +67,50 @@ fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
         Routes.INGRESOS_VS_GASTOS,
         Routes.ADMIN_TEMA,
         Routes.METODOS_PAGO,
+        Routes.CLIENTES,
         "logout"
     )
 
     NavHost(navController = nav, startDestination = Routes.SPLASH) {
 
-        // ── Splash ───────────────────────────────────────────────────────────
+        // ── Splash & Auth ────────────────────────────────────
         composable(Routes.SPLASH) {
             SplashScreen(
-                onGoLogin = {
-                    nav.navigate(Routes.LOGIN) {
-                        popUpTo(Routes.SPLASH) { this.inclusive = true }
-                    }
-                },
-                onGoHome = {
-                    nav.navigate(Routes.HOME) {
-                        popUpTo(Routes.SPLASH) { this.inclusive = true }
-                    }
-                },
-                onGoExpired = {
-                    nav.navigate(Routes.DEMO_EXPIRADO) {
-                        popUpTo(Routes.SPLASH) { this.inclusive = true }
-                    }
-                }
+                onGoLogin = { nav.navigate(Routes.LOGIN) { popUpTo(Routes.SPLASH) { inclusive = true } } },
+                onGoHome = { nav.navigate(Routes.HOME) { popUpTo(Routes.SPLASH) { inclusive = true } } },
+                onGoExpired = { nav.navigate(Routes.DEMO_EXPIRADO) { popUpTo(Routes.SPLASH) { inclusive = true } } }
             )
         }
 
-        // ── Login ────────────────────────────────────────────────────────────
         composable(Routes.LOGIN) {
             val vm = hiltViewModel<LoginViewModel>()
             LoginScreen(
-                vm             = vm,
-                onLoginSuccess = {
-                    nav.navigate(Routes.SPLASH_EMPRESA) {
-                        popUpTo(Routes.LOGIN) { this.inclusive = true }
-                    }
-                },
-                onLoginExpired = {
-                    nav.navigate(Routes.DEMO_EXPIRADO) {
-                        popUpTo(Routes.LOGIN) { this.inclusive = true }
-                    }
-                }
+                vm = vm,
+                onLoginSuccess = { nav.navigate(Routes.SPLASH_EMPRESA) { popUpTo(Routes.LOGIN) { inclusive = true } } },
+                onLoginExpired = { nav.navigate(Routes.DEMO_EXPIRADO) { popUpTo(Routes.LOGIN) { inclusive = true } } }
             )
         }
 
         composable(Routes.SPLASH_EMPRESA) {
             SplashEmpresaScreen(
-                onContinuar = {
-                    nav.navigate(Routes.HOME) {
-                        popUpTo(Routes.SPLASH_EMPRESA) { this.inclusive = true }
-                    }
-                }
+                onContinuar = { nav.navigate(Routes.HOME) { popUpTo(Routes.SPLASH_EMPRESA) { inclusive = true } } }
             )
         }
 
-        // ── Home ─────────────────────────────────────────────────────────────
+        // ── Home ─────────────────────────────────────────────
+
         composable(Routes.HOME) {
             val homeVm = hiltViewModel<HomeViewModel>()
             HomeScreen(
                 onLogout = {
                     homeVm.logout()
-                    nav.navigate(Routes.LOGIN) {
-                        popUpTo(Routes.HOME) { this.inclusive = true }
-                    }
+                    nav.navigate(Routes.LOGIN) { popUpTo(Routes.HOME) { inclusive = true } }
                 },
                 onNavigate = { ruta ->
                     when (ruta) {
                         "logout" -> {
                             homeVm.logout()
-                            nav.navigate(Routes.LOGIN) {
-                                popUpTo(Routes.HOME) { this.inclusive = true }
-                            }
+                            nav.navigate(Routes.LOGIN) { popUpTo(Routes.HOME) { inclusive = true } }
                         }
                         in rutasConocidas -> nav.navigate(ruta)
                         else -> Unit
@@ -147,49 +121,36 @@ fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
             )
         }
 
-        // ── Flujo de reserva ─────────────────────────────────────────────────
-
-        composable(Routes.SELECCIONAR_CLIENTE) {
-            val backEntry = remember(it) {
-                try { nav.getBackStackEntry(Routes.SELECCIONAR_CLIENTE) }
-                catch (e: Exception) { it }
-            }
-            val sharedVm = hiltViewModel<ReservaSharedViewModel>(backEntry)
-
-            SeleccionarClienteScreen(
-                onBack = { nav.popBackStack() },
-                onClienteSeleccionado = { cliente ->
-                    sharedVm.clienteSeleccionado = cliente
-                    nav.navigate(Routes.SERVICIOS)
-                }
-            )
-        }
+        // ── Flujo de Reserva ─────────────────────────────────
 
         composable(Routes.SERVICIOS) {
-            val backEntry = remember(it) {
-                try { nav.getBackStackEntry(Routes.SELECCIONAR_CLIENTE) }
-                catch (e: Exception) { it }
-            }
-            val sharedVm = hiltViewModel<ReservaSharedViewModel>(backEntry)
+
+            val sharedVm = hiltViewModel<ReservaSharedViewModel>(it)
 
             ServiciosScreen(
                 onBack = { nav.popBackStack() },
                 onSeleccionarServicio = { servicio ->
                     sharedVm.servicioSeleccionado = servicio
-                    nav.navigate(Routes.PROFESIONALES)
+
+                    if (servicio.esGrupal) {
+                        sharedVm.esGrupal = true
+                        nav.navigate(Routes.RESPONSABLE_GRUPAL)
+                    } else {
+                        sharedVm.esGrupal = false
+                        nav.navigate(Routes.PROFESIONALES)
+                    }
                 }
             )
         }
 
         composable(Routes.PROFESIONALES) {
             val backEntry = remember(it) {
-                try { nav.getBackStackEntry(Routes.SELECCIONAR_CLIENTE) }
+                try { nav.getBackStackEntry(Routes.SERVICIOS) }
                 catch (e: Exception) { it }
             }
             val sharedVm = hiltViewModel<ReservaSharedViewModel>(backEntry)
             val profVm   = hiltViewModel<ProfesionalesViewModel>()
 
-            // Pasamos el id directamente — no dependemos de servicioSeleccionado del profVm
             LaunchedEffect(sharedVm.servicioSeleccionado?.id) {
                 profVm.iniciar(sharedVm.servicioSeleccionado?.id)
             }
@@ -198,29 +159,76 @@ fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
                 onBack = { nav.popBackStack() },
                 onSeleccionarProfesional = { profesional ->
                     sharedVm.profesionalSeleccionado = profesional
-                    if (sharedVm.servicioSeleccionado != null) {
-                        nav.navigate(Routes.DISPONIBILIDAD)
-                    } else {
-                        nav.navigate(Routes.SERVICIOS)
-                    }
+                    nav.navigate(Routes.SELECCIONAR_CLIENTE) // Siguiente paso individual
                 },
                 vm = profVm
             )
         }
 
+        composable(Routes.SELECCIONAR_CLIENTE) {
+            val backEntry = remember(it) {
+                try { nav.getBackStackEntry(Routes.SERVICIOS) }
+                catch (e: Exception) { it }
+            }
+            val sharedVm = hiltViewModel<ReservaSharedViewModel>(backEntry)
+
+            SeleccionarClienteScreen(
+                onBack = { nav.popBackStack() },
+                onClienteSeleccionado = { cliente ->
+                    sharedVm.clienteSeleccionado = cliente
+                    nav.navigate(Routes.DISPONIBILIDAD) // Directo a confirmar la hora
+                }
+            )
+        }
+
+        composable(Routes.RESPONSABLE_GRUPAL) {
+            val backEntry = remember(it) {
+                try { nav.getBackStackEntry(Routes.SERVICIOS) }
+                catch (e: Exception) { it }
+            }
+            val sharedVm = hiltViewModel<ReservaSharedViewModel>(backEntry)
+            // Usamos el mismo ViewModel de disponibilidad para reutilizar la función de backend
+            val dispVm   = hiltViewModel<DisponibilidadViewModel>()
+
+            ResponsableGrupalScreen(
+                onBack = { nav.popBackStack() },
+                onContinuar = { nombre, telefono, correo, personas ->
+                    sharedVm.responsableNombre = nombre
+                    sharedVm.responsableTelefono = telefono
+                    sharedVm.responsableCorreo = correo
+                    sharedVm.cantidadPersonas = personas
+
+                    // Pasamos el control al ViewModel para que dispare la cita de una vez
+                    dispVm.servicio = sharedVm.servicioSeleccionado
+                    dispVm.confirmarCita(sharedVm, notas = "Solicitud de reserva grupal abierta")
+                },
+                // Le pasamos el estado del proceso a la pantalla para mostrar un Loading o Diálogo de éxito
+                uiStateFlow = dispVm.uiState,
+                onExito = {
+                    dispVm.resetear()
+                    sharedVm.limpiarReserva()
+                    nav.navigate(Routes.MIS_CITAS) {
+                        popUpTo(Routes.SERVICIOS) { this.inclusive = true }
+                    }
+                }
+            )
+        }
+
         composable(Routes.DISPONIBILIDAD) {
             val backEntry = remember(it) {
-                try { nav.getBackStackEntry(Routes.SELECCIONAR_CLIENTE) }
+                try { nav.getBackStackEntry(Routes.SERVICIOS) }
                 catch (e: Exception) { it }
             }
             val sharedVm = hiltViewModel<ReservaSharedViewModel>(backEntry)
             val dispVm   = hiltViewModel<DisponibilidadViewModel>()
+
+            // Inyectamos el cliente al ViewModel si viene del flujo individual
             dispVm.clienteSeleccionado = sharedVm.clienteSeleccionado
 
             val servicio    = sharedVm.servicioSeleccionado
             val profesional = sharedVm.profesionalSeleccionado
 
-            if (servicio != null && profesional != null) {
+            if (servicio != null) {
                 DisponibilidadScreen(
                     servicio     = servicio,
                     profesional  = profesional,
@@ -230,93 +238,44 @@ fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
                             popUpTo(Routes.SERVICIOS) { this.inclusive = true }
                         }
                     },
-                    vm = dispVm
+                    sharedVm     = sharedVm,
+                    vm           = dispVm
                 )
             }
         }
 
-        // ── Citas ────────────────────────────────────────────────────────────
-
+        // ── Citas  ────────────────────────────────────────────
         composable(Routes.MIS_CITAS) {
             MisCitasScreen(
-                onBack         = { nav.popBackStack() },
+                onBack = { nav.popBackStack() },
                 onVerHistorial = { nav.navigate(Routes.HISTORIAL) },
-                onVerReagendamientos  = { nav.navigate(Routes.REAGENDAMIENTOS) }
+                onVerReagendamientos = { nav.navigate(Routes.REAGENDAMIENTOS) }
             )
         }
 
-        composable(Routes.HISTORIAL) {
-            HistorialScreen(onBack = { nav.popBackStack() })
-        }
+        composable(Routes.HISTORIAL) { HistorialScreen(onBack = { nav.popBackStack() }) }
 
-        // ── Financiero ───────────────────────────────────────────────────────
+        composable(Routes.FINANCIERO) { FinancieroScreen(onBack = { nav.popBackStack() }, vm = hiltViewModel()) }
 
-        composable(Routes.FINANCIERO) {
-            val vm = hiltViewModel<FinancieroViewModel>()
-            FinancieroScreen(
-                onBack = { nav.popBackStack() },
-                vm     = vm
-            )
-        }
+        composable(Routes.INGRESOS_VS_GASTOS) { IngresosVsGastosScreen(onBack = { nav.popBackStack() }, vm = hiltViewModel()) }
 
-        composable(Routes.INGRESOS_VS_GASTOS) {
-            val vm = hiltViewModel<IngresosVsGastosViewModel>()
-            IngresosVsGastosScreen(
-                onBack = { nav.popBackStack() },
-                vm     = vm
-            )
-        }
+        composable(Routes.PERFIL) { PerfilScreen(onBack = { nav.popBackStack() }, onLogout = { nav.navigate(Routes.LOGIN) { popUpTo(Routes.HOME) { inclusive = true } } }) }
 
-        // ── Perfil ───────────────────────────────────────────────────────────
+        composable(Routes.DEMO_EXPIRADO) { DemoExpiradoScreen(onCerrarSesion = { nav.navigate(Routes.LOGIN) { popUpTo(Routes.DEMO_EXPIRADO) { inclusive = true } } }) }
 
-        composable(Routes.PERFIL) {
-            PerfilScreen(
-                onBack   = { nav.popBackStack() },
-                onLogout = {
-                    nav.navigate(Routes.LOGIN) {
-                        popUpTo(Routes.HOME) { inclusive = true }
-                    }
-                }
-            )
-        }
+        composable(Routes.CLIENTES) { ClientesScreen(onBack = { nav.popBackStack() }) }
 
-        // ── Demo Expirado ────────────────────────────────────────────────────
+        composable(Routes.REAGENDAMIENTOS) { ReagendamientosScreen(onBack = { nav.popBackStack() }) }
 
-        composable(Routes.DEMO_EXPIRADO) {
-            DemoExpiradoScreen(
-                onCerrarSesion = {
-                    nav.navigate(Routes.LOGIN) {
-                        popUpTo(Routes.DEMO_EXPIRADO) { this.inclusive = true }
-                    }
-                }
-            )
-        }
+        // ── Administracion ────────────────────────────────────────
 
-        // ── Clientes ─────────────────────────────────────────────────────────
-        composable(Routes.CLIENTES) {
-            ClientesScreen(
-                onBack         = { nav.popBackStack() }
-            )
-        }
+        composable(Routes.ADMIN_CATEGORIAS) { CategoriasScreen(onBack = { nav.popBackStack() }) }
 
-        // ── Reagendamientos ──────────────────────────────────────────────────
-        composable(Routes.REAGENDAMIENTOS) {
-            ReagendamientosScreen(onBack = { nav.popBackStack() })
-        }
+        composable(Routes.ADMIN_SERVICIOS) { ServiciosAdminScreen(onBack = { nav.popBackStack() }) }
 
-        // ── Admin Catálogos ──────────────────────────────────────────────────
-        composable(Routes.ADMIN_CATEGORIAS) {
-            CategoriasScreen(onBack = { nav.popBackStack() })
-        }
-
-        composable(Routes.ADMIN_SERVICIOS) {
-            ServiciosAdminScreen(onBack = { nav.popBackStack() })
-        }
-
-        // ── Admin Profesionales ──────────────────────────────────────────────
         composable(Routes.ADMIN_PROFESIONALES) {
             ProfesionalesAdminScreen(
-                onBack      = { nav.popBackStack() },
+                onBack = { nav.popBackStack() },
                 onVerDetalle = { id -> nav.navigate("${Routes.ADMIN_PROFESIONAL_DETALLE}/$id") },
                 onVerHorario = { id -> nav.navigate("${Routes.ADMIN_HORARIOS}/$id") }
             )
@@ -324,58 +283,35 @@ fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
 
         composable("${Routes.ADMIN_PROFESIONAL_DETALLE}/{id}") { backEntry ->
             val id = backEntry.arguments?.getString("id")?.toIntOrNull() ?: return@composable
-            ProfesionalDetalleScreen(
-                idProfesional = id,
-                onBack        = { nav.popBackStack() }
-            )
+            ProfesionalDetalleScreen(idProfesional = id, onBack = { nav.popBackStack() })
         }
 
-        // ── Admin Horarios ───────────────────────────────────────────────────
         composable(Routes.ADMIN_HORARIOS_LISTA) {
-            HorariosListaScreen(
-                onBack        = { nav.popBackStack() },
-                onSeleccionar = { id -> nav.navigate("${Routes.ADMIN_HORARIOS}/$id") }
-            )
+            HorariosListaScreen(onBack = { nav.popBackStack() }, onSeleccionar = { id -> nav.navigate("${Routes.ADMIN_HORARIOS}/$id") })
         }
 
         composable("${Routes.ADMIN_HORARIOS}/{id}") { backEntry ->
-            val id          = backEntry.arguments?.getString("id")?.toIntOrNull() ?: return@composable
-            val profVm      = hiltViewModel<com.spa.appointments.ui.admin.profesionales.ProfesionalesAdminViewModel>()
+            val id = backEntry.arguments?.getString("id")?.toIntOrNull() ?: return@composable
+            val profVm = hiltViewModel<com.spa.appointments.ui.admin.profesionales.ProfesionalesAdminViewModel>()
             val profesional = profVm.profesionales.collectAsState().value.firstOrNull { it.id == id }
-            HorariosScreen(
-                idProfesional = id,
-                profesional   = profesional,
-                onBack        = { nav.popBackStack() }
-            )
+            HorariosScreen(idProfesional = id, profesional = profesional, onBack = { nav.popBackStack() })
         }
 
-        composable(Routes.ADMIN_TEMA) {
-            TemaScreen(onBack = { nav.popBackStack() })
-        }
+        composable(Routes.ADMIN_TEMA) { TemaScreen(onBack = { nav.popBackStack() }) }
 
-        // ── Gastos ───────────────────────────────────────────────────────────
-        composable(Routes.GASTOS) {
-            GastoScreen(onBack = { nav.popBackStack() })
-        }
+        composable(Routes.GASTOS) { GastoScreen(onBack = { nav.popBackStack() }) }
 
-        // ── Métodos de Pago ──────────────────────────────────────────────────
         composable(Routes.METODOS_PAGO) {
             MetodoPagoScreen(
                 onBack = { nav.popBackStack() },
-                onVerDetalles = { metodo ->
-                    nav.navigate("${Routes.METODOS_PAGO_DETALLE}/${metodo.id}/${metodo.nombre}")
-                }
+                onVerDetalles = { metodo -> nav.navigate("${Routes.METODOS_PAGO_DETALLE}/${metodo.id}/${metodo.nombre}") }
             )
         }
 
         composable("${Routes.METODOS_PAGO_DETALLE}/{metodoId}/{metodoNombre}") { back ->
-            val id     = back.arguments?.getString("metodoId")?.toInt() ?: return@composable
+            val id = back.arguments?.getString("metodoId")?.toInt() ?: return@composable
             val nombre = back.arguments?.getString("metodoNombre") ?: ""
-            MetodoPagoDetalleScreen(
-                metodoId     = id,
-                metodoNombre = nombre,
-                onBack       = { nav.popBackStack() }   // ← agrega esto
-            )
+            MetodoPagoDetalleScreen(metodoId = id, metodoNombre = nombre, onBack = { nav.popBackStack() })
         }
     }
 }
