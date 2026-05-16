@@ -31,7 +31,8 @@ data class ServicioAdmin(
     @Json(name = "duracionMinutos") val duracionMinutos: Int,
     @Json(name = "precioBase")      val precioBase: Double,
     @Json(name = "icono")           val icono: String?,
-    @Json(name = "estado")          val estado: Boolean
+    @Json(name = "estado")          val estado: Boolean,
+    @Json(name = "esGrupal")        val esGrupal: Boolean
 )
 
 @JsonClass(generateAdapter = true)
@@ -41,7 +42,8 @@ data class ServicioRequest(
     @Json(name = "descripcion")     val descripcion: String?,
     @Json(name = "duracionMinutos") val duracionMinutos: Int,
     @Json(name = "precioBase")      val precioBase: Double,
-    @Json(name = "icono")           val icono: String?
+    @Json(name = "icono")           val icono: String?,
+    @Json(name = "esGrupal")        val esGrupal: Boolean
 )
 
 // ─── Respuestas genéricas ─────────────────────────────────
