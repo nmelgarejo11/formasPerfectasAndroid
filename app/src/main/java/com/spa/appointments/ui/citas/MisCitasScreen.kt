@@ -846,7 +846,6 @@ private fun CitaCard(
                             servicios.forEach { s ->
                                 Row(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                                     Text("• ${s.nombre} (${s.duracion} min)", style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
-                                    Text("${"$%,.0f".format(s.precio)}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
                                 }
                             }
                         }
