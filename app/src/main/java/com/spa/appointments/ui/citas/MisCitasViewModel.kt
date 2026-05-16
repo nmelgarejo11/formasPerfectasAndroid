@@ -12,6 +12,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import java.time.LocalDate
 
 sealed class MisCitasUiState {
     object Loading                            : MisCitasUiState()
@@ -28,16 +29,15 @@ sealed class AccionUiState {
 }
 
 data class FiltrosMisCitas(
-    val nombreCliente:  String? = null,
-    val fechaDesde:     String? = null,
-    val fechaHasta:     String? = null,
-    val idProfesional:  Int?    = null,
-    val idEstado:       Int?    = null,
-    val nombreEstado:   String? = null
+    val nombreCliente : String? = null,
+    val fechaDesde    : String? = null,
+    val fechaHasta    : String? = null,
+    val idProfesional : Int?    = null,
+    val idEstado      : Int?    = null,
+    val nombreEstado  : String? = null,
+    val esFiltroManual: Boolean = false   // ← nuevo campo
 ) {
-    val activo: Boolean get() =
-        nombreCliente != null || fechaDesde  != null ||
-                fechaHasta    != null || idProfesional != null || idEstado != null
+    val activo: Boolean get() = esFiltroManual
 }
 
 @HiltViewModel
@@ -66,9 +66,15 @@ class MisCitasViewModel @Inject constructor(
     private val _profesionales = MutableStateFlow<List<Profesional>>(emptyList())
     val profesionales: StateFlow<List<Profesional>> = _profesionales.asStateFlow()
 
+    companion object {
+        fun hoyIso(): String = LocalDate.now().toString()
+        fun filtroHoy() = FiltrosMisCitas(fechaDesde = hoyIso(), fechaHasta = hoyIso())
+    }
+
     init {
         cargarEstados()
         cargarMetodosPago()
+        _filtros.value = filtroHoy()
         cargar()
     }
 
@@ -94,6 +100,8 @@ class MisCitasViewModel @Inject constructor(
         }
     }
 
+    private fun hoyIso(): String = LocalDate.now().toString()
+
     private fun cargarEstados() {
         viewModelScope.launch {
             runCatching { repo.getEstadosCita("ACTIVAS") }
@@ -111,13 +119,13 @@ class MisCitasViewModel @Inject constructor(
     fun toggleFiltros() { _mostrarFiltros.update { !it } }
 
     fun aplicarFiltros(nuevos: FiltrosMisCitas) {
-        _filtros.value        = nuevos
+        _filtros.value        = nuevos.copy(esFiltroManual = true)
         _mostrarFiltros.value = false
         cargar()
     }
 
     fun limpiarFiltros() {
-        _filtros.value = FiltrosMisCitas()
+        _filtros.value = filtroHoy()
         cargar()
     }
 

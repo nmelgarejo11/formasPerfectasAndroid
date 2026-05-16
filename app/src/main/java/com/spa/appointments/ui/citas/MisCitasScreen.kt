@@ -1,7 +1,6 @@
 package com.spa.appointments.ui.citas
 
 import android.app.DatePickerDialog
-import android.app.TimePickerDialog
 import android.widget.Toast
 import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
@@ -29,20 +28,19 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.spa.appointments.R
-import com.spa.appointments.domain.model.AsignarCitaGrupalRequest
 import com.spa.appointments.domain.model.Cita
 import com.spa.appointments.domain.model.EstadoCita
 import com.spa.appointments.domain.model.MetodoPago
 import com.spa.appointments.domain.model.MetodoPagoDetalle
-import com.spa.appointments.domain.model.Profesional
 import com.spa.appointments.domain.model.ServicioCita
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
-import java.time.LocalDate
-import java.time.ZoneId
 import java.util.Calendar
 import java.util.TimeZone
+import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 
 // ─── Screen principal ─────────────────────────────────────────────────────────
 
@@ -567,8 +565,18 @@ private fun FiltrosMisCitasPanel(
             Spacer(Modifier.height(10.dp))
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                MisCitasDatePicker(label = "Desde", value = filtros.fechaDesde, modifier = Modifier.weight(1f), context = context, onDate = { onChange(filtros.copy(fechaDesde = it)) })
-                MisCitasDatePicker(label = "Hasta", value = filtros.fechaHasta, modifier = Modifier.weight(1f), context = context, onDate = { onChange(filtros.copy(fechaHasta = it)) })
+                MisCitasDatePicker(
+                    label    = "Desde",
+                    value    = filtros.fechaDesde,
+                    modifier = Modifier.weight(1f),
+                    onDate   = { onChange(filtros.copy(fechaDesde = it)) }
+                )
+                MisCitasDatePicker(
+                    label    = "Hasta",
+                    value    = filtros.fechaHasta,
+                    modifier = Modifier.weight(1f),
+                    onDate   = { onChange(filtros.copy(fechaHasta = it)) }
+                )
             }
 
             Spacer(Modifier.height(10.dp))
@@ -596,16 +604,34 @@ private fun FiltrosMisCitasPanel(
 
 // ─── DatePicker ───────────────────────────────────────────────────────────────
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MisCitasDatePicker(
     label:    String,
-    value:    String?,
+    value:    String?,          // "yyyy-MM-dd" o null
     modifier: Modifier = Modifier,
-    context:  android.content.Context,
     onDate:   (String?) -> Unit
 ) {
-    val calendar = remember { java.util.Calendar.getInstance() }
+    var mostrarPicker by remember { mutableStateOf(false) }
 
+    // Inicializa el picker en la fecha actual del campo, o en hoy si está vacío
+    val initialMillis = remember(value) {
+        value?.let { iso ->
+            runCatching {
+                val (y, m, d) = iso.split("-").map { it.toInt() }
+                java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC")).apply {
+                    clear()
+                    set(y, m - 1, d)
+                }.timeInMillis
+            }.getOrNull()
+        }
+    }
+
+    val datePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = initialMillis
+    )
+
+    // Campo de texto de solo lectura que abre el picker al tocar
     OutlinedTextField(
         value         = value?.let { formatearFecha(it) } ?: "",
         onValueChange = {},
@@ -614,18 +640,16 @@ private fun MisCitasDatePicker(
         shape         = RoundedCornerShape(12.dp),
         trailingIcon  = {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = {
-                    DatePickerDialog(
-                        context,
-                        { _, y, m, d -> onDate("%04d-%02d-%02d".format(y, m + 1, d)) },
-                        calendar.get(java.util.Calendar.YEAR),
-                        calendar.get(java.util.Calendar.MONTH),
-                        calendar.get(java.util.Calendar.DAY_OF_MONTH)
-                    ).show()
-                }) { Icon(Icons.Default.CalendarMonth, "Seleccionar fecha") }
+                IconButton(onClick = { mostrarPicker = true }) {
+                    Icon(Icons.Default.CalendarMonth, "Seleccionar $label")
+                }
                 if (value != null) {
                     IconButton(onClick = { onDate(null) }) {
-                        Icon(Icons.Default.Clear, "Limpiar", modifier = Modifier.size(16.dp))
+                        Icon(
+                            Icons.Default.Clear,
+                            "Limpiar $label",
+                            modifier = Modifier.size(16.dp)
+                        )
                     }
                 }
             }
@@ -633,6 +657,38 @@ private fun MisCitasDatePicker(
         singleLine = true,
         modifier   = modifier
     )
+
+    // Diálogo M3 nativo
+    if (mostrarPicker) {
+        DatePickerDialog(
+            onDismissRequest = { mostrarPicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        val cal = java.util.Calendar.getInstance(
+                            java.util.TimeZone.getTimeZone("UTC")
+                        ).apply { timeInMillis = millis }
+                        val iso = "%04d-%02d-%02d".format(
+                            cal.get(java.util.Calendar.YEAR),
+                            cal.get(java.util.Calendar.MONTH) + 1,
+                            cal.get(java.util.Calendar.DAY_OF_MONTH)
+                        )
+                        onDate(iso)
+                    }
+                    mostrarPicker = false
+                }) {
+                    Text("Aceptar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { mostrarPicker = false }) {
+                    Text("Cancelar")
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
 }
 
 // ─── Dropdown de estados ──────────────────────────────────────────────────────
