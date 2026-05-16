@@ -56,7 +56,9 @@ data class Cita(
     @Json(name = "total")                     val total: Double,
     @Json(name = "idCitaOriginal")            val idCitaOriginal: Int?,
     @Json(name = "fechaHoraInicioOriginal")   val fechaHoraInicioOriginal: String?,
-    @Json(name = "nombreCliente")             val nombreCliente: String?
+    @Json(name = "nombreCliente")             val nombreCliente: String?,
+    @Json(name = "cantidadPersonas")          val cantidadPersonas: Int? = null,
+    @Json(name = "idSede")                    val idSede: Int
 )
 
 @JsonClass(generateAdapter = true)

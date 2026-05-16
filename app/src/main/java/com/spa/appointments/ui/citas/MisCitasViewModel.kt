@@ -3,9 +3,11 @@ package com.spa.appointments.ui.citas
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.spa.appointments.data.repository.CitasRepository
+import com.spa.appointments.domain.model.AsignarCitaGrupalRequest
 import com.spa.appointments.domain.model.Cita
 import com.spa.appointments.domain.model.EstadoCita
 import com.spa.appointments.domain.model.MetodoPago
+import com.spa.appointments.domain.model.Profesional
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -60,6 +62,9 @@ class MisCitasViewModel @Inject constructor(
 
     private val _mostrarFiltros = MutableStateFlow(false)
     val mostrarFiltros: StateFlow<Boolean> = _mostrarFiltros.asStateFlow()
+
+    private val _profesionales = MutableStateFlow<List<Profesional>>(emptyList())
+    val profesionales: StateFlow<List<Profesional>> = _profesionales.asStateFlow()
 
     init {
         cargarEstados()
@@ -177,6 +182,34 @@ class MisCitasViewModel @Inject constructor(
                     e.localizedMessage ?: "No se pudo abrir WhatsApp"
                 )
             }
+        }
+    }
+
+    fun asignarCitaGrupal(idCita: Int, idsProfesionales: List<Int>?, fechaHoraInicio: String?, fechaHoraFin: String?) {
+        viewModelScope.launch {
+            _accionState.value = AccionUiState.Loading
+            try {
+                val resp = repo.asignarCitaGrupal(
+                    idCita,
+                    AsignarCitaGrupalRequest(
+                        fechaHoraInicio  = fechaHoraInicio,
+                        fechaHoraFin     = fechaHoraFin,
+                        idsProfesionales = idsProfesionales?.ifEmpty { null }
+                    )
+                )
+                if (resp.ok) { _accionState.value = AccionUiState.Success(resp.mensaje); cargar() }
+                else           _accionState.value = AccionUiState.Error(resp.mensaje)
+            } catch (e: Exception) {
+                _accionState.value = AccionUiState.Error(e.localizedMessage ?: "Error al asignar la cita")
+            }
+        }
+    }
+
+
+    fun cargarProfesionales(idSede: Int) {
+        viewModelScope.launch {
+            runCatching { repo.getProfesionales(idSede = idSede) }
+                .onSuccess { _profesionales.value = it }
         }
     }
 }

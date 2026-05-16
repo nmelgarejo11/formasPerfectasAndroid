@@ -200,7 +200,7 @@ fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
 
                     // Pasamos el control al ViewModel para que dispare la cita de una vez
                     dispVm.servicio = sharedVm.servicioSeleccionado
-                    dispVm.confirmarCita(sharedVm, notas = "Solicitud de reserva grupal abierta")
+                    dispVm.confirmarCita(sharedVm, notas = "Solicitud en espera")
                 },
                 // Le pasamos el estado del proceso a la pantalla para mostrar un Loading o Diálogo de éxito
                 uiStateFlow = dispVm.uiState,

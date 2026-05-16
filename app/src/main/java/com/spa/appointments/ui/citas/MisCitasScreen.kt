@@ -1,6 +1,7 @@
 package com.spa.appointments.ui.citas
 
 import android.app.DatePickerDialog
+import android.app.TimePickerDialog
 import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -19,18 +20,25 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import com.spa.appointments.R
+import com.spa.appointments.domain.model.AsignarCitaGrupalRequest
 import com.spa.appointments.domain.model.Cita
 import com.spa.appointments.domain.model.EstadoCita
 import com.spa.appointments.domain.model.MetodoPago
-import androidx.compose.ui.res.painterResource
-import com.spa.appointments.R
 import com.spa.appointments.domain.model.MetodoPagoDetalle
+import com.spa.appointments.domain.model.Profesional
+import com.spa.appointments.domain.model.ServicioCita
+import com.squareup.moshi.Moshi
+import com.squareup.moshi.Types
+import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
+import java.util.Calendar
 
 // ─── Screen principal ─────────────────────────────────────────────────────────
 
@@ -56,6 +64,7 @@ fun MisCitasScreen(
     var mostrarCancelar        by remember { mutableStateOf(false) }
     var mostrarReagendar       by remember { mutableStateOf(false) }
     var mostrarFinalizar       by remember { mutableStateOf(false) }
+    var mostrarAsignar         by remember { mutableStateOf(false) }
     var motivoReagendar        by remember { mutableStateOf("") }
     var metodoPagoSeleccionado by remember { mutableStateOf<MetodoPago?>(null) }
 
@@ -258,21 +267,29 @@ fun MisCitasScreen(
     if (mostrarFinalizar && citaAccion != null) {
         FinalizarCitaDialog(
             metodos = metodosPago,
-
             onConfirm = { idMetodo, idDetalle ->
-
                 mostrarFinalizar = false
-
                 vm.finalizarCita(
                     citaAccion!!.id,
                     idMetodo,
                     idDetalle
                 )
             },
-
             onDismiss = {
                 mostrarFinalizar = false
             }
+        )
+    }
+
+    // ── Diálogo: Asignar Horario/Profesional Grupal ─────────────────────────
+    if (mostrarAsignar && citaAccion != null) {
+        AsignarCitaGrupalDialog(
+            cita = citaAccion!!,
+            onConfirm = { ids, fechaInicio, fechaFin ->
+                mostrarAsignar = false
+                vm.asignarCitaGrupal(citaAccion!!.id, ids, fechaInicio, fechaFin)
+            },
+            onDismiss = { mostrarAsignar = false }
         )
     }
 
@@ -387,7 +404,6 @@ fun MisCitasScreen(
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             CircularProgressIndicator()
-
                             Text(
                                 text = "Cargando citas…",
                                 style = MaterialTheme.typography.bodySmall,
@@ -411,7 +427,6 @@ fun MisCitasScreen(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-
                             Box(
                                 modifier = Modifier
                                     .size(72.dp)
@@ -426,20 +441,17 @@ fun MisCitasScreen(
                                     tint = MaterialTheme.colorScheme.onErrorContainer
                                 )
                             }
-
                             Text(
                                 text = "Sin conexión",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
-
                             Text(
                                 text = state.mensaje,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 textAlign = TextAlign.Center,
                                 style = MaterialTheme.typography.bodySmall
                             )
-
                             Button(
                                 onClick = { vm.cargar() },
                                 shape = RoundedCornerShape(12.dp)
@@ -449,9 +461,7 @@ fun MisCitasScreen(
                                     contentDescription = null,
                                     modifier = Modifier.size(16.dp)
                                 )
-
                                 Spacer(Modifier.width(6.dp))
-
                                 Text("Reintentar")
                             }
                         }
@@ -465,12 +475,10 @@ fun MisCitasScreen(
                             ),
                             verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-
                             items(
                                 state.citas,
                                 key = { it.id }
                             ) { cita ->
-
                                 CitaCard(
                                     cita = cita,
                                     onCancelar = {
@@ -485,16 +493,18 @@ fun MisCitasScreen(
                                         citaAccion = cita
                                         mostrarFinalizar = true
                                     },
+                                    onAsignar = {
+                                        citaAccion = cita
+                                        mostrarAsignar = true
+                                    },
                                     onWhatsApp = {
                                         vm.abrirWhatsApp(cita.id, context)
                                     },
-                                    accionCargando =
-                                    accionState is AccionUiState.Loading
+                                    accionCargando = accionState is AccionUiState.Loading
                                 )
                             }
                         }
                     }
-
                     else -> Unit
                 }
             }
@@ -563,7 +573,7 @@ private fun FiltrosMisCitasPanel(
                 estados            = estados,
                 seleccionadoId     = filtros.idEstado,
                 seleccionadoNombre = filtros.nombreEstado,
-                onSelect           = { id, nombre -> onChange(filtros.copy(idEstado = id, nombreEstado = nombre)) }
+                onSelect           = { id, nombre -> onChange(filtros.copy(idEstado = id, nombreEstado = nombre)) } // Nota: Asegúrate si tu modelo usa nombreEstado o fontNameEstado, se mantuvo la lógica original.
             )
 
             Spacer(Modifier.height(14.dp))
@@ -678,6 +688,7 @@ private fun CitaCard(
     onCancelar:     () -> Unit,
     onReagendar:    () -> Unit,
     onFinalizar:    () -> Unit,
+    onAsignar:      () -> Unit,
     onWhatsApp:     () -> Unit,
     accionCargando: Boolean
 ) {
@@ -728,6 +739,7 @@ private fun CitaCard(
                         Spacer(Modifier.width(3.dp))
                         Text(text = formatearFecha(cita.fechaHoraInicio), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(Modifier.width(8.dp))
+
                         // ── WhatsApp IconButton compacto ──────────────────
                         Box(
                             modifier         = Modifier
@@ -815,6 +827,40 @@ private fun CitaCard(
                     }
                 }
 
+                // ── Servicios (NUEVO) ─────────────────────────────────────
+                val servicios = remember(cita.servicios) { parsearServicios(cita.servicios) }
+                if (servicios.isNotEmpty()) {
+                    Spacer(Modifier.height(6.dp))
+                    Surface(shape = RoundedCornerShape(10.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
+                        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Spa, null, modifier = Modifier.size(12.dp), tint = MaterialTheme.colorScheme.primary)
+                                Spacer(Modifier.width(5.dp))
+                                Text("Servicios", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                            }
+                            Spacer(Modifier.height(6.dp))
+                            servicios.forEach { s ->
+                                Row(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                    Text("• ${s.nombre} (${s.duracion} min)", style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+                                    Text("${"$%,.0f".format(s.precio)}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // ── CantidadPersonas (NUEVO) ──────────────────────────────
+                if (cita.cantidadPersonas != null && cita.cantidadPersonas > 0) {
+                    Spacer(Modifier.height(4.dp))
+                    Surface(shape = RoundedCornerShape(10.dp), color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)) {
+                        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Group, null, modifier = Modifier.size(13.dp), tint = MaterialTheme.colorScheme.onSecondaryContainer)
+                            Spacer(Modifier.width(6.dp))
+                            Text("${cita.cantidadPersonas} personas", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSecondaryContainer, fontWeight = FontWeight.Medium)
+                        }
+                    }
+                }
+
                 // ── Zona de acciones agrupada: Programada=1 o Confirmada=2 ─
                 if (cita.idEstado in listOf(1, 2)) {
                     Spacer(Modifier.height(12.dp))
@@ -863,6 +909,51 @@ private fun CitaCard(
                     }
                 }
 
+                // ── Zona de acciones agrupada: Estado 8 (NUEVO) ───────────
+                if (cita.idEstado == 8) {
+                    Spacer(Modifier.height(12.dp))
+                    Surface(
+                        shape    = RoundedCornerShape(12.dp),
+                        color    = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        border   = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Surface(shape = RoundedCornerShape(8.dp), color = Color(0xFFFFF8E1)) {
+                                Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.HourglassTop, null, modifier = Modifier.size(13.dp), tint = Color(0xFFF57F17))
+                                    Spacer(Modifier.width(6.dp))
+                                    Text("Pendiente asignar horario y profesional", style = MaterialTheme.typography.labelSmall, color = Color(0xFFF57F17))
+                                }
+                            }
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Button(
+                                    onClick  = onAsignar,
+                                    enabled  = !accionCargando,
+                                    modifier = Modifier.weight(1f),
+                                    shape    = RoundedCornerShape(10.dp)
+                                ) {
+                                    Icon(Icons.Default.EditCalendar, null, modifier = Modifier.size(15.dp))
+                                    Spacer(Modifier.width(4.dp))
+                                    Text("Asignar", style = MaterialTheme.typography.labelMedium)
+                                }
+                                OutlinedButton(
+                                    onClick  = onCancelar,
+                                    enabled  = !accionCargando,
+                                    modifier = Modifier.weight(1f),
+                                    shape    = RoundedCornerShape(10.dp),
+                                    colors   = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                                    border   = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
+                                ) {
+                                    Icon(Icons.Default.Cancel, null, modifier = Modifier.size(15.dp))
+                                    Spacer(Modifier.width(4.dp))
+                                    Text("Cancelar", style = MaterialTheme.typography.labelMedium)
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // ── Pendiente de cambio ───────────────────────────────────
                 if (cita.idEstado == 4) {
                     Spacer(Modifier.height(8.dp))
@@ -888,58 +979,47 @@ private fun EmptyMisCitas(
 ) {
     Column(modifier = modifier.padding(40.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Box(
-            modifier         = Modifier.size(88.dp).clip(RoundedCornerShape(24.dp)).background(MaterialTheme.colorScheme.surfaceVariant),
+            modifier = Modifier.size(88.dp).clip(RoundedCornerShape(24.dp)).background(MaterialTheme.colorScheme.surfaceVariant),
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                imageVector        = if (conFiltros) Icons.Default.SearchOff else Icons.Default.CalendarMonth,
+                imageVector = if (conFiltros) Icons.Default.SearchOff else Icons.Default.CalendarMonth,
                 contentDescription = null,
-                modifier           = Modifier.size(44.dp),
-                tint               = MaterialTheme.colorScheme.onSurfaceVariant
+                modifier = Modifier.size(44.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         Text(text = if (conFiltros) "Sin resultados" else "No hay citas activas", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         Text(
-            text      = if (conFiltros) "Ninguna cita coincide con los filtros aplicados." else "Reserva tu primera cita desde el menú principal.",
-            style     = MaterialTheme.typography.bodyMedium,
-            color     = MaterialTheme.colorScheme.onSurfaceVariant,
+            text = if (conFiltros) "Ninguna cita coincide con los filtros aplicados." else "Reserva tu primera cita desde el menú principal.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
         )
     }
 }
 
+// ─── Diálogo: FinalizarCitaDialog ─────────────────────────────────────────────
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun FinalizarCitaDialog(
-    metodos: List<MetodoPago>,
+    metodos:   List<MetodoPago>,
     onConfirm: (Int, Int?) -> Unit,
     onDismiss: () -> Unit
 ) {
-
-    var seleccionado by remember {
-        mutableStateOf<MetodoPago?>(null)
-    }
-
-    var detalleSeleccionado by remember {
-        mutableStateOf<MetodoPagoDetalle?>(null)
-    }
-
-    var expanded by remember {
-        mutableStateOf(false)
-    }
-
-    var expandedDetalle by remember {
-        mutableStateOf(false)
-    }
+    var seleccionado by remember { mutableStateOf<MetodoPago?>(null) }
+    var detalleSeleccionado by remember { mutableStateOf<MetodoPagoDetalle?>(null) }
+    var expanded by remember { mutableStateOf(false) }
+    var expandedDetalle by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(20.dp),
-        containerColor = MaterialTheme.colorScheme.surface,
-
+        shape            = RoundedCornerShape(20.dp),
+        containerColor   = MaterialTheme.colorScheme.surface,
         icon = {
             Box(
-                modifier = Modifier
+                modifier         = Modifier
                     .size(56.dp)
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.tertiaryContainer),
@@ -953,190 +1033,104 @@ private fun FinalizarCitaDialog(
                 )
             }
         },
-
         title = {
             Text(
-                text = "Finalizar cita",
+                text       = "Finalizar cita",
                 fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
+                textAlign  = TextAlign.Center,
+                modifier   = Modifier.fillMaxWidth()
             )
         },
-
         text = {
-
-            Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
-                    text = "Selecciona el método de pago aplicado:",
+                    text  = "Selecciona el método de pago aplicado:",
                     style = MaterialTheme.typography.bodyMedium
                 )
-
                 // ── Selector principal ────────────────────────────────
-
                 ExposedDropdownMenuBox(
                     expanded = expanded,
-                    onExpandedChange = {
-                        expanded = it
-                    }
+                    onExpandedChange = { expanded = it }
                 ) {
-
                     OutlinedTextField(
-                        value = seleccionado?.nombre ?: "Seleccionar...",
+                        value      = seleccionado?.nombre ?: "Seleccionar...",
                         onValueChange = {},
-                        readOnly = true,
-                        trailingIcon = {
-                            ExposedDropdownMenuDefaults.TrailingIcon(expanded)
-                        },
-                        modifier = Modifier
-                            .menuAnchor()
-                            .fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
+                        readOnly   = true,
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+                        modifier   = Modifier.menuAnchor().fillMaxWidth(),
+                        shape      = RoundedCornerShape(12.dp)
                     )
-
                     ExposedDropdownMenu(
                         expanded = expanded,
-                        onDismissRequest = {
-                            expanded = false
-                        }
+                        onDismissRequest = { expanded = false }
                     ) {
-
                         metodos.forEach { mp ->
-
                             DropdownMenuItem(
-                                text = {
-                                    Text(mp.nombre)
-                                },
+                                text = { Text(mp.nombre) },
                                 onClick = {
-
                                     seleccionado = mp
-
-                                    // Limpiar detalle si cambia método
                                     detalleSeleccionado = null
-
                                     expanded = false
                                 }
                             )
                         }
                     }
                 }
-
                 // ── Selector detalle SOLO si es OTROS (ID = 8) ───────
-
                 if (seleccionado?.nombre == "Otro") {
-
                     Text(
-                        text = "Especifique el método:",
+                        text  = "Especifique el método:",
                         style = MaterialTheme.typography.labelSmall
                     )
-
                     ExposedDropdownMenuBox(
                         expanded = expandedDetalle,
-                        onExpandedChange = {
-                            expandedDetalle = it
-                        }
+                        onExpandedChange = { expandedDetalle = it }
                     ) {
-
                         OutlinedTextField(
-                            value = detalleSeleccionado?.nombre
-                                ?: "Seleccionar detalle...",
+                            value      = detalleSeleccionado?.nombre ?: "Seleccionar detalle...",
                             onValueChange = {},
-                            readOnly = true,
-                            trailingIcon = {
-                                ExposedDropdownMenuDefaults
-                                    .TrailingIcon(expandedDetalle)
-                            },
-                            modifier = Modifier
-                                .menuAnchor()
-                                .fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
+                            readOnly   = true,
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expandedDetalle) },
+                            modifier   = Modifier.menuAnchor().fillMaxWidth(),
+                            shape      = RoundedCornerShape(12.dp)
                         )
-
                         ExposedDropdownMenu(
                             expanded = expandedDetalle,
-                            onDismissRequest = {
-                                expandedDetalle = false
-                            }
+                            onDismissRequest = { expandedDetalle = false }
                         ) {
-
-                            seleccionado
-                                ?.detalles
-                                ?.forEach { detalle ->
-
-                                    DropdownMenuItem(
-                                        text = {
-                                            Text(detalle.nombre)
-                                        },
-                                        onClick = {
-
-                                            detalleSeleccionado = detalle
-
-                                            expandedDetalle = false
-                                        }
-                                    )
-                                }
+                            seleccionado?.detalles?.forEach { detalle ->
+                                DropdownMenuItem(
+                                    text = { Text(detalle.nombre) },
+                                    onClick = {
+                                        detalleSeleccionado = detalle
+                                        expandedDetalle = false
+                                    }
+                                )
+                            }
                         }
                     }
                 }
             }
         },
-
         confirmButton = {
-
             Button(
-                onClick = {
-
-                    seleccionado?.let {
-
-                        onConfirm(
-                            it.id,
-                            detalleSeleccionado?.id
-                        )
-                    }
-                },
-
-                enabled =
-                seleccionado != null &&
-                        (
-                                seleccionado?.id != 8 ||
-                                        detalleSeleccionado != null
-                                ),
-
-                shape = RoundedCornerShape(12.dp),
-
+                onClick  = { seleccionado?.let { onConfirm(it.id, detalleSeleccionado?.id) } },
+                enabled  = seleccionado != null && (seleccionado?.id != 8 || detalleSeleccionado != null),
+                shape    = RoundedCornerShape(12.dp),
                 modifier = Modifier.fillMaxWidth(),
-
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.tertiary
-                )
+                colors   = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary)
             ) {
-
-                Icon(
-                    Icons.Default.CheckCircle,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp)
-                )
-
+                Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(16.dp))
                 Spacer(Modifier.width(6.dp))
-
-                Text(
-                    text = "Confirmar y finalizar",
-                    fontWeight = FontWeight.SemiBold
-                )
+                Text(text = "Confirmar y finalizar", fontWeight = FontWeight.SemiBold)
             }
         },
-
         dismissButton = {
-
             OutlinedButton(
-                onClick = onDismiss,
-                shape = RoundedCornerShape(12.dp),
+                onClick  = onDismiss,
+                shape    = RoundedCornerShape(12.dp),
                 modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Cancelar")
-            }
+            ) { Text("Cancelar") }
         }
     )
 }
@@ -1146,8 +1140,215 @@ private fun FinalizarCitaDialog(
 private fun formatearFecha(fechaIso: String): String = try {
     val p = fechaIso.substring(0, 10).split("-")
     "${p[2]}/${p[1]}/${p[0]}"
-} catch (e: Exception) { fechaIso }
+} catch (e: Exception) {
+    fechaIso
+}
 
 private fun formatearHora(fechaIso: String): String = try {
     fechaIso.substring(11, 16)
-} catch (e: Exception) { fechaIso }
+} catch (e: Exception) {
+    fechaIso
+}
+
+// ─── Helper parsearServicios (NUEVO) ──────────────────────────────────────────
+
+private fun parsearServicios(json: String?): List<ServicioCita> {
+    if (json.isNullOrBlank()) return emptyList()
+    return try {
+        val moshi = Moshi.Builder().addLast(KotlinJsonAdapterFactory()).build()
+        val type = Types.newParameterizedType(List::class.java, ServicioCita::class.java)
+        moshi.adapter<List<ServicioCita>>(type).fromJson(json) ?: emptyList()
+    } catch (e: Exception) {
+        emptyList()
+    }
+}
+
+// ─── AsignarCitaGrupalDialog (NUEVO) ───────────────────────────────────────
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AsignarCitaGrupalDialog(
+    cita:      Cita,
+    onConfirm: (idsProfesionales: List<Int>?, fechaHoraInicio: String?, fechaHoraFin: String?) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val context   = LocalContext.current
+    val calendar  = remember { Calendar.getInstance() }
+    val servicios = remember(cita.servicios) { parsearServicios(cita.servicios) }
+    val duracion  = servicios.firstOrNull()?.duracion ?: 60
+
+    var fechaSeleccionada by remember { mutableStateOf<String?>(null) }
+    var horaSeleccionada  by remember { mutableStateOf<String?>(null) }
+    var profesionalesSel  by remember { mutableStateOf<List<Int>>(emptyList()) }
+    var mostrarSelProf    by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape            = RoundedCornerShape(25.dp),
+        containerColor   = MaterialTheme.colorScheme.surface,
+        title = {
+            Text(
+                "Asignar Horario",
+                fontWeight = FontWeight.Bold,
+                textAlign  = TextAlign.Center,
+                modifier   = Modifier.fillMaxWidth()
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                // Selector de Fecha
+                OutlinedButton(
+                    onClick = {
+                        DatePickerDialog(context, { _, y, m, d ->
+                            fechaSeleccionada = "%04d-%02d-%02d".format(y, m + 1, d)
+                        }, calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH)).show()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape    = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(Icons.Default.CalendarMonth, null)
+                    Spacer(Modifier.width(8.dp))
+                    Text(fechaSeleccionada?.let { formatearFecha(it) } ?: "Seleccionar Fecha")
+                }
+
+                // Selector de Hora
+                OutlinedButton(
+                    onClick = {
+                        TimePickerDialog(context, { _, h, m ->
+                            horaSeleccionada = "%02d:%02d".format(h, m)
+                        }, calendar.get(Calendar.HOUR_OF_DAY), calendar.get(Calendar.MINUTE), true).show()
+                    },
+                    enabled  = fechaSeleccionada != null,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape    = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(Icons.Default.Schedule, null)
+                    Spacer(Modifier.width(8.dp))
+                    Text(horaSeleccionada ?: "Seleccionar Hora de Inicio")
+                }
+
+                // Botón para desplegar selección de Profesionales
+                OutlinedButton(
+                    onClick  = { mostrarSelProf = true },
+                    enabled  = horaSeleccionada != null,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape    = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(Icons.Default.People, null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Profesionales (${profesionalesSel.size})")
+                }
+
+                if (mostrarSelProf) {
+                    ProfesionalesSeleccionDialog(
+                        sedeId       = cita.idSede,
+                        fecha        = fechaSeleccionada!!,
+                        hora         = horaSeleccionada!!,
+                        duracion     = duracion,
+                        seleccionados = profesionalesSel,
+                        onDismiss    = { mostrarSelProf = false },
+                        onConfirm    = {
+                            profesionalesSel = it
+                            mostrarSelProf = false
+                        }
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val inicioIso = "${fechaSeleccionada}T${horaSeleccionada}:00"
+                    // Cálculo de la hora de fin sumando la duración en minutos
+                    val calFin = Calendar.getInstance().apply {
+                        val partesF = fechaSeleccionada!!.split("-")
+                        val partesH = horaSeleccionada!!.split(":")
+                        set(partesF[0].toInt(), partesF[1].toInt() - 1, partesF[2].toInt(), partesH[0].toInt(), partesH[1].toInt())
+                        add(Calendar.MINUTE, duracion)
+                    }
+                    val finIso = "%04d-%02d-%02dT%02d:%02d:00".format(
+                        calFin.get(Calendar.YEAR), calFin.get(Calendar.MONTH) + 1, calFin.get(Calendar.DAY_OF_MONTH),
+                        calFin.get(Calendar.HOUR_OF_DAY), calFin.get(Calendar.MINUTE)
+                    )
+                    onConfirm(profesionalesSel.ifEmpty { null }, inicioIso, finIso)
+                },
+                enabled  = fechaSeleccionada != null && horaSeleccionada != null,
+                modifier = Modifier.fillMaxWidth(),
+                shape    = RoundedCornerShape(12.dp)
+            ) {
+                Text("Confirmar Asignación")
+            }
+        },
+        dismissButton = {
+            OutlinedButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
+                Text("Cancelar")
+            }
+        }
+    )
+}
+
+// ─── ProfesionalesSeleccionDialog (NUEVO) ──────────────────────────────────
+
+@Composable
+private fun ProfesionalesSeleccionDialog(
+    sedeId:        Int,
+    fecha:         String,
+    hora:          String,
+    duracion:      Int,
+    seleccionados: List<Int>,
+    onDismiss:     () -> Unit,
+    onConfirm:     (List<Int>) -> Unit,
+    vm:            MisCitasViewModel = hiltViewModel()
+) {
+    var tempSel by remember { mutableStateOf(seleccionados) }
+    val profesionales = vm.profesionales.collectAsState()
+
+    LaunchedEffect(sedeId) {
+        vm.cargarProfesionales(sedeId)
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape            = RoundedCornerShape(20.dp),
+        title            = { Text("Asignar profesionales", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) },
+        confirmButton    = {},
+        text = {
+            Column {
+                if (profesionales.value.isEmpty()) {
+                    Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                        Text("Sin profesionales disponibles", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                } else {
+                    profesionales.value.forEach { prof ->
+                        val checked = prof.id in tempSel
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(
+                                checked = checked,
+                                onCheckedChange = {
+                                    tempSel = if (it) tempSel + prof.id else tempSel - prof.id
+                                }
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Column {
+                                Text(prof.nombreCompleto, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                                Text(prof.cargo, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(16.dp))
+                Button(
+                    onClick  = { onConfirm(tempSel) },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape    = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Confirmar selección")
+                }
+            }
+        }
+    )
+}

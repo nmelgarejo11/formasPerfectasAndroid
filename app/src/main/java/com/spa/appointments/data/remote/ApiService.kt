@@ -53,6 +53,13 @@ interface ApiService {
         @Query("idEstado")       idEstado:       Int?    = null
     ): List<Cita>
 
+
+    @POST("Citas/{id}/asignar-grupal")
+    suspend fun asignarCitaGrupal(
+        @Path("id") idCita: Int,
+        @Body request: AsignarCitaGrupalRequest
+    ): AccionCitaResponse
+
     @GET("Citas/historial")
     suspend fun getCitasHistorial(
         @Query("nombreCliente")  nombreCliente:  String? = null,
