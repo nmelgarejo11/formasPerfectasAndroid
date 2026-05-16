@@ -70,7 +70,10 @@ fun ResponsableGrupalScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Reserva Grupal", fontWeight = FontWeight.SemiBold) },
+                title = {
+                    Text("Reserva Grupal",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold)},
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Regresar")
