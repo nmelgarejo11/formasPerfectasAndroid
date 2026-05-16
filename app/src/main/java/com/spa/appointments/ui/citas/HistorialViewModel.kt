@@ -1,4 +1,3 @@
-// Ruta: app/src/main/java/com/spa/appointments/ui/citas/HistorialViewModel.kt
 package com.spa.appointments.ui.citas
 
 import androidx.lifecycle.ViewModel
@@ -9,19 +8,19 @@ import com.spa.appointments.domain.model.EstadoCita
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 import javax.inject.Inject
 
 data class FiltrosHistorial(
-    val nombreCliente:  String? = null,
-    val fechaDesde:     String? = null,
-    val fechaHasta:     String? = null,
-    val idProfesional:  Int?    = null,
-    val idEstado:       Int?    = null,
-    val nombreEstado:   String? = null
+    val nombreCliente : String? = null,
+    val fechaDesde    : String? = null,
+    val fechaHasta    : String? = null,
+    val idProfesional : Int?    = null,
+    val idEstado      : Int?    = null,
+    val nombreEstado  : String? = null,
+    val esFiltroManual: Boolean = false   // ← nuevo
 ) {
-    val activo: Boolean get() =
-        nombreCliente != null || fechaDesde != null ||
-                fechaHasta    != null || idProfesional != null || idEstado != null
+    val activo: Boolean get() = esFiltroManual
 }
 
 sealed class HistorialUiState {
@@ -36,17 +35,22 @@ class HistorialViewModel @Inject constructor(
     private val repo: CitasRepository
 ) : ViewModel() {
 
-    private val _uiState       = MutableStateFlow<HistorialUiState>(HistorialUiState.Loading)
+    private val _uiState        = MutableStateFlow<HistorialUiState>(HistorialUiState.Loading)
     val uiState: StateFlow<HistorialUiState> = _uiState.asStateFlow()
 
-    private val _filtros       = MutableStateFlow(FiltrosHistorial())
+    private val _filtros        = MutableStateFlow(filtroHoy())
     val filtros: StateFlow<FiltrosHistorial> = _filtros.asStateFlow()
 
     private val _mostrarFiltros = MutableStateFlow(false)
     val mostrarFiltros: StateFlow<Boolean> = _mostrarFiltros.asStateFlow()
 
-    private val _estados = MutableStateFlow<List<EstadoCita>>(emptyList())
+    private val _estados        = MutableStateFlow<List<EstadoCita>>(emptyList())
     val estados: StateFlow<List<EstadoCita>> = _estados.asStateFlow()
+
+    companion object {
+        fun hoyIso(): String = LocalDate.now().toString()
+        fun filtroHoy() = FiltrosHistorial(fechaDesde = hoyIso(), fechaHasta = hoyIso())
+    }
 
     init {
         cargarEstados()
@@ -85,13 +89,13 @@ class HistorialViewModel @Inject constructor(
     fun toggleFiltros() { _mostrarFiltros.update { !it } }
 
     fun aplicarFiltros(nuevos: FiltrosHistorial) {
-        _filtros.value        = nuevos
+        _filtros.value        = nuevos.copy(esFiltroManual = true)  // ← marca manual
         _mostrarFiltros.value = false
         cargar()
     }
 
     fun limpiarFiltros() {
-        _filtros.value = FiltrosHistorial()
+        _filtros.value = filtroHoy()   // vuelve a hoy, sin banner
         cargar()
     }
 }
