@@ -34,6 +34,9 @@ object Constants {
         const val METODOS_PAGO = "admin_metodo_pago"
         const val METODOS_PAGO_DETALLE = "metodos_pago_detalle"
         const val RESPONSABLE_GRUPAL = "responsable_grupal"
+        const val ADMIN_USUARIO = "admin_usuario"
+        const val ADMIN_CARGO = "admin_cargo"
+        const val ADMIN_USUARIO_PERFIL = "admin_usuario_perfil"
     }
 
     // ID de sede por defecto (puedes hacerlo dinámico después)

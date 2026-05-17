@@ -32,6 +32,9 @@ import com.spa.appointments.ui.admin.profesionales.ProfesionalDetalleScreen
 import com.spa.appointments.ui.admin.horarios.HorariosScreen
 import androidx.compose.runtime.collectAsState
 import com.spa.appointments.ui.admin.horarios.HorariosListaScreen
+import com.spa.appointments.ui.admin.usuario.CargosScreen
+import com.spa.appointments.ui.admin.usuario.GestionUsuariosScreen
+import com.spa.appointments.ui.admin.usuario.UsuarioPerfilScreen
 import com.spa.appointments.ui.financiero.FinancieroViewModel
 import com.spa.appointments.ui.financiero.IngresosVsGastosScreen
 import com.spa.appointments.ui.financiero.IngresosVsGastosViewModel
@@ -68,6 +71,9 @@ fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
         Routes.ADMIN_TEMA,
         Routes.METODOS_PAGO,
         Routes.CLIENTES,
+        Routes.ADMIN_CARGO,
+        Routes.ADMIN_USUARIO,
+        Routes.ADMIN_USUARIO_PERFIL,
         "logout"
     )
 
@@ -268,6 +274,12 @@ fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
         composable(Routes.REAGENDAMIENTOS) { ReagendamientosScreen(onBack = { nav.popBackStack() }) }
 
         // ── Administracion ────────────────────────────────────────
+
+        composable(Routes.ADMIN_CARGO) { CargosScreen(onVolver = { nav.popBackStack() })}
+
+        composable(Routes.ADMIN_USUARIO) { UsuarioPerfilScreen(onVolver = { nav.popBackStack() })}
+
+        composable(Routes.ADMIN_USUARIO_PERFIL) { GestionUsuariosScreen(onVolver = { nav.popBackStack() })}
 
         composable(Routes.ADMIN_CATEGORIAS) { CategoriasScreen(onBack = { nav.popBackStack() }) }
 

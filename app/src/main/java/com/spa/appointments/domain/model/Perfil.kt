@@ -26,3 +26,22 @@ data class ActualizarPerfilRequest(
 data class FotoResponse(
     @Json(name = "fotoUrl") val fotoUrl: String
 )
+
+@JsonClass(generateAdapter = true)
+data class CrearPerfilRequest(
+    @Json(name = "Nombre")      val nombre:      String,
+    @Json(name = "Descripcion") val descripcion: String?,
+    @Json(name = "SubModulos")  val subModulos:  List<Int>
+)
+
+@JsonClass(generateAdapter = true)
+data class ConsultaPerfil(
+    @Json(name = "Id")     val id:     Int,
+    @Json(name = "Nombre") val nombre: String
+)
+
+@JsonClass(generateAdapter = true)
+data class CambiarPerfilRequest(
+    @Json(name = "IdUsuario") val idUsuario: Int,
+    @Json(name = "IdPerfil")  val idPerfil:  Int
+)

@@ -372,4 +372,35 @@ interface ApiService {
         @Body request: ActualizarDetalleRequest
     ): Response<Unit>
 
+
+    @POST("Administracion/usuario")
+    suspend fun crearUsuario(@Body req: CrearUsuarioRequest): Response<Unit>
+
+    @POST("Administracion/perfil")
+    suspend fun crearPerfil(@Body req: CrearPerfilRequest): Response<Unit>
+
+    @GET("Administracion/submodulos")
+    suspend fun obtenerSubModulos(): Response<List<SubModuloAdmin>>
+
+    @GET("Administracion/cargos")
+    suspend fun obtenerCargos(): Response<List<Cargo>>
+
+    @POST("Administracion/cargo")
+    suspend fun crearCargo(@Body req: CrearCargoRequest): Response<Unit>
+
+    @PATCH("Administracion/cargo/{id}/estado")
+    suspend fun cambiarEstadoCargo(
+        @Path("id") id: Int,
+        @Query("estado") estado: Boolean
+    ): Response<Unit>
+
+    @GET("Administracion/perfiles")
+    suspend fun obtenerPerfiles(): Response<List<ConsultaPerfil>>
+
+    @GET("Administracion/usuarios")
+    suspend fun obtenerUsuarios(): Response<List<Usuario>>
+
+    @PATCH("Administracion/usuario/perfil")
+    suspend fun cambiarPerfilUsuario(@Body req: CambiarPerfilRequest): Response<Unit>
+
 }
