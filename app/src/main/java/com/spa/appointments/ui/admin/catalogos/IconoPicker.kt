@@ -39,6 +39,7 @@ val ICONOS_DISPONIBLES = listOf(
     IconoOpcion("payments", Icons.Filled.Payments, "Pagos"),
     IconoOpcion("badge", Icons.Default.Badge, "Insignia"),
     IconoOpcion("manage_accounts", Icons.Default.ManageAccounts, "Perfiles"),
+    IconoOpcion("extension", Icons.Default.Extension, "Submódulos"),
 
     // -------------------- BELLEZA Y SPA --------------------
     IconoOpcion("spa", Icons.Default.Spa, "Spa"),
