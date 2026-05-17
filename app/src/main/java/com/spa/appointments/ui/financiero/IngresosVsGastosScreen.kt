@@ -119,7 +119,9 @@ fun IngresosVsGastosScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Ingresos vs gastos") },
+                title = { Text("Ingresos vs gastos",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")

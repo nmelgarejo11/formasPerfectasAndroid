@@ -40,7 +40,9 @@ fun FinancieroScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Resumen financiero") },
+                title = { Text("Resumen financiero",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
