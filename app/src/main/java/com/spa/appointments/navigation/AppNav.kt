@@ -32,6 +32,7 @@ import com.spa.appointments.ui.admin.profesionales.ProfesionalDetalleScreen
 import com.spa.appointments.ui.admin.horarios.HorariosScreen
 import androidx.compose.runtime.collectAsState
 import com.spa.appointments.ui.admin.horarios.HorariosListaScreen
+import com.spa.appointments.ui.admin.perfilsubmodulo.PerfilSubModuloScreen
 import com.spa.appointments.ui.admin.usuario.CargosScreen
 import com.spa.appointments.ui.admin.usuario.GestionUsuariosScreen
 import com.spa.appointments.ui.admin.usuario.UsuarioPerfilScreen
@@ -74,6 +75,7 @@ fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
         Routes.ADMIN_CARGO,
         Routes.ADMIN_USUARIO,
         Routes.ADMIN_USUARIO_PERFIL,
+        Routes.ADMIN_SUBMODULO,
         "logout"
     )
 
@@ -274,6 +276,8 @@ fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
         composable(Routes.REAGENDAMIENTOS) { ReagendamientosScreen(onBack = { nav.popBackStack() }) }
 
         // ── Administracion ────────────────────────────────────────
+
+        composable(Routes.ADMIN_SUBMODULO) { PerfilSubModuloScreen(onVolver = { nav.popBackStack() }) }
 
         composable(Routes.ADMIN_CARGO) { CargosScreen(onVolver = { nav.popBackStack() })}
 

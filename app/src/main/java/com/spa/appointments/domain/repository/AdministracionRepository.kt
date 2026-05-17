@@ -2,14 +2,15 @@ package com.spa.appointments.domain.repository
 
 import android.util.Log
 import com.spa.appointments.data.remote.ApiService
+import com.spa.appointments.domain.model.AsignarSubModuloRequest
 import com.spa.appointments.domain.model.CambiarPerfilRequest
 import com.spa.appointments.domain.model.Cargo
 import com.spa.appointments.domain.model.ConsultaPerfil
 import com.spa.appointments.domain.model.CrearCargoRequest
 import com.spa.appointments.domain.model.CrearPerfilRequest
 import com.spa.appointments.domain.model.CrearUsuarioRequest
-import com.spa.appointments.domain.model.SubModulo
 import com.spa.appointments.domain.model.SubModuloAdmin
+import com.spa.appointments.domain.model.SubModuloAsignadoDto
 import com.spa.appointments.domain.model.Usuario
 import javax.inject.Inject
 
@@ -23,10 +24,12 @@ interface AdministracionRepository {
     suspend fun obtenerPerfiles(): Result<List<ConsultaPerfil>>
     suspend fun obtenerUsuarios(): Result<List<Usuario>>
     suspend fun cambiarPerfilUsuario(idUsuario: Int, idPerfil: Int): Result<Unit>
+    suspend fun getSubModulos(idPerfil: Int): Result<List<SubModuloAsignadoDto>>
+    suspend fun asignar(idPerfil: Int, idSubModulo: Int): Result<Unit>
+    suspend fun quitar(idPerfil: Int, idSubModulo: Int): Result<Unit>
 
 }
 
-// data/repository/AdministracionRepositoryImpl.kt
 class AdministracionRepositoryImpl @Inject constructor(
     private val api: ApiService
 ) : AdministracionRepository {
@@ -77,4 +80,19 @@ class AdministracionRepositoryImpl @Inject constructor(
         if (!r.isSuccessful) throw Exception(r.errorBody()?.string() ?: "Error al cambiar perfil")
     }
 
+    override suspend fun getSubModulos(idPerfil: Int) = runCatching {
+        val response = api.getSubModulosPorPerfil(idPerfil)
+        if (!response.isSuccessful) throw Exception(response.errorBody()?.string() ?: "Error al obtener submódulos")
+        response.body() ?: emptyList()
+    }
+
+    override suspend fun asignar(idPerfil: Int, idSubModulo: Int) = runCatching {
+        val response = api.asignarSubModulo(AsignarSubModuloRequest(idPerfil, idSubModulo))
+        if (!response.isSuccessful) throw Exception(response.errorBody()?.string() ?: "Error al asignar submódulo")
+    }
+
+    override suspend fun quitar(idPerfil: Int, idSubModulo: Int) = runCatching {
+        val response = api.quitarSubModulo(AsignarSubModuloRequest(idPerfil, idSubModulo))
+        if (!response.isSuccessful) throw Exception(response.errorBody()?.string() ?: "Error al quitar submódulo")
+    }
 }

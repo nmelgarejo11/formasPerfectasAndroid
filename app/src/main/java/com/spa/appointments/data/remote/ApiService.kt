@@ -403,4 +403,21 @@ interface ApiService {
     @PATCH("Administracion/usuario/perfil")
     suspend fun cambiarPerfilUsuario(@Body req: CambiarPerfilRequest): Response<Unit>
 
+    @GET("Administracion/submodulos/perfil/{idPerfil}")
+    suspend fun getSubModulosPorPerfil(
+        @Path("idPerfil") idPerfil: Int
+    ): Response<List<SubModuloAsignadoDto>>
+
+    // Asignar
+    @POST("Administracion/submodulos/asignar")
+    suspend fun asignarSubModulo(
+        @Body req: AsignarSubModuloRequest
+    ): Response<Unit>
+
+    // Quitar
+    @POST("Administracion/submodulos/quitar")
+    suspend fun quitarSubModulo(
+        @Body req: AsignarSubModuloRequest
+    ): Response<Unit>
+
 }

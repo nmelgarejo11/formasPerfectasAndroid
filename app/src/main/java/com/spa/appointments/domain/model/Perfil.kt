@@ -37,7 +37,8 @@ data class CrearPerfilRequest(
 @JsonClass(generateAdapter = true)
 data class ConsultaPerfil(
     @Json(name = "Id")     val id:     Int,
-    @Json(name = "Nombre") val nombre: String
+    @Json(name = "Nombre") val nombre: String,
+    @Json(name = "Descripcion") val descripcion: String?
 )
 
 @JsonClass(generateAdapter = true)
