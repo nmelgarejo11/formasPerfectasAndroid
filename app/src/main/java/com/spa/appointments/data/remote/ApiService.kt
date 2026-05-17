@@ -4,6 +4,7 @@ import com.spa.appointments.domain.model.*
 import retrofit2.http.*
 import retrofit2.Response
 import okhttp3.MultipartBody
+import okhttp3.ResponseBody
 
 interface ApiService {
 
@@ -330,6 +331,14 @@ interface ApiService {
         @Query("fechaInicio") fechaInicio : String,
         @Query("fechaFin")    fechaFin    : String
     ): IngresosVsGastosResponse
+
+    @GET("Financiero/ingresos-vs-gastos/exportar-excel")
+    @Streaming
+    suspend fun exportarIngresosVsGastosExcel(
+        @Query("idSede")      idSede      : Int,
+        @Query("fechaInicio") fechaInicio : String,
+        @Query("fechaFin")    fechaFin    : String
+    ): Response<ResponseBody>
 
     // Admin metodo pago
     @GET("MetodoPago")

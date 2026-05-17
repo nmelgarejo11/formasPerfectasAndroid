@@ -13,4 +13,9 @@ interface FinancieroRepository {
         fechaInicio : LocalDate,
         fechaFin    : LocalDate
     ): IngresosVsGastosResponse
+    suspend fun exportarIngresosVsGastosExcel(
+        idSede      : Int,
+        fechaInicio : String,
+        fechaFin    : String
+    ): ByteArray
 }

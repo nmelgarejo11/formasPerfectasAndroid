@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <external-path
+        name="downloads"
+        path="Download/" />
+    <!-- Nueva: para archivos compartidos vía ShareSheet -->
+    <cache-path
+        name="excel_cache"
+        path="excel/" />
+</paths>

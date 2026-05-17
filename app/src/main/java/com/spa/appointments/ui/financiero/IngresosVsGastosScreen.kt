@@ -1,6 +1,7 @@
 package com.spa.appointments.ui.financiero
 
 import android.app.DatePickerDialog
+import android.content.Intent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -9,6 +10,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -36,6 +39,82 @@ fun IngresosVsGastosScreen(
     val sedeSeleccionada by vm.sedeSeleccionada.collectAsState()
     val fechaInicio      by vm.fechaInicio.collectAsState()
     val fechaFin         by vm.fechaFin.collectAsState()
+    val context       = LocalContext.current
+    val descargaState by vm.descargaState.collectAsState()
+    var mostrarError  by remember { mutableStateOf<String?>(null) }
+    var mostrarOpcionesExcel by remember { mutableStateOf(false) }
+
+    LaunchedEffect(descargaState) {
+        when (val s = descargaState) {
+            is DescargaState.Listo -> {
+                val intent = Intent(Intent.ACTION_VIEW).apply {
+                    setDataAndType(
+                        s.uri,
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    )
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                context.startActivity(Intent.createChooser(intent, "Abrir con…"))
+                vm.resetDescarga()
+            }
+            is DescargaState.Error -> {
+                mostrarError = s.mensaje
+                vm.resetDescarga()
+            }
+            else -> Unit
+        }
+    }
+
+    if (mostrarOpcionesExcel) {
+        AlertDialog(
+            onDismissRequest = { mostrarOpcionesExcel = false },
+            title = { Text("Exportar reporte") },
+            text  = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+
+                    // Opción 1 — Guardar en dispositivo
+                    OutlinedButton(
+                        onClick  = {
+                            mostrarOpcionesExcel = false
+                            vm.guardarExcel(context)
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            imageVector        = Icons.Default.FileDownload,
+                            contentDescription = null,
+                            modifier           = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text("Guardar en dispositivo")
+                    }
+
+                    // Opción 2 — Compartir (WhatsApp, correo, Drive…)
+                    OutlinedButton(
+                        onClick  = {
+                            mostrarOpcionesExcel = false
+                            vm.compartirExcel(context)
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            imageVector        = Icons.Default.Share,
+                            contentDescription = null,
+                            modifier           = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text("Compartir…")
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { mostrarOpcionesExcel = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -44,6 +123,26 @@ fun IngresosVsGastosScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
+                    }
+                },
+                actions = {
+                    val tienedatos = uiState is IngresosVsGastosUiState.Success
+
+                    if (descargaState is DescargaState.Cargando) {
+                        CircularProgressIndicator(
+                            modifier  = Modifier.size(24.dp).padding(end = 12.dp),
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        IconButton(
+                            onClick = { if (tienedatos) mostrarOpcionesExcel = true },
+                            enabled = tienedatos
+                        ) {
+                            Icon(
+                                imageVector        = Icons.Default.FileDownload,
+                                contentDescription = "Exportar Excel"
+                            )
+                        }
                     }
                 }
             )
@@ -97,6 +196,17 @@ fun IngresosVsGastosScreen(
                 else -> Unit
             }
         }
+    }
+
+    mostrarError?.let { msg ->
+        AlertDialog(
+            onDismissRequest = { mostrarError = null },
+            title   = { Text("Error al exportar") },
+            text    = { Text(msg) },
+            confirmButton = {
+                TextButton(onClick = { mostrarError = null }) { Text("Aceptar") }
+            }
+        )
     }
 }
 
