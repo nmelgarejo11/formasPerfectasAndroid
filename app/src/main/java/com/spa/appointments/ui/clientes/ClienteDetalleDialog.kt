@@ -51,6 +51,7 @@ fun ClienteDetalleDialog(
     var nombreError   by remember { mutableStateOf<String?>(null) }
     var apellidoError by remember { mutableStateOf<String?>(null) }
     var emailError    by remember { mutableStateOf<String?>(null) }
+    var telefonoError by remember { mutableStateOf<String?>(null) }
 
     var showConfirmDesactivar by remember { mutableStateOf(false) }
     val guardando = actionState is ClienteActionState.Loading
@@ -87,7 +88,7 @@ fun ClienteDetalleDialog(
                         }
                         apellidoError = null
                     }
-                    
+
                     if (!rTelefono.isNullOrBlank()) telefono = rTelefono
 
                     if (!rEmail.isNullOrBlank()) {
@@ -141,7 +142,7 @@ fun ClienteDetalleDialog(
     LaunchedEffect(idCliente, esNuevo) {
         initialized = false
         nombre = ""; apellido = ""; telefono = ""; email = ""
-        nombreError = null; apellidoError = null; emailError = null
+        nombreError = null; apellidoError = null; emailError = null; telefonoError = null
 
         viewModel.estaEscuchandoVoz = false
         viewModel.resetDetalleState()
@@ -175,12 +176,19 @@ fun ClienteDetalleDialog(
     fun validar(): Boolean {
         nombreError = if (nombre.isBlank()) "Requerido" else null
         apellidoError = if (apellido.isBlank()) "Requerido" else null
+        telefonoError = if (telefono.isBlank()) {
+            "Requerido"
+        } else if (telefono.replace(" ", "").length < 7) {
+            "Teléfono inválido" // Validación opcional de longitud mínima
+        } else {
+            null
+        }
         emailError = when {
             email.isBlank() -> "Requerido"
             !android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches() -> "Email inválido"
             else -> null
         }
-        return nombreError == null && apellidoError == null && emailError == null
+        return nombreError == null && apellidoError == null && emailError == null && telefonoError == null
     }
 
     AlertDialog(
@@ -325,9 +333,14 @@ fun ClienteDetalleDialog(
 
                     OutlinedTextField(
                         value         = telefono,
-                        onValueChange = { telefono = it },
-                        label         = { Text("Teléfono") },
+                        onValueChange = {
+                            telefono = it
+                            telefonoError = null // <-- Limpia el error al escribir
+                        },
+                        label         = { Text("Teléfono *") }, // <-- Añadido el asterisco (*)
                         leadingIcon   = { Icon(Icons.Outlined.Phone, null) },
+                        isError       = telefonoError != null, // <-- Vinculado al estado de error
+                        supportingText = telefonoError?.let { { Text(it) } }, // <-- Muestra el mensaje "Requerido"
                         modifier      = Modifier.fillMaxWidth(),
                         singleLine    = true,
                         enabled       = !guardando,
@@ -382,8 +395,8 @@ fun ClienteDetalleDialog(
                                 CrearClienteRequest(
                                     nombre.trim(),
                                     apellido.trim(),
-                                    telefonoSanitizado.ifBlank { null },
-                                    email.ifBlank { null }
+                                    telefonoSanitizado.trim(),
+                                    email.trim()
                                 )
                             )
                         } else {
@@ -392,8 +405,8 @@ fun ClienteDetalleDialog(
                                 ActualizarClienteRequest(
                                     nombre.trim(),
                                     apellido.trim(),
-                                    telefonoSanitizado.ifBlank { null },
-                                    email.ifBlank { null }
+                                    telefonoSanitizado.trim(),
+                                    email.trim()
                                 )
                             )
                         }
