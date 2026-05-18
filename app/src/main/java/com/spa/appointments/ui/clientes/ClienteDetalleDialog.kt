@@ -71,8 +71,23 @@ fun ClienteDetalleDialog(
             if (textoDetectado.isNotBlank()) {
                 viewModel.procesarRafagaVoz(textoDetectado) { rNombre, rApellido, rTelefono, rEmail ->
                     Log.d("IA_VOZ_DEBUG", "Inyectando mapeo de la IA en los campos.")
-                    if (!rNombre.isNullOrBlank()) { nombre = rNombre; nombreError = null }
-                    if (!rApellido.isNullOrBlank()) { apellido = rApellido; apellidoError = null }
+
+                    if (!rNombre.isNullOrBlank()) {
+
+                        nombre = rNombre.trim().split(" ").joinToString(" ") { palabra ->
+                            palabra.lowercase().replaceFirstChar { it.uppercase() }
+                        }
+                        nombreError = null
+                    }
+
+                    if (!rApellido.isNullOrBlank()) {
+
+                        apellido = rApellido.trim().split(" ").joinToString(" ") { palabra ->
+                            palabra.lowercase().replaceFirstChar { it.uppercase() }
+                        }
+                        apellidoError = null
+                    }
+                    
                     if (!rTelefono.isNullOrBlank()) telefono = rTelefono
 
                     if (!rEmail.isNullOrBlank()) {
