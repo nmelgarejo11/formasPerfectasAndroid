@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Email
@@ -27,7 +28,7 @@ import androidx.compose.ui.unit.dp
 import com.spa.appointments.ui.disponibilidad.DisponibilidadUiState
 import kotlinx.coroutines.flow.StateFlow
 
-private const val MIN_PERSONAS = 2
+private const val MIN_PERSONAS = 1
 private const val MAX_PERSONAS = 20
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -50,7 +51,7 @@ fun ResponsableGrupalScreen(
     var nombre by remember { mutableStateOf("") }
     var telefono by remember { mutableStateOf("") }
     var correo by remember { mutableStateOf("") }
-    var cantidadPersonas by remember { mutableStateOf(MIN_PERSONAS) }
+    var cantidadPersonas by remember { mutableIntStateOf(MIN_PERSONAS) }
 
     var errorNombre by remember { mutableStateOf<String?>(null) }
     var errorTelefono by remember { mutableStateOf<String?>(null) }
@@ -76,7 +77,7 @@ fun ResponsableGrupalScreen(
                     fontWeight = FontWeight.SemiBold)},
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Regresar")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Regresar")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
