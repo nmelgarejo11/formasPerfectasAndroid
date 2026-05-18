@@ -137,15 +137,32 @@ fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
 
             ServiciosScreen(
                 onBack = { nav.popBackStack() },
-                onSeleccionarServicio = { servicio ->
-                    sharedVm.servicioSeleccionado = servicio
+                onFinalizarSeleccion = { listaServicios ->
+                    sharedVm.serviciosSeleccionados.clear()
+                    sharedVm.serviciosSeleccionados.addAll(listaServicios)
 
-                    if (servicio.esGrupal) {
-                        sharedVm.esGrupal = true
-                        nav.navigate(Routes.RESPONSABLE_GRUPAL)
-                    } else {
-                        sharedVm.esGrupal = false
-                        nav.navigate(Routes.PROFESIONALES)
+                    when {
+                        // Escenario A: Selección múltiple de servicios
+                        listaServicios.size > 1 -> {
+                            sharedVm.servicioSeleccionado = null
+                            sharedVm.esGrupal = false
+                            sharedVm.esMultiple = true
+                            nav.navigate(Routes.RESPONSABLE_GRUPAL)
+                        }
+                        // Escenario B: Un solo servicio y está configurado como Cita Grupal
+                        listaServicios.size == 1 && listaServicios.first().esGrupal -> {
+                            sharedVm.servicioSeleccionado = listaServicios.first()
+                            sharedVm.esGrupal = true
+                            sharedVm.esMultiple = false
+                            nav.navigate(Routes.RESPONSABLE_GRUPAL)
+                        }
+                        // Escenario C: Un único servicio de modalidad individual tradicional
+                        listaServicios.size == 1 -> {
+                            sharedVm.servicioSeleccionado = listaServicios.first()
+                            sharedVm.esGrupal = false
+                            sharedVm.esMultiple = false
+                            nav.navigate(Routes.PROFESIONALES)
+                        }
                     }
                 }
             )

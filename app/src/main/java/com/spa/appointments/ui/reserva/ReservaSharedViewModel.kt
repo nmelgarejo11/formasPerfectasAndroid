@@ -1,6 +1,7 @@
 package com.spa.appointments.ui.reserva
 
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
@@ -16,6 +17,10 @@ class ReservaSharedViewModel @Inject constructor() : ViewModel() {
     var servicioSeleccionado: Servicio?       = null
     var profesionalSeleccionado: Profesional? = null
 
+    // ── Control de Cita Múltiple ─────────────────────────────────────────
+    val serviciosSeleccionados = mutableStateListOf<Servicio>()
+    var esMultiple by mutableStateOf(false)
+
     // ── Control de Cita Grupal ───────────────────────────────────────────
     var esGrupal by mutableStateOf(false)
     var responsableNombre by mutableStateOf("")
@@ -27,6 +32,8 @@ class ReservaSharedViewModel @Inject constructor() : ViewModel() {
         clienteSeleccionado = null
         servicioSeleccionado = null
         profesionalSeleccionado = null
+        serviciosSeleccionados.clear()
+        esMultiple = false
         esGrupal = false
         responsableNombre = ""
         responsableTelefono = ""

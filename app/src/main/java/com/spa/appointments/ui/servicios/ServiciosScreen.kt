@@ -1,7 +1,6 @@
 package com.spa.appointments.ui.servicios
 
 import androidx.compose.animation.*
-import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -12,6 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Groups
@@ -38,7 +38,7 @@ import com.spa.appointments.domain.model.Servicio
 @Composable
 fun ServiciosScreen(
     onBack: () -> Unit,
-    onSeleccionarServicio: (Servicio) -> Unit,
+    onFinalizarSeleccion: (List<Servicio>) -> Unit, // Firma corregida para concordar con NavGraph
     vm: ServiciosViewModel = hiltViewModel()
 ) {
     val uiState by vm.uiState.collectAsState()
@@ -46,6 +46,9 @@ fun ServiciosScreen(
     var query by remember { mutableStateOf("") }
     val focusManager = LocalFocusManager.current
     val focusRequester = remember { FocusRequester() }
+
+    // Estado local para persistir múltiples ítems seleccionados
+    val serviciosSeleccionados = remember { mutableStateListOf<Servicio>() }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -91,7 +94,7 @@ fun ServiciosScreen(
                     },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
-                            Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
@@ -114,6 +117,35 @@ fun ServiciosScreen(
                     thickness = 0.5.dp,
                     color     = MaterialTheme.colorScheme.outlineVariant
                 )
+            }
+        },
+        bottomBar = {
+            AnimatedVisibility(
+                visible = serviciosSeleccionados.isNotEmpty(),
+                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
+            ) {
+                Surface(
+                    tonalElevation = 4.dp,
+                    color = MaterialTheme.colorScheme.surface,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Button(
+                        onClick = { onFinalizarSeleccion(serviciosSeleccionados.toList()) },
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                            .height(48.dp)
+                    ) {
+                        Text(
+                            text = if (serviciosSeleccionados.size == 1) "Continuar con 1 servicio"
+                            else "Continuar con ${serviciosSeleccionados.size} servicios",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp
+                        )
+                    }
+                }
             }
         }
     ) { padding ->
@@ -159,7 +191,7 @@ fun ServiciosScreen(
                                 start  = 16.dp,
                                 end    = 16.dp,
                                 top    = 8.dp,
-                                bottom = 24.dp
+                                bottom = 80.dp // Margen extra para que el botón flotante no tape elementos
                             )
                         ) {
                             grupos.forEach { (categoria, servicios) ->
@@ -173,9 +205,25 @@ fun ServiciosScreen(
                                 }
 
                                 items(items = servicios, key = { it.id }) { servicio ->
+                                    val estaSeleccionado = serviciosSeleccionados.contains(servicio)
+
                                     ServicioRow(
                                         servicio = servicio,
-                                        onClick  = { onSeleccionarServicio(servicio) },
+                                        estaSeleccionado = estaSeleccionado,
+                                        onClick  = {
+                                            if (estaSeleccionado) {
+                                                serviciosSeleccionados.remove(servicio)
+                                            } else {
+                                                if (servicio.esGrupal) {
+                                                    // Las citas grupales van por flujo solitario cerrado
+                                                    serviciosSeleccionados.clear()
+                                                } else {
+                                                    // Si mete uno tradicional, limpia rastros grupales del array
+                                                    serviciosSeleccionados.removeAll { it.esGrupal }
+                                                }
+                                                serviciosSeleccionados.add(servicio)
+                                            }
+                                        },
                                         modifier = Modifier.padding(bottom = 6.dp)
                                     )
                                 }
@@ -283,9 +331,8 @@ private fun CategoriaHeader(
                 letterSpacing = 1.sp,
                 color         = MaterialTheme.colorScheme.onBackground
             )
-            // Indicador de que la categoría tiene servicios grupales
             if (tieneGrupales) {
-                Spacer(Modifier.width(6.dp))
+                Spacer(Modifier.width(6.6.dp))
                 Icon(
                     imageVector        = Icons.Default.Groups,
                     contentDescription = "Tiene servicios grupales",
@@ -313,6 +360,7 @@ private fun CategoriaHeader(
 @Composable
 private fun ServicioRow(
     servicio: Servicio,
+    estaSeleccionado: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -320,8 +368,9 @@ private fun ServicioRow(
         onClick        = onClick,
         modifier       = modifier.fillMaxWidth(),
         shape          = RoundedCornerShape(12.dp),
-        color          = MaterialTheme.colorScheme.surfaceContainerLow,
-        tonalElevation = 0.dp
+        color          = if (estaSeleccionado) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+        else MaterialTheme.colorScheme.surfaceContainerLow,
+        border         = if (estaSeleccionado) androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else null
     ) {
         Row(
             modifier          = Modifier
@@ -329,7 +378,13 @@ private fun ServicioRow(
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Avatar con ícono según modalidad
+            // Checkbox lateral integrado para control múltiple explícito
+            Checkbox(
+                checked = estaSeleccionado,
+                onCheckedChange = { onClick() },
+                modifier = Modifier.padding(end = 4.dp)
+            )
+
             Box(
                 modifier = Modifier
                     .size(38.dp)
@@ -371,7 +426,6 @@ private fun ServicioRow(
 
             Spacer(Modifier.width(12.dp))
 
-            // Nombre + duración + badge grupal
             Column(modifier = Modifier.weight(1f)) {
                 Row(
                     verticalAlignment     = Alignment.CenterVertically,
@@ -421,7 +475,6 @@ private fun ServicioRow(
                 }
             }
 
-            // Precio
             Text(
                 text       = "$${"%,.0f".format(servicio.precioBase)}",
                 style      = MaterialTheme.typography.bodyMedium,

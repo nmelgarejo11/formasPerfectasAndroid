@@ -55,7 +55,6 @@ class DisponibilidadViewModel @Inject constructor(
     }
 
     private fun cargarSlots(fecha: LocalDate) {
-        // Si es cita grupal, no consultamos slots de un profesional individual
         val prof = profesional ?: return
         val serv = servicio    ?: return
 
@@ -78,7 +77,9 @@ class DisponibilidadViewModel @Inject constructor(
     }
 
     fun confirmarCita(sharedVm: ReservaSharedViewModel, notas: String?) {
-        val serv = servicio ?: return
+        if (!sharedVm.esMultiple && servicio == null) return
+        if (sharedVm.esMultiple && sharedVm.serviciosSeleccionados.isEmpty()) return
+
         val fecha = _fechaSeleccionada.value
 
         viewModelScope.launch {
@@ -88,8 +89,10 @@ class DisponibilidadViewModel @Inject constructor(
                 var fechaInicioStr: String? = null
                 var fechaFinStr: String? = null
 
-                // Validación de flujo de negocio (Individual vs Grupal)
-                if (!sharedVm.esGrupal) {
+                // Flujo Abierto aplica tanto para citas grupales como para servicios múltiples
+                val esFlujoAbierto = sharedVm.esGrupal || sharedVm.esMultiple
+
+                if (!esFlujoAbierto) {
                     val slot = _slotSeleccionado.value
                     if (slot == null) {
                         _uiState.value = DisponibilidadUiState.Error("Debe seleccionar un horario")
@@ -101,33 +104,46 @@ class DisponibilidadViewModel @Inject constructor(
                     fechaInicioStr = formatter.format(fechaInicio)
                     fechaFinStr = formatter.format(fechaFin)
                 } else {
-                    // Para citas grupales abiertas, se guarda la fecha base sin bloque de hora específico
                     val fechaBase = LocalDateTime.of(fecha, java.time.LocalTime.MIN)
                     fechaInicioStr = formatter.format(fechaBase)
                     fechaFinStr = formatter.format(fechaBase)
                 }
 
-                // Cliente genérico si es grupal, de lo contrario requiere el cliente seleccionado
-                val idClienteFinal = if (sharedVm.esGrupal) 0 else (clienteSeleccionado?.id ?: run {
+                // Si es flujo abierto (grupal/múltiple) se pasa 0 para que SQL asigne el cliente genérico 'Reserva%'
+                val idClienteFinal = if (esFlujoAbierto) 0 else (clienteSeleccionado?.id ?: run {
                     _uiState.value = DisponibilidadUiState.Error("Debe seleccionar un cliente")
                     return@launch
                 })
 
+                // Mapeo dinámico de la lista de servicios recolectados
+                val serviciosDetalle = if (sharedVm.esMultiple) {
+                    sharedVm.serviciosSeleccionados.map { item ->
+                        ServicioDetalle(
+                            idServicio = item.id,
+                            precio     = item.precioBase,
+                            duracion   = item.duracionMinutos
+                        )
+                    }
+                } else {
+                    servicio?.let { item ->
+                        listOf(
+                            ServicioDetalle(
+                                idServicio = item.id,
+                                precio     = item.precioBase,
+                                duracion   = item.duracionMinutos
+                            )
+                        )
+                    } ?: emptyList()
+                }
+
                 val request = CrearCitaRequest(
                     idSede        = profesional?.idSede ?: Constants.ID_SEDE_DEFAULT,
                     idCliente     = idClienteFinal,
-                    idProfesional = if (sharedVm.esGrupal) null else profesional?.id,
+                    idProfesional = if (esFlujoAbierto) null else profesional?.id,
                     fechaInicio   = fechaInicioStr,
                     fechaFin      = fechaFinStr,
                     notas         = notas,
-                    servicios     = listOf(
-                        ServicioDetalle(
-                            idServicio = serv.id,
-                            precio     = serv.precioBase,
-                            duracion   = serv.duracionMinutos
-                        )
-                    ),
-                    // Inyección de nuevos campos mapeados hacia la API
+                    servicios     = serviciosDetalle,
                     cantidadPersonas    = sharedVm.cantidadPersonas,
                     responsableNombre   = sharedVm.responsableNombre.ifBlank { null },
                     responsableTelefono = sharedVm.responsableTelefono.ifBlank { null },
