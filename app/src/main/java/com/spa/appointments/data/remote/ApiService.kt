@@ -420,4 +420,10 @@ interface ApiService {
         @Body req: AsignarSubModuloRequest
     ): Response<Unit>
 
+    //IA
+    @POST("IA/extraer-datos-voz")
+    suspend fun extraerDatosDosVoz(
+        @Body request: ExtraerDatosVozRequest
+    ): ExtraccionVoz
+
 }

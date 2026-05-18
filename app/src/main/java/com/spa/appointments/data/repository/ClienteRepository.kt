@@ -4,6 +4,8 @@ import com.spa.appointments.data.remote.ApiService
 import com.spa.appointments.domain.model.ActualizarClienteRequest
 import com.spa.appointments.domain.model.Cliente
 import com.spa.appointments.domain.model.CrearClienteRequest
+import com.spa.appointments.domain.model.ExtraccionVoz
+import com.spa.appointments.domain.model.ExtraerDatosVozRequest
 import javax.inject.Inject
 
 class ClienteRepository @Inject constructor(
@@ -23,4 +25,9 @@ class ClienteRepository @Inject constructor(
 
     suspend fun desactivarCliente(id: Int) =
         api.desactivarCliente(id)
+
+    suspend fun extraerDatosDesdeVoz(textoDictado: String): ExtraccionVoz {
+        val request = ExtraerDatosVozRequest(textoDictado = textoDictado)
+        return api.extraerDatosDosVoz(request)
+    }
 }

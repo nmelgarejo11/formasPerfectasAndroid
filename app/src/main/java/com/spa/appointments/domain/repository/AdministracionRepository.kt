@@ -1,6 +1,5 @@
 package com.spa.appointments.domain.repository
 
-import android.util.Log
 import com.spa.appointments.data.remote.ApiService
 import com.spa.appointments.domain.model.AsignarSubModuloRequest
 import com.spa.appointments.domain.model.CambiarPerfilRequest
@@ -46,10 +45,7 @@ class AdministracionRepositoryImpl @Inject constructor(
 
     override suspend fun obtenerSubModulos() = runCatching {
         val response = api.obtenerSubModulos()
-        Log.d("AdminRepo", "SubModulos raw: ${response.raw()}")
-        Log.d("AdminRepo", "SubModulos code: ${response.code()}")
         val body = response.body()
-        Log.d("AdminRepo", "SubModulos body: $body")
         body ?: emptyList()
     }
 
@@ -95,4 +91,5 @@ class AdministracionRepositoryImpl @Inject constructor(
         val response = api.quitarSubModulo(AsignarSubModuloRequest(idPerfil, idSubModulo))
         if (!response.isSuccessful) throw Exception(response.errorBody()?.string() ?: "Error al quitar submódulo")
     }
+
 }
