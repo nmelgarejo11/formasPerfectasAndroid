@@ -426,4 +426,20 @@ interface ApiService {
         @Body request: ExtraerDatosVozRequest
     ): ExtraccionVoz
 
+    //Ingreso
+
+    @GET("Financiero/ingresos")
+    suspend fun listarIngresos(
+        @Query("IdSede") idSede: Int?,
+        @Query("FechaDesde") fechaDesde: String?,
+        @Query("FechaHasta") fechaHasta: String?
+    ): List<IngresoResponse>
+
+    @POST("Financiero/ingresos")
+    suspend fun registrarIngreso(@Body request: IngresoRequest): IngresoResultado
+
+    @DELETE("Financiero/ingresos/{id}")
+    suspend fun eliminarIngreso(@Path("id") id: Int): IngresoResultado
+
+
 }

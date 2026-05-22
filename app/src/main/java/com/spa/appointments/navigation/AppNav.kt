@@ -47,6 +47,7 @@ import com.spa.appointments.ui.metodopago.MetodoPagoDetalleScreen
 import com.spa.appointments.ui.metodopago.MetodoPagoScreen
 import com.spa.appointments.ui.tema.TemaScreen
 import com.spa.appointments.ui.citas.ResponsableGrupalScreen
+import com.spa.appointments.ui.ingresos.IngresoScreen
 
 @Composable
 fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
@@ -76,6 +77,7 @@ fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
         Routes.ADMIN_USUARIO,
         Routes.ADMIN_USUARIO_PERFIL,
         Routes.ADMIN_SUBMODULO,
+        Routes.INGRESOS,
         "logout"
     )
 
@@ -333,6 +335,8 @@ fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
         composable(Routes.ADMIN_TEMA) { TemaScreen(onBack = { nav.popBackStack() }) }
 
         composable(Routes.GASTOS) { GastoScreen(onBack = { nav.popBackStack() }) }
+
+        composable(Routes.INGRESOS) { IngresoScreen(onBack = { nav.popBackStack() }) }
 
         composable(Routes.METODOS_PAGO) {
             MetodoPagoScreen(

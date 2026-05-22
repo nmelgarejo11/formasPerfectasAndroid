@@ -38,6 +38,7 @@ object Constants {
         const val ADMIN_CARGO = "admin_cargo"
         const val ADMIN_USUARIO_PERFIL = "admin_usuario_perfil"
         const val ADMIN_SUBMODULO = "admin_submodulo"
+        const val INGRESOS = "ingresos"
     }
 
     // ID de sede por defecto (puedes hacerlo dinámico después)
