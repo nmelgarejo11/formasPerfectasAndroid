@@ -1,7 +1,7 @@
 plugins {
     id("com.android.application")
-    id("org.jetbrains.kotlin.android") version "1.9.10"
-    id("org.jetbrains.kotlin.kapt") version "1.9.10"
+    id("org.jetbrains.kotlin.android") version "1.9.24"
+    id("org.jetbrains.kotlin.kapt") version "1.9.24"
     id("com.google.dagger.hilt.android")
     id("com.google.gms.google-services")
 }
@@ -43,7 +43,7 @@ android {
         debug {
             // ← cambia esta IP por la de tu PC (ipconfig en CMD)
             //buildConfigField("String", "BASE_URL", "\"http://192.168.40.76:5005/api/\"")
-            buildConfigField("String", "BASE_URL", "\"http://192.168.1.8:5005/api/\"")
+            buildConfigField("String", "BASE_URL", "\"http://192.168.40.59:5005/api/\"")
             isDebuggable = true
         }
         release {
@@ -58,7 +58,7 @@ android {
     }
 
     composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.3"
+        kotlinCompilerExtensionVersion = "1.5.14"
     }
 
     packaging {

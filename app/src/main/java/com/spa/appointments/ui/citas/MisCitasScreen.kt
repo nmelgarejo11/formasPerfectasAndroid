@@ -1,6 +1,5 @@
 package com.spa.appointments.ui.citas
 
-import android.app.DatePickerDialog
 import android.widget.Toast
 import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
@@ -16,12 +15,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
@@ -31,20 +32,17 @@ import com.spa.appointments.domain.model.Cita
 import com.spa.appointments.domain.model.EstadoCita
 import com.spa.appointments.domain.model.MetodoPago
 import com.spa.appointments.domain.model.MetodoPagoDetalle
+import com.spa.appointments.domain.model.Profesional
 import com.spa.appointments.domain.model.ServicioCita
+import com.spa.appointments.ui.theme.AppDynamicTheme
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import java.util.Calendar
 import java.util.TimeZone
-import androidx.compose.material3.rememberDatePickerState
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
-import androidx.compose.ui.draw.clip
 
-// ─── Screen principal ─────────────────────────────────────────────────────────
+// ─── Screen principal (Stateful) ──────────────────────────────────────────────
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MisCitasScreen(
     onBack:               () -> Unit,
@@ -52,26 +50,14 @@ fun MisCitasScreen(
     onVerReagendamientos: () -> Unit,
     vm: MisCitasViewModel = hiltViewModel()
 ) {
-    val uiState     by vm.uiState.collectAsState()
-    val accionState by vm.accionState.collectAsState()
-    val metodosPago by vm.metodosPago.collectAsState()
-    val filtros     by vm.filtros.collectAsState()
-    val estados     by vm.estados.collectAsState()
-    val showFiltros by vm.mostrarFiltros.collectAsState()
+    val uiState       by vm.uiState.collectAsState()
+    val accionState   by vm.accionState.collectAsState()
+    val metodosPago   by vm.metodosPago.collectAsState()
+    val filtros       by vm.filtros.collectAsState()
+    val estados       by vm.estados.collectAsState()
+    val showFiltros   by vm.mostrarFiltros.collectAsState()
+    val profesionales by vm.profesionales.collectAsState()
     val context = LocalContext.current
-
-    var filtrosTemp by remember { mutableStateOf(FiltrosMisCitas()) }
-
-    var citaAccion             by remember { mutableStateOf<Cita?>(null) }
-    var mostrarCancelar        by remember { mutableStateOf(false) }
-    var mostrarReagendar       by remember { mutableStateOf(false) }
-    var mostrarFinalizar       by remember { mutableStateOf(false) }
-    var mostrarAsignar         by remember { mutableStateOf(false) }
-    var motivoReagendar        by remember { mutableStateOf("") }
-    var metodoPagoSeleccionado by remember { mutableStateOf<MetodoPago?>(null) }
-
-    val snackbarHost = remember { SnackbarHostState() }
-    val totalCitas   = (uiState as? MisCitasUiState.Success)?.citas?.size
 
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
@@ -82,10 +68,74 @@ fun MisCitasScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
+    MisCitasContent(
+        uiState               = uiState,
+        accionState           = accionState,
+        metodosPago           = metodosPago,
+        filtros               = filtros,
+        estados               = estados,
+        showFiltros           = showFiltros,
+        profesionales         = profesionales,
+        onBack                = onBack,
+        onVerHistorial        = onVerHistorial,
+        onVerReagendamientos  = onVerReagendamientos,
+        onCargar              = { vm.cargar() },
+        onLimpiarFiltros      = { vm.limpiarFiltros() },
+        onToggleFiltros       = { vm.toggleFiltros() },
+        onAplicarFiltros      = { vm.aplicarFiltros(it) },
+        onCancelarCita        = { vm.cancelarCita(it) },
+        onReagendarCita       = { id, motivo -> vm.reagendarCita(id, motivo) },
+        onFinalizarCita       = { idCita, idMetodo, idDetalle -> vm.finalizarCita(idCita, idMetodo, idDetalle) },
+        onAsignarCitaGrupal   = { idCita, ids, inicio, fin -> vm.asignarCitaGrupal(idCita, ids, inicio, fin) },
+        onWhatsApp            = { idCita -> vm.abrirWhatsApp(idCita, context) },
+        onResetAccion         = { vm.resetAccion() },
+        onCargarProfesionales = { sedeId -> vm.cargarProfesionales(sedeId) }
+    )
+}
+
+// ─── Content principal (Stateless respecto al ViewModel) ──────────────────────
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MisCitasContent(
+    uiState:               MisCitasUiState,
+    accionState:           AccionUiState,
+    metodosPago:           List<MetodoPago>,
+    filtros:               FiltrosMisCitas,
+    estados:               List<EstadoCita>,
+    showFiltros:           Boolean,
+    profesionales:         List<Profesional>,
+    onBack:                () -> Unit,
+    onVerHistorial:        () -> Unit,
+    onVerReagendamientos:  () -> Unit,
+    onCargar:              () -> Unit,
+    onLimpiarFiltros:      () -> Unit,
+    onToggleFiltros:       () -> Unit,
+    onAplicarFiltros:      (FiltrosMisCitas) -> Unit,
+    onCancelarCita:        (Int) -> Unit,
+    onReagendarCita:       (Int, String?) -> Unit,
+    onFinalizarCita:       (Int, Int, Int?) -> Unit,
+    onAsignarCitaGrupal:   (Int, List<Int>?, String?, String?) -> Unit,
+    onWhatsApp:            (Int) -> Unit,
+    onResetAccion:         () -> Unit,
+    onCargarProfesionales: (Int) -> Unit
+) {
+    var filtrosTemp by remember { mutableStateOf(FiltrosMisCitas()) }
+
+    var citaAccion       by remember { mutableStateOf<Cita?>(null) }
+    var mostrarCancelar  by remember { mutableStateOf(false) }
+    var mostrarReagendar by remember { mutableStateOf(false) }
+    var mostrarFinalizar by remember { mutableStateOf(false) }
+    var mostrarAsignar   by remember { mutableStateOf(false) }
+    var motivoReagendar  by remember { mutableStateOf("") }
+
+    val snackbarHost = remember { SnackbarHostState() }
+    val totalCitas   = (uiState as? MisCitasUiState.Success)?.citas?.size
+
     LaunchedEffect(accionState) {
         when (val s = accionState) {
-            is AccionUiState.Success -> { snackbarHost.showSnackbar(s.mensaje); vm.resetAccion() }
-            is AccionUiState.Error   -> { snackbarHost.showSnackbar(s.mensaje); vm.resetAccion() }
+            is AccionUiState.Success -> { snackbarHost.showSnackbar(s.mensaje); onResetAccion() }
+            is AccionUiState.Error   -> { snackbarHost.showSnackbar(s.mensaje); onResetAccion() }
             else -> Unit
         }
     }
@@ -156,7 +206,7 @@ fun MisCitasScreen(
             },
             confirmButton = {
                 Button(
-                    onClick  = { mostrarCancelar = false; vm.cancelarCita(citaAccion!!.id) },
+                    onClick  = { mostrarCancelar = false; onCancelarCita(citaAccion!!.id) },
                     shape    = RoundedCornerShape(12.dp),
                     colors   = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                     modifier = Modifier.fillMaxWidth()
@@ -244,7 +294,7 @@ fun MisCitasScreen(
                 Button(
                     onClick  = {
                         mostrarReagendar = false
-                        vm.reagendarCita(citaAccion!!.id, motivoReagendar.ifBlank { null })
+                        onReagendarCita(citaAccion!!.id, motivoReagendar.ifBlank { null })
                         motivoReagendar = ""
                     },
                     shape    = RoundedCornerShape(12.dp),
@@ -271,7 +321,7 @@ fun MisCitasScreen(
             metodos = metodosPago,
             onConfirm = { idMetodo, idDetalle ->
                 mostrarFinalizar = false
-                vm.finalizarCita(
+                onFinalizarCita(
                     citaAccion!!.id,
                     idMetodo,
                     idDetalle
@@ -286,12 +336,14 @@ fun MisCitasScreen(
     // ── Diálogo: Asignar Horario/Profesional Grupal ─────────────────────────
     if (mostrarAsignar && citaAccion != null) {
         AsignarCitaGrupalDialog(
-            cita = citaAccion!!,
-            onConfirm = { ids, fechaInicio, fechaFin ->
+            cita                  = citaAccion!!,
+            profesionales         = profesionales,
+            onCargarProfesionales = onCargarProfesionales,
+            onConfirm             = { ids, fechaInicio, fechaFin ->
                 mostrarAsignar = false
-                vm.asignarCitaGrupal(citaAccion!!.id, ids, fechaInicio, fechaFin)
+                onAsignarCitaGrupal(citaAccion!!.id, ids, fechaInicio, fechaFin)
             },
-            onDismiss = { mostrarAsignar = false }
+            onDismiss             = { mostrarAsignar = false }
         )
     }
 
@@ -324,13 +376,13 @@ fun MisCitasScreen(
                 },
                 actions = {
                     if (filtros.activo) {
-                        IconButton(onClick = { vm.limpiarFiltros() }) {
+                        IconButton(onClick = onLimpiarFiltros) {
                             BadgedBox(badge = { Badge() }) {
                                 Icon(Icons.Default.FilterAltOff, "Limpiar filtros")
                             }
                         }
                     }
-                    IconButton(onClick = { filtrosTemp = filtros; vm.toggleFiltros() }) {
+                    IconButton(onClick = { filtrosTemp = filtros; onToggleFiltros() }) {
                         Icon(
                             imageVector        = if (filtros.activo) Icons.Default.FilterAlt else Icons.Default.FilterList,
                             contentDescription = "Filtrar",
@@ -360,7 +412,7 @@ fun MisCitasScreen(
                             DropdownMenuItem(
                                 text        = { Text("Recargar") },
                                 leadingIcon = { Icon(Icons.Default.Refresh, null) },
-                                onClick     = { menuExpanded = false; vm.cargar() }
+                                onClick     = { menuExpanded = false; onCargar() }
                             )
                         }
                     }
@@ -377,18 +429,18 @@ fun MisCitasScreen(
                     filtros   = filtrosTemp,
                     estados   = estados,
                     onChange  = { filtrosTemp = it },
-                    onAplicar = { vm.aplicarFiltros(filtrosTemp) },
-                    onCerrar  = { vm.toggleFiltros() }
+                    onAplicar = { onAplicarFiltros(filtrosTemp) },
+                    onCerrar  = onToggleFiltros
                 )
             }
 
             AnimatedVisibility(visible = filtros.activo && !showFiltros, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
-                Surface(color = MaterialTheme.colorScheme.secondaryContainer, modifier = Modifier.fillMaxWidth()) {
-                    Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Surface(color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f), modifier = Modifier.fillMaxWidth()) {
+                    Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.FilterAlt, null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSecondaryContainer)
                         Spacer(Modifier.width(6.dp))
                         Text("Filtros aplicados", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSecondaryContainer, modifier = Modifier.weight(1f))
-                        TextButton(onClick = { vm.limpiarFiltros() }, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)) {
+                        TextButton(onClick = onLimpiarFiltros, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)) {
                             Text("Limpiar", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSecondaryContainer)
                         }
                     }
@@ -455,7 +507,7 @@ fun MisCitasScreen(
                                 style = MaterialTheme.typography.bodySmall
                             )
                             Button(
-                                onClick = { vm.cargar() },
+                                onClick = onCargar,
                                 shape = RoundedCornerShape(12.dp)
                             ) {
                                 Icon(
@@ -500,7 +552,7 @@ fun MisCitasScreen(
                                         mostrarAsignar = true
                                     },
                                     onWhatsApp = {
-                                        vm.abrirWhatsApp(cita.id, context)
+                                        onWhatsApp(cita.id)
                                     },
                                     accionCargando = accionState is AccionUiState.Loading
                                 )
@@ -525,8 +577,6 @@ private fun FiltrosMisCitasPanel(
     onAplicar: () -> Unit,
     onCerrar:  () -> Unit
 ) {
-    val context = LocalContext.current
-
     Surface(
         tonalElevation  = 4.dp,
         shadowElevation = 4.dp,
@@ -585,7 +635,7 @@ private fun FiltrosMisCitasPanel(
                 estados            = estados,
                 seleccionadoId     = filtros.idEstado,
                 seleccionadoNombre = filtros.nombreEstado,
-                onSelect           = { id, nombre -> onChange(filtros.copy(idEstado = id, nombreEstado = nombre)) } // Nota: Asegúrate si tu modelo usa nombreEstado o fontNameEstado, se mantuvo la lógica original.
+                onSelect           = { id, nombre -> onChange(filtros.copy(idEstado = id, nombreEstado = nombre)) }
             )
 
             Spacer(Modifier.height(14.dp))
@@ -608,18 +658,17 @@ private fun FiltrosMisCitasPanel(
 @Composable
 private fun MisCitasDatePicker(
     label:    String,
-    value:    String?,          // "yyyy-MM-dd" o null
+    value:    String?,
     modifier: Modifier = Modifier,
     onDate:   (String?) -> Unit
 ) {
     var mostrarPicker by remember { mutableStateOf(false) }
 
-    // Inicializa el picker en la fecha actual del campo, o en hoy si está vacío
     val initialMillis = remember(value) {
         value?.let { iso ->
             runCatching {
                 val (y, m, d) = iso.split("-").map { it.toInt() }
-                java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC")).apply {
+                Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply {
                     clear()
                     set(y, m - 1, d)
                 }.timeInMillis
@@ -631,7 +680,6 @@ private fun MisCitasDatePicker(
         initialSelectedDateMillis = initialMillis
     )
 
-    // Campo de texto de solo lectura que abre el picker al tocar
     OutlinedTextField(
         value         = value?.let { formatearFecha(it) } ?: "",
         onValueChange = {},
@@ -658,20 +706,19 @@ private fun MisCitasDatePicker(
         modifier   = modifier
     )
 
-    // Diálogo M3 nativo
     if (mostrarPicker) {
         DatePickerDialog(
             onDismissRequest = { mostrarPicker = false },
             confirmButton = {
                 TextButton(onClick = {
                     datePickerState.selectedDateMillis?.let { millis ->
-                        val cal = java.util.Calendar.getInstance(
-                            java.util.TimeZone.getTimeZone("UTC")
+                        val cal = Calendar.getInstance(
+                            TimeZone.getTimeZone("UTC")
                         ).apply { timeInMillis = millis }
                         val iso = "%04d-%02d-%02d".format(
-                            cal.get(java.util.Calendar.YEAR),
-                            cal.get(java.util.Calendar.MONTH) + 1,
-                            cal.get(java.util.Calendar.DAY_OF_MONTH)
+                            cal.get(Calendar.YEAR),
+                            cal.get(Calendar.MONTH) + 1,
+                            cal.get(Calendar.DAY_OF_MONTH)
                         )
                         onDate(iso)
                     }
@@ -761,24 +808,23 @@ private fun CitaCard(
     Card(
         modifier  = Modifier.fillMaxWidth(),
         shape     = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
         colors    = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border    = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+        border    = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
     ) {
-        Row(modifier = Modifier.fillMaxWidth()) {
+        Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
 
-            // ── Barra lateral de color con altura mínima garantizada ───────
+            // ── Borde indicador lateral ─────────────────────────────────────
             Box(
                 modifier = Modifier
                     .width(5.dp)
-                    .defaultMinSize(minHeight = 80.dp)
                     .fillMaxHeight()
                     .background(colorEstado)
             )
 
             Column(modifier = Modifier.weight(1f).padding(horizontal = 14.dp, vertical = 12.dp)) {
 
-                // ── Header: Estado + Fecha + WhatsApp (todo en un Row) ─────
+                // ── Encabezado: Estado + Fecha + WhatsApp ───────────────────
                 Row(
                     modifier              = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -795,24 +841,32 @@ private fun CitaCard(
                     }
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.CalendarToday, null, modifier = Modifier.size(11.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Spacer(Modifier.width(3.dp))
-                        Text(text = formatearFecha(cita.fechaHoraInicio), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Icon(
+                            Icons.Default.CalendarToday,
+                            contentDescription = null,
+                            modifier = Modifier.size(12.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            text  = formatearFecha(cita.fechaHoraInicio),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                         Spacer(Modifier.width(8.dp))
 
-                        // ── WhatsApp IconButton compacto ──────────────────
                         Box(
-                            modifier         = Modifier
-                                .size(30.dp)
+                            modifier = Modifier
+                                .size(28.dp)
                                 .clip(RoundedCornerShape(8.dp))
                                 .background(Color(0xFF25D366).copy(alpha = 0.12f)),
                             contentAlignment = Alignment.Center
                         ) {
-                            IconButton(onClick = onWhatsApp, enabled = !accionCargando, modifier = Modifier.size(30.dp)) {
+                            IconButton(onClick = onWhatsApp, enabled = !accionCargando, modifier = Modifier.size(28.dp)) {
                                 Icon(
                                     painter = painterResource(id = R.drawable.ic_whatsapp),
                                     contentDescription = "WhatsApp",
-                                    modifier = Modifier.size(16.dp),
+                                    modifier = Modifier.size(15.dp),
                                     tint = Color.Unspecified
                                 )
                             }
@@ -820,23 +874,22 @@ private fun CitaCard(
                     }
                 }
 
-                Spacer(Modifier.height(10.dp))
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(8.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                Spacer(Modifier.height(8.dp))
 
-                // ── Cliente ───────────────────────────────────────────────
+                // ── Información Principal ───────────────────────────────────
                 if (!cita.nombreCliente.isNullOrBlank()) {
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 6.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 4.dp)) {
                         Icon(Icons.Default.Person, null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
-                        Spacer(Modifier.width(5.dp))
+                        Spacer(Modifier.width(6.dp))
                         Text(text = cita.nombreCliente, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium)
                     }
                 }
 
-                // ── Profesional ───────────────────────────────────────────
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 4.dp)) {
                     Icon(Icons.Default.Badge, null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(Modifier.width(5.dp))
+                    Spacer(Modifier.width(6.dp))
                     Text(
                         text       = buildString { append(cita.profesional); cita.cargoProfesional?.let { append(" · $it") } },
                         style      = MaterialTheme.typography.bodySmall,
@@ -844,10 +897,9 @@ private fun CitaCard(
                     )
                 }
 
-                // ── Hora y sede ───────────────────────────────────────────
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 6.dp)) {
                     Icon(Icons.Default.Schedule, null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(Modifier.width(5.dp))
+                    Spacer(Modifier.width(6.dp))
                     Text(
                         text  = "${formatearHora(cita.fechaHoraInicio)} – ${formatearHora(cita.fechaHoraFin)} · ${cita.sede}",
                         style = MaterialTheme.typography.bodySmall,
@@ -855,169 +907,180 @@ private fun CitaCard(
                     )
                 }
 
-                // ── Total ─────────────────────────────────────────────────
-                Surface(shape = RoundedCornerShape(10.dp), color = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier.padding(bottom = 4.dp)) {
-                    Row(
-                        modifier              = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 7.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment     = Alignment.CenterVertically
+                // ── Fila de resumen: Total + Cantidad de Personas ───────────
+                Row(
+                    modifier              = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment     = Alignment.CenterVertically
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Row(
+                            modifier              = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                            verticalAlignment     = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
                             Icon(Icons.Default.Payments, null, modifier = Modifier.size(13.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
-                            Text("Total", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                            Text(
+                                text       = "Total: ${"$%,.0f".format(cita.total)}",
+                                style      = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color      = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
                         }
+                    }
+
+                    if (cita.cantidadPersonas != null && cita.cantidadPersonas > 0) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Group, null, modifier = Modifier.size(13.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                text  = "${cita.cantidadPersonas} ${if (cita.cantidadPersonas == 1) "persona" else "personas"}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+
+                // ── Notas ───────────────────────────────────────────────────
+                cita.notas?.let { nota ->
+                    Spacer(Modifier.height(4.dp))
+                    Row(
+                        modifier          = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        Icon(Icons.Default.Notes, null, modifier = Modifier.size(13.dp).padding(top = 2.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(Modifier.width(6.dp))
                         Text(
-                            text       = "${"$%,.0f".format(cita.total)}",
-                            style      = MaterialTheme.typography.bodySmall,
-                            fontWeight = FontWeight.Bold,
-                            color      = MaterialTheme.colorScheme.onPrimaryContainer
+                            text  = nota,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
 
-                // ── Notas ─────────────────────────────────────────────────
-                cita.notas?.let { nota ->
-                    Spacer(Modifier.height(4.dp))
-                    Surface(shape = RoundedCornerShape(10.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
-                        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 7.dp), verticalAlignment = Alignment.Top) {
-                            Icon(Icons.Default.Notes, null, modifier = Modifier.size(12.dp).padding(top = 1.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Spacer(Modifier.width(5.dp))
-                            Text(text = nota, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    }
-                }
-
-                // ── Servicios (NUEVO) ─────────────────────────────────────
+                // ── Servicios ───────────────────────────────────────────────
                 val servicios = remember(cita.servicios) { parsearServicios(cita.servicios) }
                 if (servicios.isNotEmpty()) {
-                    Spacer(Modifier.height(6.dp))
-                    Surface(shape = RoundedCornerShape(10.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
-                        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.Spa, null, modifier = Modifier.size(12.dp), tint = MaterialTheme.colorScheme.primary)
-                                Spacer(Modifier.width(5.dp))
-                                Text("Servicios", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                            }
-                            Spacer(Modifier.height(6.dp))
-                            servicios.forEach { s ->
-                                Row(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                                    Text("• ${s.nombre} (${s.duracion} min)", style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // ── CantidadPersonas (NUEVO) ──────────────────────────────
-                if (cita.cantidadPersonas != null && cita.cantidadPersonas > 0) {
                     Spacer(Modifier.height(4.dp))
-                    Surface(shape = RoundedCornerShape(10.dp), color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)) {
-                        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Group, null, modifier = Modifier.size(13.dp), tint = MaterialTheme.colorScheme.onSecondaryContainer)
+                    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Spa, null, modifier = Modifier.size(13.dp), tint = MaterialTheme.colorScheme.primary)
                             Spacer(Modifier.width(6.dp))
-                            Text("${cita.cantidadPersonas} personas", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSecondaryContainer, fontWeight = FontWeight.Medium)
+                            Text(
+                                text       = "Servicios:",
+                                style      = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color      = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        servicios.forEach { s ->
+                            Text(
+                                text     = "• ${s.nombre} (${s.duracion} min)",
+                                style    = MaterialTheme.typography.bodySmall,
+                                color    = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(start = 19.dp, top = 1.dp)
+                            )
                         }
                     }
                 }
 
-                // ── Zona de acciones agrupada: Programada=1 o Confirmada=2 ─
+                // ── Zona de Acciones: Programada=1 o Confirmada=2 ──────────
                 if (cita.idEstado in listOf(1, 2)) {
-                    Spacer(Modifier.height(12.dp))
-                    Surface(
-                        shape    = RoundedCornerShape(12.dp),
-                        color    = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                        border   = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                OutlinedButton(onClick = onReagendar, enabled = !accionCargando, modifier = Modifier.weight(1f), shape = RoundedCornerShape(10.dp)) {
-                                    Icon(Icons.Default.EditCalendar, null, modifier = Modifier.size(15.dp))
-                                    Spacer(Modifier.width(4.dp))
-                                    Text("Reagendar", style = MaterialTheme.typography.labelMedium)
-                                }
-                                OutlinedButton(
-                                    onClick  = onCancelar,
-                                    enabled  = !accionCargando,
-                                    modifier = Modifier.weight(1f),
-                                    shape    = RoundedCornerShape(10.dp),
-                                    colors   = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                                    border   = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
-                                ) {
-                                    if (accionCargando) {
-                                        CircularProgressIndicator(modifier = Modifier.size(15.dp), strokeWidth = 2.dp)
-                                    } else {
-                                        Icon(Icons.Default.Cancel, null, modifier = Modifier.size(15.dp))
-                                        Spacer(Modifier.width(4.dp))
-                                        Text("Cancelar", style = MaterialTheme.typography.labelMedium)
-                                    }
-                                }
-                            }
-                            Button(
-                                onClick  = onFinalizar,
-                                enabled  = !accionCargando,
-                                modifier = Modifier.fillMaxWidth().height(44.dp),
-                                shape    = RoundedCornerShape(10.dp),
-                                colors   = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary)
-                            ) {
-                                Icon(Icons.Default.CheckCircle, null, modifier = Modifier.size(16.dp))
-                                Spacer(Modifier.width(6.dp))
-                                Text("Finalizar cita", fontWeight = FontWeight.SemiBold)
-                            }
-                        }
-                    }
-                }
-
-                // ── Zona de acciones agrupada: Estado 8 (NUEVO) ───────────
-                if (cita.idEstado == 8) {
-                    Spacer(Modifier.height(12.dp))
-                    Surface(
-                        shape    = RoundedCornerShape(12.dp),
-                        color    = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                        border   = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Surface(shape = RoundedCornerShape(8.dp), color = Color(0xFFFFF8E1)) {
-                                Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.HourglassTop, null, modifier = Modifier.size(13.dp), tint = Color(0xFFF57F17))
-                                    Spacer(Modifier.width(6.dp))
-                                    Text("Pendiente asignar horario y profesional", style = MaterialTheme.typography.labelSmall, color = Color(0xFFF57F17))
-                                }
-                            }
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Button(
-                                    onClick  = onAsignar,
-                                    enabled  = !accionCargando,
-                                    modifier = Modifier.weight(1f),
-                                    shape    = RoundedCornerShape(10.dp)
-                                ) {
-                                    Icon(Icons.Default.EditCalendar, null, modifier = Modifier.size(15.dp))
-                                    Spacer(Modifier.width(4.dp))
-                                    Text("Asignar", style = MaterialTheme.typography.labelMedium)
-                                }
-                                OutlinedButton(
-                                    onClick  = onCancelar,
-                                    enabled  = !accionCargando,
-                                    modifier = Modifier.weight(1f),
-                                    shape    = RoundedCornerShape(10.dp),
-                                    colors   = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                                    border   = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
-                                ) {
-                                    Icon(Icons.Default.Cancel, null, modifier = Modifier.size(15.dp))
-                                    Spacer(Modifier.width(4.dp))
-                                    Text("Cancelar", style = MaterialTheme.typography.labelMedium)
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // ── Pendiente de cambio ───────────────────────────────────
-                if (cita.idEstado == 4) {
                     Spacer(Modifier.height(8.dp))
-                    Surface(shape = RoundedCornerShape(10.dp), color = MaterialTheme.colorScheme.secondaryContainer) {
-                        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                    Spacer(Modifier.height(8.dp))
+
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(
+                            onClick  = onReagendar,
+                            enabled  = !accionCargando,
+                            modifier = Modifier.weight(1f),
+                            shape    = RoundedCornerShape(10.dp)
+                        ) {
+                            Icon(Icons.Default.EditCalendar, null, modifier = Modifier.size(15.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Reagendar", style = MaterialTheme.typography.labelMedium)
+                        }
+                        OutlinedButton(
+                            onClick  = onCancelar,
+                            enabled  = !accionCargando,
+                            modifier = Modifier.weight(1f),
+                            shape    = RoundedCornerShape(10.dp),
+                            colors   = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                            border   = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
+                        ) {
+                            if (accionCargando) {
+                                CircularProgressIndicator(modifier = Modifier.size(15.dp), strokeWidth = 2.dp)
+                            } else {
+                                Icon(Icons.Default.Cancel, null, modifier = Modifier.size(15.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("Cancelar", style = MaterialTheme.typography.labelMedium)
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(6.dp))
+                    Button(
+                        onClick  = onFinalizar,
+                        enabled  = !accionCargando,
+                        modifier = Modifier.fillMaxWidth().height(40.dp),
+                        shape    = RoundedCornerShape(10.dp),
+                        colors   = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary)
+                    ) {
+                        Icon(Icons.Default.CheckCircle, null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Finalizar cita", fontWeight = FontWeight.SemiBold)
+                    }
+                }
+
+                // ── Zona de Acciones: Estado 8 (Pendiente Asignación) ───────
+                if (cita.idEstado == 8) {
+                    Spacer(Modifier.height(8.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                    Spacer(Modifier.height(8.dp))
+
+                    Surface(shape = RoundedCornerShape(8.dp), color = Color(0xFFFFF8E1), modifier = Modifier.fillMaxWidth()) {
+                        Row(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.HourglassTop, null, modifier = Modifier.size(13.dp), tint = Color(0xFFF57F17))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Pendiente asignar horario y profesional", style = MaterialTheme.typography.labelSmall, color = Color(0xFFF57F17))
+                        }
+                    }
+                    Spacer(Modifier.height(6.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(
+                            onClick  = onAsignar,
+                            enabled  = !accionCargando,
+                            modifier = Modifier.weight(1f),
+                            shape    = RoundedCornerShape(10.dp)
+                        ) {
+                            Icon(Icons.Default.EditCalendar, null, modifier = Modifier.size(15.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Asignar", style = MaterialTheme.typography.labelMedium)
+                        }
+                        OutlinedButton(
+                            onClick  = onCancelar,
+                            enabled  = !accionCargando,
+                            modifier = Modifier.weight(1f),
+                            shape    = RoundedCornerShape(10.dp),
+                            colors   = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                            border   = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
+                        ) {
+                            Icon(Icons.Default.Cancel, null, modifier = Modifier.size(15.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Cancelar", style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
+                }
+
+                // ── Estado 4 (Pendiente de cambio) ──────────────────────────
+                if (cita.idEstado == 4) {
+                    Spacer(Modifier.height(6.dp))
+                    Surface(shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.secondaryContainer, modifier = Modifier.fillMaxWidth()) {
+                        Row(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.HourglassTop, null, modifier = Modifier.size(13.dp), tint = MaterialTheme.colorScheme.onSecondaryContainer)
                             Spacer(Modifier.width(6.dp))
                             Text("Solicitud de cambio en revisión", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSecondaryContainer)
@@ -1107,7 +1170,6 @@ private fun FinalizarCitaDialog(
                     style = MaterialTheme.typography.bodyMedium
                 )
 
-                // ── Selector Principal: Método de Pago ────────────────────────────────
                 ExposedDropdownMenuBox(
                     expanded = expanded,
                     onExpandedChange = { expanded = it }
@@ -1129,7 +1191,7 @@ private fun FinalizarCitaDialog(
                                 text = { Text(mp.nombre) },
                                 onClick = {
                                     seleccionado = mp
-                                    detalleSeleccionado = null // Limpia el detalle previo al cambiar de método
+                                    detalleSeleccionado = null
                                     expanded = false
                                 }
                             )
@@ -1137,7 +1199,6 @@ private fun FinalizarCitaDialog(
                     }
                 }
 
-                // ── Selector Detalle: Uso seguro con ?. y ?.isNotEmpty() ───
                 if (seleccionado?.detalles?.isNotEmpty() == true) {
                     Text(
                         text  = "Especifique el detalle:",
@@ -1159,7 +1220,6 @@ private fun FinalizarCitaDialog(
                             expanded = expandedDetalle,
                             onDismissRequest = { expandedDetalle = false }
                         ) {
-                            // Si detalles es nulo, usamos una lista vacía por defecto para evitar el error
                             (seleccionado?.detalles ?: emptyList()).forEach { detalle ->
                                 DropdownMenuItem(
                                     text = { Text(detalle.nombre) },
@@ -1177,7 +1237,6 @@ private fun FinalizarCitaDialog(
         confirmButton = {
             Button(
                 onClick  = { seleccionado?.let { onConfirm(it.id, detalleSeleccionado?.id) } },
-                // Validación segura: Si es nulo o vacío habilitará directamente el botón, a menos que exija detalle
                 enabled  = seleccionado != null && (seleccionado?.detalles?.isEmpty() == true || detalleSeleccionado != null),
                 shape    = RoundedCornerShape(12.dp),
                 modifier = Modifier.fillMaxWidth(),
@@ -1213,8 +1272,6 @@ private fun formatearHora(fechaIso: String): String = try {
     fechaIso
 }
 
-// ─── Helper parsearServicios (NUEVO) ──────────────────────────────────────────
-
 private fun parsearServicios(json: String?): List<ServicioCita> {
     if (json.isNullOrBlank()) return emptyList()
     return try {
@@ -1226,20 +1283,21 @@ private fun parsearServicios(json: String?): List<ServicioCita> {
     }
 }
 
-// ─── AsignarCitaGrupalDialog (NUEVO) ───────────────────────────────────────
+// ─── AsignarCitaGrupalDialog ─────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AsignarCitaGrupalDialog(
-    cita: Cita,
-    onConfirm: (idsProfesionales: List<Int>?, fechaHoraInicio: String?, fechaHoraFin: String?) -> Unit,
-    onDismiss: () -> Unit
+    cita:                  Cita,
+    profesionales:         List<Profesional>,
+    onCargarProfesionales: (Int) -> Unit,
+    onConfirm:             (idsProfesionales: List<Int>?, fechaHoraInicio: String?, fechaHoraFin: String?) -> Unit,
+    onDismiss:             () -> Unit
 ) {
     val context = LocalContext.current
     val servicios = remember(cita.servicios) { parsearServicios(cita.servicios) }
     val duracion = servicios.firstOrNull()?.duracion ?: 60
 
-    // 1. Calculamos el inicio del día de hoy directamente en UTC para el DatePicker
     val hoyUtcMillis = remember {
         Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply {
             val local = Calendar.getInstance()
@@ -1248,7 +1306,6 @@ private fun AsignarCitaGrupalDialog(
         }.timeInMillis
     }
 
-    // 2. Bloqueo de días pasados
     val datePickerState = rememberDatePickerState(
         selectableDates = object : SelectableDates {
             override fun isSelectableDate(utcTimeMillis: Long): Boolean {
@@ -1257,7 +1314,6 @@ private fun AsignarCitaGrupalDialog(
         }
     )
 
-    // 3. MEJORA: El reloj ahora abre por defecto en la hora y minutos actuales del sistema
     val ahoraInstante = remember { Calendar.getInstance() }
     val timePickerState = rememberTimePickerState(
         initialHour = ahoraInstante.get(Calendar.HOUR_OF_DAY),
@@ -1269,11 +1325,10 @@ private fun AsignarCitaGrupalDialog(
     var mostrarTimePicker by remember { mutableStateOf(false) }
 
     var fechaSeleccionada by remember { mutableStateOf<String?>(null) }
-    var horaSeleccionada by remember { mutableStateOf<String?>(null) }
-    var profesionalesSel by remember { mutableStateOf<List<Int>>(emptyList()) }
-    var mostrarSelProf by remember { mutableStateOf(false) }
+    var horaSeleccionada  by remember { mutableStateOf<String?>(null) }
+    var profesionalesSel  by remember { mutableStateOf<List<Int>>(emptyList()) }
+    var mostrarSelProf    by remember { mutableStateOf(false) }
 
-    // Convertir la fecha seleccionada a String cuando cambie
     LaunchedEffect(datePickerState.selectedDateMillis) {
         datePickerState.selectedDateMillis?.let { millis ->
             val cal = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply { timeInMillis = millis }
@@ -1282,7 +1337,7 @@ private fun AsignarCitaGrupalDialog(
                 cal.get(Calendar.MONTH) + 1,
                 cal.get(Calendar.DAY_OF_MONTH)
             )
-            horaSeleccionada = null // Resetea la hora para forzar a elegir una nueva válida
+            horaSeleccionada = null
         }
     }
 
@@ -1300,7 +1355,6 @@ private fun AsignarCitaGrupalDialog(
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                // Botón Selector de Fecha
                 OutlinedButton(
                     onClick = { mostrarDatePicker = true },
                     modifier = Modifier.fillMaxWidth(),
@@ -1311,7 +1365,6 @@ private fun AsignarCitaGrupalDialog(
                     Text(fechaSeleccionada?.let { formatearFecha(it) } ?: "Seleccionar Fecha")
                 }
 
-                // Botón Selector de Hora
                 OutlinedButton(
                     onClick = { mostrarTimePicker = true },
                     enabled = fechaSeleccionada != null,
@@ -1323,7 +1376,6 @@ private fun AsignarCitaGrupalDialog(
                     Text(horaSeleccionada ?: "Seleccionar Hora de Inicio")
                 }
 
-                // Botón Profesionales
                 OutlinedButton(
                     onClick = { mostrarSelProf = true },
                     enabled = horaSeleccionada != null,
@@ -1337,13 +1389,15 @@ private fun AsignarCitaGrupalDialog(
 
                 if (mostrarSelProf) {
                     ProfesionalesSeleccionDialog(
-                        sedeId = cita.idSede,
-                        fecha = fechaSeleccionada!!,
-                        hora = horaSeleccionada!!,
-                        duracion = duracion,
-                        seleccionados = profesionalesSel,
-                        onDismiss = { mostrarSelProf = false },
-                        onConfirm = {
+                        sedeId                = cita.idSede,
+                        fecha                 = fechaSeleccionada!!,
+                        hora                  = horaSeleccionada!!,
+                        duracion              = duracion,
+                        seleccionados         = profesionalesSel,
+                        profesionales         = profesionales,
+                        onCargarProfesionales = onCargarProfesionales,
+                        onDismiss             = { mostrarSelProf = false },
+                        onConfirm             = {
                             profesionalesSel = it
                             mostrarSelProf = false
                         }
@@ -1381,7 +1435,6 @@ private fun AsignarCitaGrupalDialog(
         }
     )
 
-    // --- DIÁLOGO DE FECHA (M3) ---
     if (mostrarDatePicker) {
         DatePickerDialog(
             onDismissRequest = { mostrarDatePicker = false },
@@ -1396,7 +1449,6 @@ private fun AsignarCitaGrupalDialog(
         }
     }
 
-    // --- DIÁLOGO DE HORA CON CONTROL DE HORAS PASADAS ---
     if (mostrarTimePicker) {
         AlertDialog(
             onDismissRequest = { mostrarTimePicker = false },
@@ -1405,7 +1457,6 @@ private fun AsignarCitaGrupalDialog(
                     val horaElegida = timePickerState.hour
                     val minutoElegido = timePickerState.minute
 
-                    // 1. Verificamos si la fecha seleccionada en el calendario es HOY
                     val esHoy = datePickerState.selectedDateMillis?.let {
                         val calSel = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply { timeInMillis = it }
                         val calActual = Calendar.getInstance()
@@ -1413,7 +1464,6 @@ private fun AsignarCitaGrupalDialog(
                                 calSel.get(Calendar.DAY_OF_YEAR) == calActual.get(Calendar.DAY_OF_YEAR)
                     } ?: false
 
-                    // 2. Si es hoy, validamos que la hora/minuto no sean menores al tiempo actual
                     if (esHoy) {
                         val ahora = Calendar.getInstance()
                         val horaActual = ahora.get(Calendar.HOUR_OF_DAY)
@@ -1421,11 +1471,10 @@ private fun AsignarCitaGrupalDialog(
 
                         if (horaElegida < horaActual || (horaElegida == horaActual && minutoElegido < minutoActual)) {
                             Toast.makeText(context, "No puedes elegir una hora pasada", Toast.LENGTH_SHORT).show()
-                            return@TextButton // Rompe la ejecución aquí, impidiendo que cierre el diálogo
+                            return@TextButton
                         }
                     }
 
-                    // Si pasa el filtro (o es un día futuro), se guarda el dato exitosamente
                     horaSeleccionada = "%02d:%02d".format(horaElegida, minutoElegido)
                     mostrarTimePicker = false
                 }) { Text("Aceptar") }
@@ -1440,24 +1489,24 @@ private fun AsignarCitaGrupalDialog(
     }
 }
 
-// ─── ProfesionalesSeleccionDialog (NUEVO) ──────────────────────────────────
+// ─── ProfesionalesSeleccionDialog ──────────────────────────────────────────
 
 @Composable
 private fun ProfesionalesSeleccionDialog(
-    sedeId:        Int,
-    fecha:         String,
-    hora:          String,
-    duracion:      Int,
-    seleccionados: List<Int>,
-    onDismiss:     () -> Unit,
-    onConfirm:     (List<Int>) -> Unit,
-    vm:            MisCitasViewModel = hiltViewModel()
+    sedeId:                Int,
+    fecha:                 String,
+    hora:                  String,
+    duracion:              Int,
+    seleccionados:         List<Int>,
+    profesionales:         List<Profesional>,
+    onCargarProfesionales: (Int) -> Unit,
+    onDismiss:             () -> Unit,
+    onConfirm:             (List<Int>) -> Unit
 ) {
     var tempSel by remember { mutableStateOf(seleccionados) }
-    val profesionales = vm.profesionales.collectAsState()
 
     LaunchedEffect(sedeId) {
-        vm.cargarProfesionales(sedeId)
+        onCargarProfesionales(sedeId)
     }
 
     AlertDialog(
@@ -1467,12 +1516,12 @@ private fun ProfesionalesSeleccionDialog(
         confirmButton    = {},
         text = {
             Column {
-                if (profesionales.value.isEmpty()) {
+                if (profesionales.isEmpty()) {
                     Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
                         Text("Sin profesionales disponibles", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 } else {
-                    profesionales.value.forEach { prof ->
+                    profesionales.forEach { prof ->
                         val checked = prof.id in tempSel
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
@@ -1504,4 +1553,214 @@ private fun ProfesionalesSeleccionDialog(
             }
         }
     )
+}
+
+// ─── Previews y Datos Ficticios ───────────────────────────────────────────────
+
+private object MisCitasPreviewData {
+    val mockCitas = listOf(
+        Cita(
+            id                      = 101,
+            fechaHoraInicio         = "2025-05-20T10:00:00",
+            fechaHoraFin            = "2025-05-20T11:00:00",
+            notas                   = "Cliente prefiere atención puntual.",
+            idEstado                = 1,
+            estado                  = "Programada",
+            colorEstado             = "#2196F3",
+            idProfesional           = 10,
+            profesional             = "Dra. Maria Lopez",
+            fotoProfesional         = null,
+            cargoProfesional        = "Especialista Corporal",
+            sede                    = "Sede Principal",
+            servicios               = "[{\"id\":1,\"nombre\":\"Masaje Relajante\",\"duracion\":60,\"precio\":120000.0}]",
+            total                   = 120000.0,
+            idCitaOriginal          = null,
+            fechaHoraInicioOriginal = null,
+            nombreCliente           = "Ana Gomez",
+            cantidadPersonas        = 1,
+            idSede                  = 1
+        ),
+        Cita(
+            id                      = 102,
+            fechaHoraInicio         = "2025-05-21T15:00:00",
+            fechaHoraFin            = "2025-05-21T16:00:00",
+            notas                   = null,
+            idEstado                = 8,
+            estado                  = "Pendiente Asignación",
+            colorEstado             = "#FF9800",
+            idProfesional           = 0,
+            profesional             = "Sin Asignar",
+            fotoProfesional         = null,
+            cargoProfesional        = null,
+            sede                    = "Sede Principal",
+            servicios               = "[{\"id\":2,\"nombre\":\"Spa de Parejas\",\"duracion\":90,\"precio\":250000.0}]",
+            total                   = 250000.0,
+            idCitaOriginal          = null,
+            fechaHoraInicioOriginal = null,
+            nombreCliente           = "Carlos Perez",
+            cantidadPersonas        = 2,
+            idSede                  = 1
+        )
+    )
+
+    val mockEstados = listOf(
+        EstadoCita(id = 1, nombre = "Programada", color = "#2196F3", grupo = "Activas"),
+        EstadoCita(id = 2, nombre = "Confirmada", color = "#4CAF50", grupo = "Activas"),
+        EstadoCita(id = 3, nombre = "Cancelada", color = "#F44336", grupo = "Inactivas")
+    )
+
+    val mockMetodosPago = listOf(
+        MetodoPago(id = 1, nombre = "Efectivo", detalles = emptyList()),
+        MetodoPago(id = 2, nombre = "Transferencia", detalles = listOf(MetodoPagoDetalle(id = 10, nombre = "Bancolombia")))
+    )
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun MisCitasPreviewLoading() {
+    AppDynamicTheme {
+        MisCitasContent(
+            uiState               = MisCitasUiState.Loading,
+            accionState           = AccionUiState.Idle,
+            metodosPago           = emptyList(),
+            filtros               = FiltrosMisCitas(),
+            estados               = emptyList(),
+            showFiltros           = false,
+            profesionales         = emptyList(),
+            onBack                = {},
+            onVerHistorial        = {},
+            onVerReagendamientos  = {},
+            onCargar              = {},
+            onLimpiarFiltros      = {},
+            onToggleFiltros       = {},
+            onAplicarFiltros      = {},
+            onCancelarCita        = {},
+            onReagendarCita       = { _, _ -> },
+            onFinalizarCita       = { _, _, _ -> },
+            onAsignarCitaGrupal   = { _, _, _, _ -> },
+            onWhatsApp            = {},
+            onResetAccion         = {},
+            onCargarProfesionales = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun MisCitasPreviewEmptySinFiltros() {
+    AppDynamicTheme {
+        MisCitasContent(
+            uiState               = MisCitasUiState.Empty,
+            accionState           = AccionUiState.Idle,
+            metodosPago           = emptyList(),
+            filtros               = FiltrosMisCitas(esFiltroManual = false),
+            estados               = emptyList(),
+            showFiltros           = false,
+            profesionales         = emptyList(),
+            onBack                = {},
+            onVerHistorial        = {},
+            onVerReagendamientos  = {},
+            onCargar              = {},
+            onLimpiarFiltros      = {},
+            onToggleFiltros       = {},
+            onAplicarFiltros      = {},
+            onCancelarCita        = {},
+            onReagendarCita       = { _, _ -> },
+            onFinalizarCita       = { _, _, _ -> },
+            onAsignarCitaGrupal   = { _, _, _, _ -> },
+            onWhatsApp            = {},
+            onResetAccion         = {},
+            onCargarProfesionales = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun MisCitasPreviewEmptyConFiltros() {
+    AppDynamicTheme {
+        MisCitasContent(
+            uiState               = MisCitasUiState.Empty,
+            accionState           = AccionUiState.Idle,
+            metodosPago           = emptyList(),
+            filtros               = FiltrosMisCitas(esFiltroManual = true, nombreCliente = "Ana"),
+            estados               = emptyList(),
+            showFiltros           = false,
+            profesionales         = emptyList(),
+            onBack                = {},
+            onVerHistorial        = {},
+            onVerReagendamientos  = {},
+            onCargar              = {},
+            onLimpiarFiltros      = {},
+            onToggleFiltros       = {},
+            onAplicarFiltros      = {},
+            onCancelarCita        = {},
+            onReagendarCita       = { _, _ -> },
+            onFinalizarCita       = { _, _, _ -> },
+            onAsignarCitaGrupal   = { _, _, _, _ -> },
+            onWhatsApp            = {},
+            onResetAccion         = {},
+            onCargarProfesionales = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun MisCitasPreviewError() {
+    AppDynamicTheme {
+        MisCitasContent(
+            uiState               = MisCitasUiState.Error("No se pudo establecer conexión con el servidor. Por favor reintenta."),
+            accionState           = AccionUiState.Idle,
+            metodosPago           = emptyList(),
+            filtros               = FiltrosMisCitas(),
+            estados               = emptyList(),
+            showFiltros           = false,
+            profesionales         = emptyList(),
+            onBack                = {},
+            onVerHistorial        = {},
+            onVerReagendamientos  = {},
+            onCargar              = {},
+            onLimpiarFiltros      = {},
+            onToggleFiltros       = {},
+            onAplicarFiltros      = {},
+            onCancelarCita        = {},
+            onReagendarCita       = { _, _ -> },
+            onFinalizarCita       = { _, _, _ -> },
+            onAsignarCitaGrupal   = { _, _, _, _ -> },
+            onWhatsApp            = {},
+            onResetAccion         = {},
+            onCargarProfesionales = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun MisCitasPreviewSuccess() {
+    AppDynamicTheme {
+        MisCitasContent(
+            uiState               = MisCitasUiState.Success(MisCitasPreviewData.mockCitas),
+            accionState           = AccionUiState.Idle,
+            metodosPago           = MisCitasPreviewData.mockMetodosPago,
+            filtros               = FiltrosMisCitas(),
+            estados               = MisCitasPreviewData.mockEstados,
+            showFiltros           = false,
+            profesionales         = emptyList(),
+            onBack                = {},
+            onVerHistorial        = {},
+            onVerReagendamientos  = {},
+            onCargar              = {},
+            onLimpiarFiltros      = {},
+            onToggleFiltros       = {},
+            onAplicarFiltros      = {},
+            onCancelarCita        = {},
+            onReagendarCita       = { _, _ -> },
+            onFinalizarCita       = { _, _, _ -> },
+            onAsignarCitaGrupal   = { _, _, _, _ -> },
+            onWhatsApp            = {},
+            onResetAccion         = {},
+            onCargarProfesionales = {}
+        )
+    }
 }
