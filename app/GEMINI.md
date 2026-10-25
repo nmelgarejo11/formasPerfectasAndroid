@@ -266,6 +266,10 @@ No introducir nombres específicos de un negocio cuando una entidad genérica se
 
 El backend está desarrollado en ASP.NET Core.
 
+La ruta local del repositorio del backend API es:
+`D:\Personal\Git-Proyectos\gestionServiciosAPI`
+Gemini tiene autorización para leer y explorar esta ruta para consultar controladores, modelos y datos cuando necesite contexto sobre el contrato o la base de datos.
+
 La arquitectura backend utiliza:
 
 Controllers
