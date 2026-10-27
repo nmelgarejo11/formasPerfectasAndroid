@@ -653,7 +653,28 @@ Si no se tiene suficiente contexto para generar código correcto, pedir al usuar
 
 ---
 
-# 33. Regla final
+# 33. Acceso a Base de Datos Local (SQL Server)
+
+Gemini tiene autorización para conectarse a la base de datos local para leer la estructura de tablas y el código fuente de los Stored Procedures.
+
+Para inspeccionar la base de datos desde la terminal, Gemini DEBE utilizar la herramienta `sqlcmd` con los siguientes parámetros exactos:
+
+`sqlcmd -S NMELGAREJO -E -d GESTION_SERVICIOS -y 0 -Q "TU_CONSULTA_AQUI"`
+
+Parámetros explicados:
+* `-S NMELGAREJO`: Nombre del servidor local.
+* `-E`: Autenticación de Windows (Trusted Connection), ya que el usuario SQL falla.
+* `-d GESTION_SERVICIOS`: Nombre exacto de la base de datos.
+* `-y 0`: Para evitar que el output de texto largo (como la definición de un SP) se trunque.
+
+**Restricciones de Base de Datos para Gemini:**
+1. Solo se permite ejecutar sentencias de lectura (`SELECT`, `sp_helptext`, `OBJECT_DEFINITION`).
+2. PROHIBIDO ejecutar sentencias `INSERT`, `UPDATE`, `DELETE`, `ALTER`, `DROP` o `CREATE` directamente desde la terminal.
+3. Para extraer el código de un Stored Procedure, usar: `SELECT OBJECT_DEFINITION(OBJECT_ID('[ESQUEMA].[NombreSP]'))`
+
+---
+
+# 34. Regla final
 
 La prioridad de Gemini en este proyecto es:
 
