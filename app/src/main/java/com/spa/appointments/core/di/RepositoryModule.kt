@@ -1,10 +1,14 @@
 package com.spa.appointments.core.di
 
 import com.spa.appointments.data.repository.AuthRepositoryImpl
+import com.spa.appointments.data.repository.CatalogosRepositoryImpl
 import com.spa.appointments.data.repository.IngresoRepositoryImpl
+import com.spa.appointments.data.repository.NominaRepositoryImpl
 import com.spa.appointments.data.repository.PerfilRepositoryImpl
 import com.spa.appointments.domain.repository.AuthRepository
+import com.spa.appointments.domain.repository.CatalogosRepository
 import com.spa.appointments.domain.repository.IngresoRepository
+import com.spa.appointments.domain.repository.NominaRepository
 import com.spa.appointments.domain.repository.PerfilRepository
 import dagger.Binds
 import dagger.Module
@@ -33,4 +37,16 @@ abstract class RepositoryModule {
     abstract fun bindIngresoRepository(
         ingresoRepositoryImpl: IngresoRepositoryImpl
     ): IngresoRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindNominaRepository(
+        impl: NominaRepositoryImpl
+    ): NominaRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindCatalogosRepository(
+        impl: CatalogosRepositoryImpl
+    ): CatalogosRepository
 }

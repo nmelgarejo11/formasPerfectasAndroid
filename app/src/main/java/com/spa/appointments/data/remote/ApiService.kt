@@ -441,5 +441,42 @@ interface ApiService {
     @DELETE("Financiero/ingresos/{id}")
     suspend fun eliminarIngreso(@Path("id") id: Int): IngresoResultado
 
+    // ── Liquidación de Nómina ───────────────────────
+    @GET("LiquidacionNomina/{id}")
+    suspend fun obtenerLiquidacionNominaPorId(
+        @Path("id") id: Int
+    ): Response<LiquidacionNominaResponse>
+
+    @GET("LiquidacionNomina/{id}/desprendible")
+    @Streaming
+    suspend fun descargarDesprendiblePdf(
+        @Path("id") id: Int
+    ): Response<ResponseBody>
+
+    @POST("LiquidacionNomina/preliquidar")
+    suspend fun preliquidarNomina(
+        @Body request: PreliquidarContratoRequest
+    ): Response<PreliquidacionResponse>
+
+    @POST("LiquidacionNomina/desde-preliquidacion")
+    suspend fun crearLiquidacionDesdePreliquidacion(
+        @Body request: CrearLiquidacionDesdePreliquidacionRequest
+    ): Response<RespuestaSimpleNomina>
+
+    @POST("LiquidacionNomina/{id}/anular")
+    suspend fun anularLiquidacionNomina(
+        @Path("id") id: Int,
+        @Body request: AnularLiquidacionRequest
+    ): Response<RespuestaSimpleNomina>
+
+    // ── Catálogos Nómina ─────────────────────────────
+    @GET("catalogos/bancos")
+    suspend fun getBancos(): Response<List<BancoItem>>
+
+    @GET("catalogos/tipos-documento")
+    suspend fun getTiposDocumento(): Response<List<TipoDocumentoItem>>
+
+    @GET("catalogos/tipos-cuenta")
+    suspend fun getTiposCuenta(): Response<List<TipoCuentaItem>>
 
 }

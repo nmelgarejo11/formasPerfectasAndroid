@@ -7,4 +7,7 @@
     <cache-path
         name="excel_cache"
         path="excel/" />
+    <cache-path
+        name="pdf_cache"
+        path="pdf/" />
 </paths>
