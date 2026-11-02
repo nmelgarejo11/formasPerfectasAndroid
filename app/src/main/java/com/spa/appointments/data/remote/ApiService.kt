@@ -469,6 +469,37 @@ interface ApiService {
         @Body request: AnularLiquidacionRequest
     ): Response<RespuestaSimpleNomina>
 
+    @GET("LiquidacionNomina/periodos")
+    suspend fun listarPeriodosNomina(
+        @Query("soloAbiertos") soloAbiertos: Boolean = true
+    ): Response<List<PeriodoNominaItem>>
+
+    @GET("LiquidacionNomina/contratos-elegibles")
+    suspend fun listarContratosElegiblesNomina(
+        @Query("idPeriodoNomina") idPeriodoNomina: Int,
+        @Query("idSede") idSede: Int? = null,
+        @Query("busqueda") busqueda: String? = null
+    ): Response<List<ContratoElegibleNomina>>
+
+    @GET("LiquidacionNomina/preliquidaciones/vigentes")
+    suspend fun listarPreliquidacionesVigentesNomina(
+        @Query("idPeriodoNomina") idPeriodoNomina: Int
+    ): Response<List<PreliquidacionVigenteItem>>
+
+    @GET("LiquidacionNomina/preliquidaciones/{id}")
+    suspend fun obtenerPreliquidacionPorId(
+        @Path("id") id: Int
+    ): Response<PreliquidacionResponse>
+
+    @GET("LiquidacionNomina")
+    suspend fun listarLiquidacionesNomina(
+        @Query("idPeriodoNomina") idPeriodoNomina: Int? = null,
+        @Query("idContratoLaboral") idContratoLaboral: Int? = null,
+        @Query("estado") estado: Int? = null,
+        @Query("pagina") pagina: Int = 1,
+        @Query("tamanoPagina") tamanoPagina: Int = 20
+    ): Response<PaginaLiquidaciones>
+
     // ── Catálogos Nómina ─────────────────────────────
     @GET("catalogos/bancos")
     suspend fun getBancos(): Response<List<BancoItem>>

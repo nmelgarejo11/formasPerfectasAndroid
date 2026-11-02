@@ -47,6 +47,47 @@ class NominaRepositoryImpl @Inject constructor(
         procesarRespuesta(response)
     }
 
+    override suspend fun listarPeriodosNomina(
+        soloAbiertos: Boolean
+    ): Result<List<PeriodoNominaItem>> = runCatchingSuspend {
+        val response = apiService.listarPeriodosNomina(soloAbiertos)
+        procesarRespuesta(response)
+    }
+
+    override suspend fun listarContratosElegiblesNomina(
+        idPeriodoNomina: Int,
+        idSede: Int?,
+        busqueda: String?
+    ): Result<List<ContratoElegibleNomina>> = runCatchingSuspend {
+        val response = apiService.listarContratosElegiblesNomina(idPeriodoNomina, idSede, busqueda)
+        procesarRespuesta(response)
+    }
+
+    override suspend fun listarPreliquidacionesVigentesNomina(
+        idPeriodoNomina: Int
+    ): Result<List<PreliquidacionVigenteItem>> = runCatchingSuspend {
+        val response = apiService.listarPreliquidacionesVigentesNomina(idPeriodoNomina)
+        procesarRespuesta(response)
+    }
+
+    override suspend fun obtenerPreliquidacionPorId(
+        id: Int
+    ): Result<PreliquidacionResponse> = runCatchingSuspend {
+        val response = apiService.obtenerPreliquidacionPorId(id)
+        procesarRespuesta(response)
+    }
+
+    override suspend fun listarLiquidacionesNomina(
+        idPeriodoNomina: Int?,
+        idContratoLaboral: Int?,
+        estado: Int?,
+        pagina: Int,
+        tamanoPagina: Int
+    ): Result<PaginaLiquidaciones> = runCatchingSuspend {
+        val response = apiService.listarLiquidacionesNomina(idPeriodoNomina, idContratoLaboral, estado, pagina, tamanoPagina)
+        procesarRespuesta(response)
+    }
+
     override suspend fun descargarDesprendiblePdf(id: Int): Result<File> = withContext(Dispatchers.IO) {
         runCatchingSuspend {
             val response = apiService.descargarDesprendiblePdf(id)
@@ -80,7 +121,6 @@ class NominaRepositoryImpl @Inject constructor(
                     throw NominaApiException(response.code(), null, "Error al guardar el archivo PDF")
                 }
 
-                // Borrar los demás archivos en pdfDir excepto finalFile
                 pdfDir.listFiles()?.forEach { file ->
                     if (file.absolutePath != finalFile.absolutePath) {
                         file.delete()

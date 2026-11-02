@@ -9,4 +9,11 @@ interface NominaRepository {
     suspend fun preliquidar(request: PreliquidarContratoRequest): Result<PreliquidacionResponse>
     suspend fun crearDesdePreliquidacion(request: CrearLiquidacionDesdePreliquidacionRequest): Result<RespuestaSimpleNomina>
     suspend fun anularLiquidacion(id: Int, request: AnularLiquidacionRequest): Result<RespuestaSimpleNomina>
+
+    // ── Métodos Fase 2A ─────────────────────────────────────────
+    suspend fun listarPeriodosNomina(soloAbiertos: Boolean = true): Result<List<PeriodoNominaItem>>
+    suspend fun listarContratosElegiblesNomina(idPeriodoNomina: Int, idSede: Int? = null, busqueda: String? = null): Result<List<ContratoElegibleNomina>>
+    suspend fun listarPreliquidacionesVigentesNomina(idPeriodoNomina: Int): Result<List<PreliquidacionVigenteItem>>
+    suspend fun obtenerPreliquidacionPorId(id: Int): Result<PreliquidacionResponse>
+    suspend fun listarLiquidacionesNomina(idPeriodoNomina: Int? = null, idContratoLaboral: Int? = null, estado: Int? = null, pagina: Int = 1, tamanoPagina: Int = 20): Result<PaginaLiquidaciones>
 }
