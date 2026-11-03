@@ -258,6 +258,24 @@ class NominaViewModelTest {
         val evento = vm.eventos.first()
         assertTrue(evento is NominaEvent.AbrirPdfDesprendible)
     }
+
+    @Test
+    fun testCargaCanceladaPorSiguiente_NoEmiteEventosNiDejaCargandoFalso() = runTest(testDispatcher) {
+        fakeRepository.retardoContratosPeriodo1Ms = 500L
+        fakeRepository.retardoContratosPeriodo2Ms = 100L
+
+        val vm = crearViewModel()
+        advanceTimeBy(100) // Carga inicial en progreso
+
+        val periodo2 = PeriodoNominaItem(2, "Quincena 2", "2026-10-16", "2026-10-31", 1, "Abierto")
+        vm.seleccionarPeriodo(periodo2) // Cancela la primera carga
+
+        advanceTimeBy(50) // La segunda carga sigue en curso
+        assertTrue(vm.uiState.value.cargandoContratos) // No debe quedar en false prematuramente
+
+        advanceUntilIdle() // Completa la segunda carga
+        assertFalse(vm.uiState.value.cargandoContratos)
+    }
 }
 
 class FakeNominaRepository : NominaRepository {

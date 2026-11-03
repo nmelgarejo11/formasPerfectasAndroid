@@ -191,12 +191,17 @@ fun NominaScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
+            // Indicador de recarga sobre la lista si ya hay contratos cargados
+            if (uiState.cargandoContratos && uiState.contratos.isNotEmpty()) {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp))
+            }
+
             // Lista de Contratos / Indicadores
-            if (uiState.cargandoContratos) {
+            if (uiState.cargandoContratos && uiState.contratos.isEmpty()) {
                 Box(modifier = Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
-            } else if (uiState.contratos.isEmpty()) {
+            } else if (!uiState.cargandoContratos && uiState.contratos.isEmpty()) {
                 Box(modifier = Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
                     Text(
                         text = stringResource(R.string.msg_sin_contratos),
@@ -513,7 +518,7 @@ fun ContratoNominaCard(
                             ) {
                                 Icon(
                                     Icons.Default.Download,
-                                    contentDescription = stringResource(R.string.cd_descargar_pdf),
+                                    contentDescription = null, // Decorativo
                                     modifier = Modifier.size(18.dp)
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
@@ -624,7 +629,7 @@ fun DetallePreliquidacionSheetContent(
                 if (detalle.diasComerciales != null) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text(stringResource(R.string.lbl_dias_comerciales), style = MaterialTheme.typography.bodySmall)
-                        Text("${detalle.diasComerciales}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+                        Text(formatearCantidad(detalle.diasComerciales), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
                     }
                 }
             }
@@ -695,10 +700,19 @@ fun ConceptoItemRow(item: PreliquidacionDetalleResponse) {
         Column(modifier = Modifier.weight(1f)) {
             Text(item.nombreConcepto ?: item.codigoConcepto ?: stringResource(R.string.lbl_concepto_default), style = MaterialTheme.typography.bodyMedium)
             if (item.cantidad != null && item.cantidad > 0) {
-                Text(stringResource(R.string.lbl_cantidad_prefix, item.cantidad), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.lbl_cantidad_prefix, formatearCantidad(item.cantidad)), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
         Text(formatearCop(item.valor), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+fun formatearCantidad(cantidad: Double?): String {
+    if (cantidad == null || cantidad <= 0) return ""
+    return if (cantidad % 1.0 == 0.0) {
+        cantidad.toLong().toString()
+    } else {
+        cantidad.toString()
     }
 }
 
