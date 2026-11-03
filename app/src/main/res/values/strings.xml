@@ -1,3 +1,25 @@
 <resources>
     <string name="app_name">Prioriti</string>
+    <string name="titulo_nomina">Gestión de Nómina</string>
+    <string name="label_buscar_profesional">Buscar por nombre o documento...</string>
+    <string name="btn_preliquidar">Preliquidar</string>
+    <string name="btn_recalcular">Recalcular</string>
+    <string name="btn_liquidar">Liquidar</string>
+    <string name="btn_ver_detalle">Ver detalle</string>
+    <string name="btn_desprendible">Desprendible</string>
+    <string name="btn_anular">Anular</string>
+    <string name="btn_cancelar">Cancelar</string>
+    <string name="btn_confirmar">Confirmar</string>
+    <string name="estado_sin_preliquidar">Sin preliquidar</string>
+    <string name="estado_preliquidada_lista">Lista para liquidar</string>
+    <string name="estado_desactualizada">Desactualizada</string>
+    <string name="estado_liquidada">Liquidada</string>
+    <string name="msg_sin_periodos">No hay periodos de nómina abiertos</string>
+    <string name="msg_sin_contratos">No se encontraron contratos para el periodo seleccionado</string>
+    <string name="msg_error_abrir_pdf">No hay aplicación instalada para abrir archivos PDF</string>
+    <string name="titulo_anular_liquidacion">Anular Liquidación</string>
+    <string name="label_motivo_anulacion">Motivo de anulación (obligatorio)</string>
+    <string name="nota_anulacion_prestamos">Se devolverán las cuotas de préstamo descontadas.</string>
+    <string name="titulo_confirmar_liquidacion">Confirmar Liquidación</string>
+    <string name="msg_confirmar_liquidacion">¿Desea liquidar la nómina del profesional %1$s por un neto de %2$s?</string>
 </resources>

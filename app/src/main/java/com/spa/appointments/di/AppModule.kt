@@ -43,6 +43,12 @@ object AppModule {
             .add(com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory())
             .build()
 
+    // ---------- Coroutine Dispatcher ----------
+    @Provides
+    @Singleton
+    fun provideIoDispatcher(): kotlinx.coroutines.CoroutineDispatcher =
+        kotlinx.coroutines.Dispatchers.IO
+
     // ---------- Token Storage ----------
     @Provides
     @Singleton
