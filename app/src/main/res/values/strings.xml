@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name">Prioriti</string>
     <string name="titulo_nomina">Gestión de Nómina</string>
-    <string name="label_buscar_profesional">Buscar por nombre o documento...</string>
+    <string name="label_buscar_profesional">Buscar por nombre o documento&#8230;</string>
     <string name="btn_preliquidar">Preliquidar</string>
     <string name="btn_recalcular">Recalcular</string>
     <string name="btn_liquidar">Liquidar</string>
@@ -17,9 +17,34 @@
     <string name="msg_sin_periodos">No hay periodos de nómina abiertos</string>
     <string name="msg_sin_contratos">No se encontraron contratos para el periodo seleccionado</string>
     <string name="msg_error_abrir_pdf">No hay aplicación instalada para abrir archivos PDF</string>
+    <string name="msg_error_pdf_prefix">Error al abrir el PDF: %1$s</string>
     <string name="titulo_anular_liquidacion">Anular Liquidación</string>
     <string name="label_motivo_anulacion">Motivo de anulación (obligatorio)</string>
     <string name="nota_anulacion_prestamos">Se devolverán las cuotas de préstamo descontadas.</string>
     <string name="titulo_confirmar_liquidacion">Confirmar Liquidación</string>
     <string name="msg_confirmar_liquidacion">¿Desea liquidar la nómina del profesional %1$s por un neto de %2$s?</string>
+
+    <!-- Content Descriptions y Textos UI Adicionales -->
+    <string name="cd_volver">Volver</string>
+    <string name="cd_buscar">Buscar</string>
+    <string name="cd_limpiar_busqueda">Limpiar búsqueda</string>
+    <string name="cd_descargar_pdf">Descargar PDF</string>
+    <string name="label_periodo_nomina">Periodo de Nómina</string>
+    <string name="placeholder_seleccionar_periodo">Seleccionar periodo</string>
+    <string name="lbl_salario_base">Salario base:</string>
+    <string name="lbl_neto_liquidado">Neto liquidado:</string>
+    <string name="lbl_advertencia_prefix">Advertencia: %1$s</string>
+    <string name="lbl_doc_prefix">Doc: %1$s</string>
+    <string name="titulo_detalle_preliquidacion">Detalle de Preliquidación</string>
+    <string name="lbl_total_devengado">Total Devengado:</string>
+    <string name="lbl_total_deducciones">Total Deducciones:</string>
+    <string name="lbl_neto_pagar">Neto a Pagar:</string>
+    <string name="lbl_ibc_calculado">IBC Calculado:</string>
+    <string name="lbl_dias_comerciales">Días comerciales:</string>
+    <string name="lbl_conceptos">Conceptos</string>
+    <string name="lbl_devengados">Devengados</string>
+    <string name="lbl_deducciones">Deducciones</string>
+    <string name="lbl_no_liquidable_prefix">No liquidable: %1$s</string>
+    <string name="lbl_cantidad_prefix">Cantidad: %1$s</string>
+    <string name="lbl_concepto_default">Concepto</string>
 </resources>

@@ -2,12 +2,14 @@ package com.spa.appointments.ui.nomina
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.spa.appointments.di.IoDispatcher
 import com.spa.appointments.domain.model.*
 import com.spa.appointments.domain.repository.NominaRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -22,6 +24,7 @@ data class NominaUiState(
     val cargandoPeriodos: Boolean = false,
     val cargandoContratos: Boolean = false,
     val contratosEnAccion: Set<Int> = emptySet(),
+    val liquidacionesEnAccion: Set<Int> = emptySet(),
     val detallePreliquidacion: PreliquidacionResponse? = null,
     val cargandoDetalle: Boolean = false
 )
@@ -36,23 +39,24 @@ sealed class NominaEvent {
 @HiltViewModel
 class NominaViewModel @Inject constructor(
     private val repository: NominaRepository,
-    private val dispatcher: CoroutineDispatcher = Dispatchers.IO
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(NominaUiState())
     val uiState: StateFlow<NominaUiState> = _uiState.asStateFlow()
 
-    private val _eventos = MutableSharedFlow<NominaEvent>()
-    val eventos: SharedFlow<NominaEvent> = _eventos.asSharedFlow()
+    private val _eventos = Channel<NominaEvent>(Channel.BUFFERED)
+    val eventos: Flow<NominaEvent> = _eventos.receiveAsFlow()
 
     private var busquedaJob: Job? = null
+    private var cargarContratosJob: Job? = null
 
     init {
         cargarPeriodosIniciales()
     }
 
     fun cargarPeriodosIniciales() {
-        viewModelScope.launch(dispatcher) {
+        viewModelScope.launch(ioDispatcher) {
             _uiState.update { it.copy(cargandoPeriodos = true) }
             repository.listarPeriodosNomina(soloAbiertos = true)
                 .onSuccess { lista ->
@@ -86,7 +90,7 @@ class NominaViewModel @Inject constructor(
     fun actualizarBusqueda(nuevaBusqueda: String) {
         _uiState.update { it.copy(busqueda = nuevaBusqueda) }
         busquedaJob?.cancel()
-        busquedaJob = viewModelScope.launch(dispatcher) {
+        busquedaJob = viewModelScope.launch(ioDispatcher) {
             delay(400) // Debounce 400ms
             val periodoId = _uiState.value.periodoSeleccionado?.id ?: return@launch
             cargarContratos(periodoId, nuevaBusqueda)
@@ -95,16 +99,22 @@ class NominaViewModel @Inject constructor(
 
     fun cargarContratos(idPeriodoNomina: Int? = _uiState.value.periodoSeleccionado?.id, query: String = _uiState.value.busqueda) {
         if (idPeriodoNomina == null) return
-        viewModelScope.launch(dispatcher) {
+        cargarContratosJob?.cancel()
+        cargarContratosJob = viewModelScope.launch(ioDispatcher) {
             _uiState.update { it.copy(cargandoContratos = true) }
-            repository.listarContratosElegiblesNomina(idPeriodoNomina = idPeriodoNomina, busqueda = query.ifBlank { null })
-                .onSuccess { lista ->
-                    _uiState.update { it.copy(contratos = lista, cargandoContratos = false) }
-                }
-                .onFailure { error ->
-                    _uiState.update { it.copy(cargandoContratos = false) }
-                    manejarError(error)
-                }
+            val res = repository.listarContratosElegiblesNomina(idPeriodoNomina = idPeriodoNomina, busqueda = query.ifBlank { null })
+
+            // Descarta respuesta obsoleta si el periodo cambió durante la llamada
+            if (_uiState.value.periodoSeleccionado?.id != idPeriodoNomina) {
+                return@launch
+            }
+
+            res.onSuccess { lista ->
+                _uiState.update { it.copy(contratos = lista, cargandoContratos = false) }
+            }.onFailure { error ->
+                _uiState.update { it.copy(cargandoContratos = false) }
+                manejarError(error)
+            }
         }
     }
 
@@ -116,15 +126,15 @@ class NominaViewModel @Inject constructor(
         }
 
         val idContrato = contrato.idContratoLaboral
-        if (!marcarAccionEnProgreso(idContrato)) return
+        if (!marcarContratoEnAccion(idContrato)) return
 
         val periodoId = _uiState.value.periodoSeleccionado?.id
         if (periodoId == null) {
-            desmarcarAccion(idContrato)
+            desmarcarContratoEnAccion(idContrato)
             return
         }
 
-        viewModelScope.launch(dispatcher) {
+        viewModelScope.launch(ioDispatcher) {
             ejecutarAccionConReintento503(
                 accion = { repository.preliquidar(PreliquidarContratoRequest(idContrato, periodoId)) },
                 idContratoLaboral = idContrato,
@@ -149,23 +159,23 @@ class NominaViewModel @Inject constructor(
         }
 
         val idContrato = contrato.idContratoLaboral
-        if (!marcarAccionEnProgreso(idContrato)) return
+        if (!marcarContratoEnAccion(idContrato)) return
 
-        viewModelScope.launch(dispatcher) {
+        viewModelScope.launch(ioDispatcher) {
             ejecutarAccionConReintento503(
                 accion = { repository.crearDesdePreliquidacion(CrearLiquidacionDesdePreliquidacionRequest(idPreliq)) },
                 idContratoLaboral = idContrato,
                 onExito = { respuesta ->
                     val idLiquidacion = respuesta.id ?: 0
                     cargarContratos()
-                    _eventos.emit(NominaEvent.LiquidacionExitosa(idLiquidacion, respuesta.mensaje ?: "Liquidación creada exitosamente"))
+                    _eventos.send(NominaEvent.LiquidacionExitosa(idLiquidacion, respuesta.mensaje ?: "Liquidación creada exitosamente"))
                 }
             )
         }
     }
 
     fun verDetallePreliquidacion(idPreliquidacion: Int) {
-        viewModelScope.launch(dispatcher) {
+        viewModelScope.launch(ioDispatcher) {
             _uiState.update { it.copy(cargandoDetalle = true) }
             repository.obtenerPreliquidacionPorId(idPreliquidacion)
                 .onSuccess { detalle ->
@@ -193,47 +203,60 @@ class NominaViewModel @Inject constructor(
             return
         }
 
-        viewModelScope.launch(dispatcher) {
-            repository.anularLiquidacion(idLiquidacion, AnularLiquidacionRequest(motivoLimpio))
-                .onSuccess { respuesta ->
+        if (!marcarLiquidacionEnAccion(idLiquidacion)) return
+
+        viewModelScope.launch(ioDispatcher) {
+            ejecutarAccionConReintento503(
+                accion = { repository.anularLiquidacion(idLiquidacion, AnularLiquidacionRequest(motivoLimpio)) },
+                idLiquidacion = idLiquidacion,
+                onExito = { respuesta ->
                     emitirMensaje(respuesta.mensaje ?: "Liquidación anulada con éxito")
                     cargarContratos()
                 }
-                .onFailure { error ->
-                    manejarError(error)
-                }
+            )
         }
     }
 
     fun descargarDesprendible(idLiquidacion: Int) {
-        viewModelScope.launch(dispatcher) {
-            repository.descargarDesprendiblePdf(idLiquidacion)
-                .onSuccess { archivoPdf ->
-                    _eventos.emit(NominaEvent.AbrirPdfDesprendible(archivoPdf))
+        if (!marcarLiquidacionEnAccion(idLiquidacion)) return
+
+        viewModelScope.launch(ioDispatcher) {
+            ejecutarAccionConReintento503(
+                accion = { repository.descargarDesprendiblePdf(idLiquidacion) },
+                idLiquidacion = idLiquidacion,
+                onExito = { archivoPdf ->
+                    _eventos.send(NominaEvent.AbrirPdfDesprendible(archivoPdf))
                 }
-                .onFailure { error ->
-                    manejarError(error)
-                }
+            )
         }
     }
 
-    // ── Métodos auxiliares de control de estado y reintento ───────────────────
+    // ── Control de acciones e idempotencia ────────────────────────────────────
 
-    private fun marcarAccionEnProgreso(idContratoLaboral: Int): Boolean {
-        if (_uiState.value.contratosEnAccion.contains(idContratoLaboral)) {
-            return false // Ya hay una acción en curso para este contrato
-        }
+    private fun marcarContratoEnAccion(idContratoLaboral: Int): Boolean {
+        if (_uiState.value.contratosEnAccion.contains(idContratoLaboral)) return false
         _uiState.update { it.copy(contratosEnAccion = it.contratosEnAccion + idContratoLaboral) }
         return true
     }
 
-    private fun desmarcarAccion(idContratoLaboral: Int) {
+    private fun desmarcarContratoEnAccion(idContratoLaboral: Int) {
         _uiState.update { it.copy(contratosEnAccion = it.contratosEnAccion - idContratoLaboral) }
+    }
+
+    private fun marcarLiquidacionEnAccion(idLiquidacion: Int): Boolean {
+        if (_uiState.value.liquidacionesEnAccion.contains(idLiquidacion)) return false
+        _uiState.update { it.copy(liquidacionesEnAccion = it.liquidacionesEnAccion + idLiquidacion) }
+        return true
+    }
+
+    private fun desmarcarLiquidacionEnAccion(idLiquidacion: Int) {
+        _uiState.update { it.copy(liquidacionesEnAccion = it.liquidacionesEnAccion - idLiquidacion) }
     }
 
     private suspend fun <T> ejecutarAccionConReintento503(
         accion: suspend () -> Result<T>,
-        idContratoLaboral: Int,
+        idContratoLaboral: Int? = null,
+        idLiquidacion: Int? = null,
         onExito: suspend (T) -> Unit
     ) {
         try {
@@ -244,85 +267,93 @@ class NominaViewModel @Inject constructor(
                 if (exception is NominaApiException && exception.esReintentable()) {
                     val waitSecs = (exception.retryAfterSegundos ?: 2).coerceIn(1, 5)
                     delay(waitSecs * 1000L)
-                    resultado = accion() // Único reintento automático
+                    resultado = accion() // Único reintento
                 }
             }
 
             resultado
                 .onSuccess { data ->
-                    desmarcarAccion(idContratoLaboral)
+                    if (idContratoLaboral != null) desmarcarContratoEnAccion(idContratoLaboral)
+                    if (idLiquidacion != null) desmarcarLiquidacionEnAccion(idLiquidacion)
                     onExito(data)
                 }
                 .onFailure { error ->
-                    desmarcarAccion(idContratoLaboral)
+                    if (idContratoLaboral != null) desmarcarContratoEnAccion(idContratoLaboral)
+                    if (idLiquidacion != null) desmarcarLiquidacionEnAccion(idLiquidacion)
                     manejarErrorAccion(error, idContratoLaboral)
                 }
         } catch (e: Throwable) {
-            desmarcarAccion(idContratoLaboral)
+            if (e is CancellationException) throw e
+            if (idContratoLaboral != null) desmarcarContratoEnAccion(idContratoLaboral)
+            if (idLiquidacion != null) desmarcarLiquidacionEnAccion(idLiquidacion)
             manejarErrorAccion(e, idContratoLaboral)
         }
     }
 
     private fun manejarError(error: Throwable) {
-        viewModelScope.launch(dispatcher) {
+        viewModelScope.launch(ioDispatcher) {
             if (error is NominaApiException) {
                 when {
                     error.esPreliquidacionDesactualizada() -> {
-                        _eventos.emit(NominaEvent.MostrarMensaje("La preliquidación está desactualizada. Se recargará la lista."))
+                        _eventos.send(NominaEvent.MostrarMensaje("La preliquidación está desactualizada. Se recargará la lista."))
                         cargarContratos()
                     }
                     error.esConflicto() -> {
-                        _eventos.emit(NominaEvent.MostrarMensaje("Ya existe una liquidación vigente para este contrato y periodo."))
+                        _eventos.send(NominaEvent.MostrarMensaje("Ya existe una liquidación vigente para este contrato y periodo."))
                         cargarContratos()
                     }
                     error.esNoEncontrado() -> {
-                        _eventos.emit(NominaEvent.MostrarMensaje(error.message))
+                        _eventos.send(NominaEvent.MostrarMensaje(error.message))
                         cargarContratos()
                     }
                     error.esReintentable() -> {
-                        _eventos.emit(NominaEvent.MostrarMensaje("El servidor está ocupado, inténtalo de nuevo."))
+                        _eventos.send(NominaEvent.MostrarMensaje("El servidor está ocupado, inténtalo de nuevo."))
                     }
-                    else -> _eventos.emit(NominaEvent.MostrarMensaje(error.message))
+                    else -> _eventos.send(NominaEvent.MostrarMensaje(error.message))
                 }
             } else {
-                _eventos.emit(NominaEvent.MostrarMensaje(error.message ?: "Error desconocido"))
+                _eventos.send(NominaEvent.MostrarMensaje(error.message ?: "Error desconocido"))
             }
         }
     }
 
-    private fun manejarErrorAccion(error: Throwable, idContratoLaboral: Int) {
-        viewModelScope.launch(dispatcher) {
+    private fun manejarErrorAccion(error: Throwable, idContratoLaboral: Int?) {
+        viewModelScope.launch(ioDispatcher) {
             if (error is NominaApiException) {
                 when {
                     error.esPreliquidacionDesactualizada() -> {
-                        _eventos.emit(NominaEvent.MostrarRecalcular(
-                            "La preliquidación está desactualizada (cambiaron datos de origen).",
-                            idContratoLaboral
-                        ))
+                        if (idContratoLaboral != null) {
+                            _eventos.send(NominaEvent.MostrarRecalcular(
+                                "La preliquidación está desactualizada (cambiaron datos de origen).",
+                                idContratoLaboral
+                            ))
+                        } else {
+                            _eventos.send(NominaEvent.MostrarMensaje("La preliquidación está desactualizada."))
+                        }
                         cargarContratos()
                     }
                     error.esConflicto() -> {
-                        _eventos.emit(NominaEvent.MostrarMensaje("Ya existe una liquidación vigente para este contrato y periodo."))
+                        _eventos.send(NominaEvent.MostrarMensaje("Ya existe una liquidación vigente para este contrato y periodo."))
                         cargarContratos()
                     }
                     error.esNoEncontrado() -> {
-                        _eventos.emit(NominaEvent.MostrarMensaje(error.message))
+                        _eventos.send(NominaEvent.MostrarMensaje(error.message))
                         cargarContratos()
                     }
                     error.esReintentable() -> {
-                        _eventos.emit(NominaEvent.MostrarMensaje("El servidor está ocupado, inténtalo de nuevo."))
+                        _eventos.send(NominaEvent.MostrarMensaje("El servidor está ocupado, inténtalo de nuevo."))
                     }
-                    else -> _eventos.emit(NominaEvent.MostrarMensaje(error.message))
+                    else -> _eventos.send(NominaEvent.MostrarMensaje(error.message))
                 }
             } else {
-                _eventos.emit(NominaEvent.MostrarMensaje(error.message ?: "Error en la operación"))
+                _eventos.send(NominaEvent.MostrarMensaje(error.message ?: "Error en la operación"))
             }
         }
     }
 
     private fun emitirMensaje(mensaje: String) {
-        viewModelScope.launch(dispatcher) {
-            _eventos.emit(NominaEvent.MostrarMensaje(mensaje))
+        viewModelScope.launch(ioDispatcher) {
+            _eventos.send(NominaEvent.MostrarMensaje(mensaje))
         }
     }
 }

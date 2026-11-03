@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.Intent
 import android.widget.Toast
 import androidx.core.content.FileProvider
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -23,20 +22,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.spa.appointments.R
 import com.spa.appointments.domain.model.ContratoElegibleNomina
-import com.spa.appointments.domain.model.PeriodoNominaItem
 import com.spa.appointments.domain.model.PreliquidacionDetalleResponse
 import com.spa.appointments.domain.model.PreliquidacionResponse
 import java.io.File
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun NominaScreen(
     onBack: () -> Unit,
     viewModel: NominaViewModel = hiltViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -72,7 +71,7 @@ fun NominaScreen(
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Volver"
+                            contentDescription = stringResource(R.string.cd_volver)
                         )
                     }
                 }
@@ -109,13 +108,13 @@ fun NominaScreen(
                     val pSel = uiState.periodoSeleccionado
                     val textoPeriodo = if (pSel != null) {
                         "${pSel.nombre} (${formatearFechaDisplay(pSel.fechaInicio)} - ${formatearFechaDisplay(pSel.fechaFin)})"
-                    } else "Seleccionar periodo"
+                    } else stringResource(R.string.placeholder_seleccionar_periodo)
 
                     OutlinedTextField(
                         value = textoPeriodo,
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Periodo de Nómina") },
+                        label = { Text(stringResource(R.string.label_periodo_nomina)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = menuPeriodosExpandido) },
                         modifier = Modifier.menuAnchor().fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp)
@@ -153,11 +152,11 @@ fun NominaScreen(
                 value = uiState.busqueda,
                 onValueChange = { viewModel.actualizarBusqueda(it) },
                 placeholder = { Text(stringResource(R.string.label_buscar_profesional)) },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Buscar") },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = stringResource(R.string.cd_buscar)) },
                 trailingIcon = {
                     if (uiState.busqueda.isNotBlank()) {
                         IconButton(onClick = { viewModel.actualizarBusqueda("") }) {
-                            Icon(Icons.Default.Clear, contentDescription = "Limpiar búsqueda")
+                            Icon(Icons.Default.Clear, contentDescription = stringResource(R.string.cd_limpiar_busqueda))
                         }
                     }
                 },
@@ -327,6 +326,7 @@ fun NominaScreen(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ContratoNominaCard(
     contrato: ContratoElegibleNomina,
@@ -368,7 +368,7 @@ fun ContratoNominaCard(
                     }
                     if (!contrato.profesionalDocumento.isNullOrBlank()) {
                         Text(
-                            text = "Doc: ${contrato.profesionalDocumento}",
+                            text = stringResource(R.string.lbl_doc_prefix, contrato.profesionalDocumento),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -386,7 +386,7 @@ fun ContratoNominaCard(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "Salario base:",
+                    text = stringResource(R.string.lbl_salario_base),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -403,7 +403,7 @@ fun ContratoNominaCard(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = "Neto liquidado:",
+                        text = stringResource(R.string.lbl_neto_liquidado),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary
                     )
@@ -424,7 +424,7 @@ fun ContratoNominaCard(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = "Advertencia: ${textoMotivoNomina(estado.motivo)}",
+                        text = stringResource(R.string.lbl_advertencia_prefix, textoMotivoNomina(estado.motivo)),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onErrorContainer,
                         modifier = Modifier.padding(8.dp)
@@ -434,15 +434,17 @@ fun ContratoNominaCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Botones de acción por estado
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                if (enAccion) {
+            // Botones de acción organizados con FlowRow para pantallas angostas
+            if (enAccion) {
+                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
                     CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
-                } else {
+                }
+            } else {
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
                     when (estado) {
                         is EstadoNominaContrato.SinPreliquidar -> {
                             Button(
@@ -487,7 +489,11 @@ fun ContratoNominaCard(
                                 onClick = onDesprendible,
                                 modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
                             ) {
-                                Icon(Icons.Default.Download, contentDescription = "Descargar PDF", modifier = Modifier.size(18.dp))
+                                Icon(
+                                    Icons.Default.Download,
+                                    contentDescription = stringResource(R.string.cd_descargar_pdf),
+                                    modifier = Modifier.size(18.dp)
+                                )
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text(stringResource(R.string.btn_desprendible))
                             }
@@ -557,7 +563,7 @@ fun DetallePreliquidacionSheetContent(
             .padding(16.dp)
     ) {
         Text(
-            text = "Detalle de Preliquidación",
+            text = stringResource(R.string.titulo_detalle_preliquidacion),
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold
         )
@@ -578,21 +584,27 @@ fun DetallePreliquidacionSheetContent(
         ) {
             Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("Total Devengado:")
+                    Text(stringResource(R.string.lbl_total_devengado))
                     Text(formatearCop(detalle.totalDevengado), fontWeight = FontWeight.Bold)
                 }
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("Total Deducciones:")
+                    Text(stringResource(R.string.lbl_total_deducciones))
                     Text(formatearCop(detalle.totalDeducciones), fontWeight = FontWeight.Bold)
                 }
                 HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("Neto a Pagar:", fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.lbl_neto_pagar), fontWeight = FontWeight.Bold)
                     Text(formatearCop(detalle.netoPagar), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                 }
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("IBC Calculado:", style = MaterialTheme.typography.bodySmall)
+                    Text(stringResource(R.string.lbl_ibc_calculado), style = MaterialTheme.typography.bodySmall)
                     Text(formatearCop(detalle.ibcCalculado), style = MaterialTheme.typography.bodySmall)
+                }
+                if (detalle.diasComerciales != null) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(stringResource(R.string.lbl_dias_comerciales), style = MaterialTheme.typography.bodySmall)
+                        Text("${detalle.diasComerciales}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+                    }
                 }
             }
         }
@@ -600,7 +612,7 @@ fun DetallePreliquidacionSheetContent(
         Spacer(modifier = Modifier.height(12.dp))
 
         // Lista de conceptos agrupados
-        Text("Conceptos", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Text(stringResource(R.string.lbl_conceptos), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(4.dp))
 
         val devengados = detalle.detalles.filter { it.tipoConcepto == 1 }
@@ -612,14 +624,14 @@ fun DetallePreliquidacionSheetContent(
         ) {
             if (devengados.isNotEmpty()) {
                 item {
-                    Text("Devengados", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                    Text(stringResource(R.string.lbl_devengados), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                 }
                 items(devengados) { item -> ConceptoItemRow(item) }
             }
 
             if (deducciones.isNotEmpty()) {
                 item {
-                    Text("Deducciones", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.lbl_deducciones), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.error)
                 }
                 items(deducciones) { item -> ConceptoItemRow(item) }
             }
@@ -642,7 +654,7 @@ fun DetallePreliquidacionSheetContent(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    text = "No liquidable: ${textoMotivoNomina(detalle.motivo)}",
+                    text = stringResource(R.string.lbl_no_liquidable_prefix, textoMotivoNomina(detalle.motivo)),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onErrorContainer,
                     modifier = Modifier.padding(12.dp)
@@ -660,9 +672,9 @@ fun ConceptoItemRow(item: PreliquidacionDetalleResponse) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(item.nombreConcepto ?: item.codigoConcepto ?: "Concepto", style = MaterialTheme.typography.bodyMedium)
+            Text(item.nombreConcepto ?: item.codigoConcepto ?: stringResource(R.string.lbl_concepto_default), style = MaterialTheme.typography.bodyMedium)
             if (item.cantidad != null && item.cantidad > 0) {
-                Text("Cantidad: ${item.cantidad}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.lbl_cantidad_prefix, item.cantidad), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
         Text(formatearCop(item.valor), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
@@ -678,8 +690,8 @@ private fun abrirPdfConIntent(context: Context, file: File) {
         }
         context.startActivity(intent)
     } catch (_: ActivityNotFoundException) {
-        Toast.makeText(context, "No hay aplicación instalada para abrir archivos PDF", Toast.LENGTH_LONG).show()
+        Toast.makeText(context, context.getString(R.string.msg_error_abrir_pdf), Toast.LENGTH_LONG).show()
     } catch (e: Exception) {
-        Toast.makeText(context, "Error al abrir el PDF: ${e.message}", Toast.LENGTH_LONG).show()
+        Toast.makeText(context, context.getString(R.string.msg_error_pdf_prefix, e.message ?: ""), Toast.LENGTH_LONG).show()
     }
 }

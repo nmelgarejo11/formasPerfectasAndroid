@@ -3,34 +3,44 @@ package com.spa.appointments.ui.nomina
 import com.spa.appointments.domain.model.*
 import com.spa.appointments.domain.repository.NominaRepository
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.*
+import org.junit.After
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
 import java.io.File
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class NominaViewModelTest {
 
+    private val testDispatcher = StandardTestDispatcher()
     private lateinit var fakeRepository: FakeNominaRepository
 
     @Before
     fun setup() {
+        Dispatchers.setMain(testDispatcher)
         fakeRepository = FakeNominaRepository()
     }
 
+    @After
+    fun tearDown() {
+        Dispatchers.resetMain()
+    }
+
     private fun crearViewModel(): NominaViewModel {
-        return NominaViewModel(fakeRepository, Dispatchers.Unconfined)
+        return NominaViewModel(fakeRepository, testDispatcher)
     }
 
     @Test
-    fun testCargaInicial_ConPeriodos_SeleccionaPrimerPeriodoYCargaContratos() = runBlocking {
+    fun testCargaInicial_ConPeriodos_SeleccionaPrimerPeriodoYCargaContratos() = runTest(testDispatcher) {
         val vm = crearViewModel()
+        advanceUntilIdle()
 
         val state = vm.uiState.value
-        assertEquals(1, state.periodos.size)
+        assertEquals(2, state.periodos.size)
         assertEquals(1, state.periodoSeleccionado?.id)
         assertEquals(1, state.contratos.size)
         assertFalse(state.cargandoPeriodos)
@@ -38,10 +48,11 @@ class NominaViewModelTest {
     }
 
     @Test
-    fun testCargaInicial_SinPeriodos_MuestraEstadoVacio() = runBlocking {
+    fun testCargaInicial_SinPeriodos_MuestraEstadoVacio() = runTest(testDispatcher) {
         fakeRepository.periodosResult = Result.success(emptyList())
 
         val vm = crearViewModel()
+        advanceUntilIdle()
 
         val state = vm.uiState.value
         assertTrue(state.periodos.isEmpty())
@@ -50,108 +61,202 @@ class NominaViewModelTest {
     }
 
     @Test
-    fun testCambioDePeriodo_RecargaContratos() = runBlocking {
+    fun testDebounce_VariasTeclas_SolaUnaConsultaAAlFin() = runTest(testDispatcher) {
         val vm = crearViewModel()
+        advanceUntilIdle()
+
+        fakeRepository.consultasContratosCount = 0
+
+        vm.actualizarBusqueda("J")
+        advanceTimeBy(100)
+        vm.actualizarBusqueda("Ju")
+        advanceTimeBy(100)
+        vm.actualizarBusqueda("Juan")
+        advanceTimeBy(400) // Se cumple el debounce
+
+        advanceUntilIdle()
+
+        assertEquals(1, fakeRepository.consultasContratosCount)
+        assertEquals("Juan", fakeRepository.lastBusquedaRealizada)
+    }
+
+    @Test
+    fun testPreliquidar_OK() = runTest(testDispatcher) {
+        val vm = crearViewModel()
+        advanceUntilIdle()
+
+        val contrato = fakeRepository.contratoSinPreliquidar
+        vm.preliquidar(contrato)
+        advanceUntilIdle()
+
+        assertEquals(1, fakeRepository.llamadasPreliquidar)
+    }
+
+    @Test
+    fun testPreliquidar_RechazadoSiLiquidada() = runTest(testDispatcher) {
+        val vm = crearViewModel()
+        advanceUntilIdle()
+
+        val contrato = fakeRepository.contratoLiquidado
+        vm.preliquidar(contrato)
+        advanceUntilIdle()
+
+        assertEquals(0, fakeRepository.llamadasPreliquidar)
+    }
+
+    @Test
+    fun testLiquidar_OK() = runTest(testDispatcher) {
+        val vm = crearViewModel()
+        advanceUntilIdle()
+
+        val contrato = fakeRepository.contratoPreliquidadaLista
+        vm.liquidar(contrato)
+        advanceUntilIdle()
+
+        assertEquals(1, fakeRepository.llamadasCrearDesdePreliquidacion)
+    }
+
+    @Test
+    fun testLiquidar_ConErrorMinus410_EmiteMostrarRecalcularYRecarga() = runTest(testDispatcher) {
+        fakeRepository.crearDesdePreliquidacionResult = Result.failure(
+            NominaApiException(422, -410, "La preliquidación está desactualizada")
+        )
+        val vm = crearViewModel()
+        advanceUntilIdle()
+
+        fakeRepository.consultasContratosCount = 0
+        val contrato = fakeRepository.contratoPreliquidadaLista
+
+        vm.liquidar(contrato)
+        advanceUntilIdle()
+
+        val evento = vm.eventos.first()
+        assertTrue(evento is NominaEvent.MostrarRecalcular)
+        assertEquals(1, fakeRepository.consultasContratosCount) // Confirmar recarga
+    }
+
+    @Test
+    fun testError409_EmiteMensajeConflictoYRecarga() = runTest(testDispatcher) {
+        fakeRepository.crearDesdePreliquidacionResult = Result.failure(
+            NominaApiException(409, null, "Ya existe liquidacion")
+        )
+        val vm = crearViewModel()
+        advanceUntilIdle()
+
+        fakeRepository.consultasContratosCount = 0
+        val contrato = fakeRepository.contratoPreliquidadaLista
+
+        vm.liquidar(contrato)
+        advanceUntilIdle()
+
+        val evento = vm.eventos.first()
+        assertTrue(evento is NominaEvent.MostrarMensaje)
+        assertTrue((evento as NominaEvent.MostrarMensaje).mensaje.contains("Ya existe una liquidación"))
+        assertEquals(1, fakeRepository.consultasContratosCount)
+    }
+
+    @Test
+    fun testError404_EmiteMensajeYRecarga() = runTest(testDispatcher) {
+        fakeRepository.crearDesdePreliquidacionResult = Result.failure(
+            NominaApiException(404, null, "Recurso no encontrado")
+        )
+        val vm = crearViewModel()
+        advanceUntilIdle()
+
+        fakeRepository.consultasContratosCount = 0
+        val contrato = fakeRepository.contratoPreliquidadaLista
+
+        vm.liquidar(contrato)
+        advanceUntilIdle()
+
+        val evento = vm.eventos.first()
+        assertTrue(evento is NominaEvent.MostrarMensaje)
+        assertEquals(1, fakeRepository.consultasContratosCount)
+    }
+
+    @Test
+    fun testReintento503_Exitoso() = runTest(testDispatcher) {
+        fakeRepository.fallar503Count = 1
+        val vm = crearViewModel()
+        advanceUntilIdle()
+
+        val contrato = fakeRepository.contratoSinPreliquidar
+        vm.preliquidar(contrato)
+        advanceUntilIdle()
+
+        assertEquals(2, fakeRepository.llamadasPreliquidar) // Intentado + 1 reintento exitoso
+    }
+
+    @Test
+    fun testReintento503_DobleFalla_MuestraServidorOcupado() = runTest(testDispatcher) {
+        fakeRepository.fallar503Count = 2
+        val vm = crearViewModel()
+        advanceUntilIdle()
+
+        val contrato = fakeRepository.contratoSinPreliquidar
+        vm.preliquidar(contrato)
+        advanceUntilIdle()
+
+        assertEquals(2, fakeRepository.llamadasPreliquidar)
+        val evento = vm.eventos.first()
+        assertTrue(evento is NominaEvent.MostrarMensaje)
+        assertTrue((evento as NominaEvent.MostrarMensaje).mensaje.contains("servidor está ocupado"))
+    }
+
+    @Test
+    fun testAnular_ConMotivoVacio_RechazaYNoLlamaRepositorio() = runTest(testDispatcher) {
+        val vm = crearViewModel()
+        advanceUntilIdle()
+
+        vm.anularLiquidacion(1, "   ")
+        advanceUntilIdle()
+
+        assertEquals(0, fakeRepository.llamadasAnular)
+    }
+
+    @Test
+    fun testAnular_OK_Y_DobleToque() = runTest(testDispatcher) {
+        fakeRepository.retardoAnularMs = 1000L
+        val vm = crearViewModel()
+        advanceUntilIdle()
+
+        vm.anularLiquidacion(5, "Motivo válido de anulación")
+        vm.anularLiquidacion(5, "Segundo toque")
+
+        advanceUntilIdle()
+
+        assertEquals(1, fakeRepository.llamadasAnular)
+    }
+
+    @Test
+    fun testRespuestaObsoletaAlCambiarDePeriodo_DescartaRespuestaAnterior() = runTest(testDispatcher) {
+        fakeRepository.retardoContratosPeriodo1Ms = 1000L
+        fakeRepository.retardoContratosPeriodo2Ms = 100L
+
+        val vm = crearViewModel()
+        advanceTimeBy(50) // En proceso de cargar periodo 1
 
         val periodo2 = PeriodoNominaItem(2, "Quincena 2", "2026-10-16", "2026-10-31", 1, "Abierto")
         vm.seleccionarPeriodo(periodo2)
+
+        advanceUntilIdle()
 
         assertEquals(2, vm.uiState.value.periodoSeleccionado?.id)
         assertEquals(2, fakeRepository.lastPeriodoNominaIdBuscado)
     }
 
     @Test
-    fun testPreliquidar_OK() = runBlocking {
+    fun testEntregaEventosEmitidosSinColector_ChannelConservaEvento() = runTest(testDispatcher) {
         val vm = crearViewModel()
-        val contrato = fakeRepository.contratoSinPreliquidar
+        advanceUntilIdle()
 
-        vm.preliquidar(contrato)
+        // Emite evento cuando NO hay ningun collect activo
+        vm.descargarDesprendible(10)
+        advanceUntilIdle()
 
-        assertEquals(1, fakeRepository.llamadasPreliquidar)
-    }
-
-    @Test
-    fun testPreliquidar_RechazadoSiLiquidada() = runBlocking {
-        val vm = crearViewModel()
-        val contrato = fakeRepository.contratoLiquidado
-
-        vm.preliquidar(contrato)
-
-        assertEquals(0, fakeRepository.llamadasPreliquidar)
-    }
-
-    @Test
-    fun testLiquidar_OK() = runBlocking {
-        val vm = crearViewModel()
-        val contrato = fakeRepository.contratoPreliquidadaLista
-
-        vm.liquidar(contrato)
-
-        assertEquals(1, fakeRepository.llamadasCrearDesdePreliquidacion)
-    }
-
-    @Test
-    fun testLiquidar_ConError410_EmiteMostrarRecalcular() = runBlocking {
-        fakeRepository.crearDesdePreliquidacionResult = Result.failure(
-            NominaApiException(422, -410, "La preliquidación está desactualizada")
-        )
-        val vm = crearViewModel()
-        val contrato = fakeRepository.contratoPreliquidadaLista
-
-        var eventoCapturado: NominaEvent? = null
-        val job = launch(Dispatchers.Unconfined) {
-            vm.eventos.collect { eventoCapturado = it }
-        }
-
-        vm.liquidar(contrato)
-
-        assertTrue(eventoCapturado is NominaEvent.MostrarRecalcular)
-        job.cancel()
-    }
-
-    @Test
-    fun testAnular_ConMotivoVacio_RechazaYNoLlamaRepositorio() = runBlocking {
-        val vm = crearViewModel()
-
-        vm.anularLiquidacion(1, "   ")
-
-        assertEquals(0, fakeRepository.llamadasAnular)
-    }
-
-    @Test
-    fun testAnular_OK() = runBlocking {
-        val vm = crearViewModel()
-
-        vm.anularLiquidacion(1, "Motivo de prueba válido")
-
-        assertEquals(1, fakeRepository.llamadasAnular)
-    }
-
-    @Test
-    fun testDescargarDesprendible_OK() = runBlocking {
-        val vm = crearViewModel()
-
-        var eventoCapturado: NominaEvent? = null
-        val job = launch(Dispatchers.Unconfined) {
-            vm.eventos.collect { eventoCapturado = it }
-        }
-
-        vm.descargarDesprendible(1)
-
-        assertTrue(eventoCapturado is NominaEvent.AbrirPdfDesprendible)
-        job.cancel()
-    }
-
-    @Test
-    fun testDobleToque_IgnoraSegundaAccionEnCurso() = runBlocking {
-        fakeRepository.retardoPreliquidarMs = 1000L
-        val vm = crearViewModel()
-        val contrato = fakeRepository.contratoSinPreliquidar
-
-        vm.preliquidar(contrato)
-        vm.preliquidar(contrato) // Segundo toque debe ignorarse
-
-        assertEquals(1, fakeRepository.llamadasPreliquidar)
+        // Luego se suscribe y el evento se recibe intacto
+        val evento = vm.eventos.first()
+        assertTrue(evento is NominaEvent.AbrirPdfDesprendible)
     }
 }
 
@@ -159,8 +264,15 @@ class FakeNominaRepository : NominaRepository {
     var llamadasPreliquidar = 0
     var llamadasCrearDesdePreliquidacion = 0
     var llamadasAnular = 0
+    var consultasContratosCount = 0
     var lastPeriodoNominaIdBuscado: Int? = null
+    var lastBusquedaRealizada: String? = null
+
     var retardoPreliquidarMs = 0L
+    var retardoAnularMs = 0L
+    var retardoContratosPeriodo1Ms = 0L
+    var retardoContratosPeriodo2Ms = 0L
+    var fallar503Count = 0
 
     val contratoSinPreliquidar = ContratoElegibleNomina(
         idContratoLaboral = 1,
@@ -217,7 +329,10 @@ class FakeNominaRepository : NominaRepository {
     )
 
     var periodosResult: Result<List<PeriodoNominaItem>> = Result.success(
-        listOf(PeriodoNominaItem(1, "Quincena 1", "2026-10-01", "2026-10-15", 1, "Abierto"))
+        listOf(
+            PeriodoNominaItem(1, "Quincena 1", "2026-10-01", "2026-10-15", 1, "Abierto"),
+            PeriodoNominaItem(2, "Quincena 2", "2026-10-16", "2026-10-31", 1, "Abierto")
+        )
     )
 
     var crearDesdePreliquidacionResult: Result<RespuestaSimpleNomina> = Result.success(
@@ -234,6 +349,10 @@ class FakeNominaRepository : NominaRepository {
 
     override suspend fun preliquidar(request: PreliquidarContratoRequest): Result<PreliquidacionResponse> {
         llamadasPreliquidar++
+        if (fallar503Count > 0) {
+            fallar503Count--
+            return Result.failure(NominaApiException(503, -503, "Servidor ocupado (AppLock)", retryAfterSegundos = 1))
+        }
         if (retardoPreliquidarMs > 0) delay(retardoPreliquidarMs)
         return Result.success(
             PreliquidacionResponse(
@@ -259,6 +378,7 @@ class FakeNominaRepository : NominaRepository {
 
     override suspend fun anularLiquidacion(id: Int, request: AnularLiquidacionRequest): Result<RespuestaSimpleNomina> {
         llamadasAnular++
+        if (retardoAnularMs > 0) delay(retardoAnularMs)
         return Result.success(RespuestaSimpleNomina(id = id, mensaje = "OK"))
     }
 
@@ -271,7 +391,13 @@ class FakeNominaRepository : NominaRepository {
         idSede: Int?,
         busqueda: String?
     ): Result<List<ContratoElegibleNomina>> {
+        consultasContratosCount++
         lastPeriodoNominaIdBuscado = idPeriodoNomina
+        lastBusquedaRealizada = busqueda
+
+        if (idPeriodoNomina == 1 && retardoContratosPeriodo1Ms > 0) delay(retardoContratosPeriodo1Ms)
+        if (idPeriodoNomina == 2 && retardoContratosPeriodo2Ms > 0) delay(retardoContratosPeriodo2Ms)
+
         return Result.success(listOf(contratoSinPreliquidar))
     }
 
