@@ -14,22 +14,27 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import com.spa.appointments.R
 import com.spa.appointments.domain.model.ContratoElegibleNomina
 import com.spa.appointments.domain.model.PreliquidacionDetalleResponse
 import com.spa.appointments.domain.model.PreliquidacionResponse
+import kotlinx.coroutines.launch
 import java.io.File
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NominaScreen(
     onBack: () -> Unit,
@@ -37,27 +42,46 @@ fun NominaScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
-    var contratoParaLiquidar by remember { mutableStateOf<ContratoElegibleNomina?>(null) }
-    var idLiquidacionParaAnular by remember { mutableStateOf<Int?>(null) }
-    var motivoAnulacion by remember { mutableStateOf("") }
-    var menuPeriodosExpandido by remember { mutableStateOf(false) }
+    var idContratoParaLiquidar by rememberSaveable { mutableStateOf<Int?>(null) }
+    var idLiquidacionParaAnular by rememberSaveable { mutableStateOf<Int?>(null) }
+    var motivoAnulacion by rememberSaveable { mutableStateOf("") }
+    var menuPeriodosExpandido by rememberSaveable { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
-        viewModel.eventos.collect { evento ->
-            when (evento) {
-                is NominaEvent.MostrarMensaje -> {
-                    snackbarHostState.showSnackbar(evento.mensaje)
-                }
-                is NominaEvent.MostrarRecalcular -> {
-                    snackbarHostState.showSnackbar(evento.mensaje)
-                }
-                is NominaEvent.AbrirPdfDesprendible -> {
-                    abrirPdfConIntent(context, evento.file)
-                }
-                is NominaEvent.LiquidacionExitosa -> {
-                    snackbarHostState.showSnackbar(evento.mensaje)
+    val contratoParaLiquidar = remember(idContratoParaLiquidar, uiState.contratos) {
+        uiState.contratos.find { it.idContratoLaboral == idContratoParaLiquidar }
+    }
+
+    LaunchedEffect(lifecycleOwner) {
+        lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            viewModel.eventos.collect { evento ->
+                when (evento) {
+                    is NominaEvent.MostrarMensaje -> {
+                        scope.launch { snackbarHostState.showSnackbar(evento.mensaje) }
+                    }
+                    is NominaEvent.MostrarRecalcular -> {
+                        scope.launch {
+                            val result = snackbarHostState.showSnackbar(
+                                message = evento.mensaje,
+                                actionLabel = context.getString(R.string.btn_recalcular),
+                                duration = SnackbarDuration.Long
+                            )
+                            if (result == SnackbarResult.ActionPerformed) {
+                                uiState.contratos.find { it.idContratoLaboral == evento.idContratoLaboral }?.let {
+                                    viewModel.preliquidar(it)
+                                }
+                            }
+                        }
+                    }
+                    is NominaEvent.AbrirPdfDesprendible -> {
+                        abrirPdfConIntent(context, evento.file)
+                    }
+                    is NominaEvent.LiquidacionExitosa -> {
+                        scope.launch { snackbarHostState.showSnackbar(evento.mensaje) }
+                    }
                 }
             }
         }
@@ -187,14 +211,17 @@ fun NominaScreen(
                     contentPadding = PaddingValues(bottom = 16.dp)
                 ) {
                     items(uiState.contratos, key = { it.idContratoLaboral }) { contrato ->
+                        val enAccion = uiState.contratosEnAccion.contains(contrato.idContratoLaboral) ||
+                                (contrato.idLiquidacionVigente != null && uiState.liquidacionesEnAccion.contains(contrato.idLiquidacionVigente))
+
                         ContratoNominaCard(
                             contrato = contrato,
-                            enAccion = uiState.contratosEnAccion.contains(contrato.idContratoLaboral),
+                            enAccion = enAccion,
                             onPreliquidar = { viewModel.preliquidar(contrato) },
                             onVerDetalle = {
                                 contrato.idPreliquidacionVigente?.let { viewModel.verDetallePreliquidacion(it) }
                             },
-                            onLiquidar = { contratoParaLiquidar = contrato },
+                            onLiquidar = { idContratoParaLiquidar = contrato.idContratoLaboral },
                             onRecalcular = { viewModel.preliquidar(contrato) },
                             onDesprendible = {
                                 contrato.idLiquidacionVigente?.let { viewModel.descargarDesprendible(it) }
@@ -223,11 +250,9 @@ fun NominaScreen(
                 DetallePreliquidacionSheetContent(
                     detalle = detalle,
                     onLiquidarClick = {
-                        val contratoCoincidente = uiState.contratos.find { it.idContratoLaboral == detalle.idContratoLaboral }
+                        val idContrato = detalle.idContratoLaboral
                         viewModel.cerrarDetallePreliquidacion()
-                        if (contratoCoincidente != null) {
-                            contratoParaLiquidar = contratoCoincidente
-                        }
+                        idContratoParaLiquidar = idContrato
                     }
                 )
             }
@@ -237,7 +262,7 @@ fun NominaScreen(
     // Diálogo de Confirmación para Liquidar
     contratoParaLiquidar?.let { contrato ->
         AlertDialog(
-            onDismissRequest = { contratoParaLiquidar = null },
+            onDismissRequest = { idContratoParaLiquidar = null },
             title = { Text(stringResource(R.string.titulo_confirmar_liquidacion)) },
             text = {
                 Text(
@@ -252,7 +277,7 @@ fun NominaScreen(
                 Button(
                     onClick = {
                         val c = contrato
-                        contratoParaLiquidar = null
+                        idContratoParaLiquidar = null
                         viewModel.liquidar(c)
                     },
                     modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
@@ -262,7 +287,7 @@ fun NominaScreen(
             },
             dismissButton = {
                 TextButton(
-                    onClick = { contratoParaLiquidar = null },
+                    onClick = { idContratoParaLiquidar = null },
                     modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
                 ) {
                     Text(stringResource(R.string.btn_cancelar))
@@ -434,7 +459,6 @@ fun ContratoNominaCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Botones de acción organizados con FlowRow para pantallas angostas
             if (enAccion) {
                 Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
                     CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
@@ -442,7 +466,7 @@ fun ContratoNominaCard(
             } else {
                 FlowRow(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     when (estado) {
@@ -461,14 +485,12 @@ fun ContratoNominaCard(
                             ) {
                                 Text(stringResource(R.string.btn_ver_detalle))
                             }
-                            Spacer(modifier = Modifier.width(4.dp))
                             OutlinedButton(
                                 onClick = onRecalcular,
                                 modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
                             ) {
                                 Text(stringResource(R.string.btn_recalcular))
                             }
-                            Spacer(modifier = Modifier.width(4.dp))
                             Button(
                                 onClick = onLiquidar,
                                 modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
@@ -497,7 +519,6 @@ fun ContratoNominaCard(
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text(stringResource(R.string.btn_desprendible))
                             }
-                            Spacer(modifier = Modifier.width(4.dp))
                             TextButton(
                                 onClick = onAnular,
                                 colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),

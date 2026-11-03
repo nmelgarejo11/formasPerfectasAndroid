@@ -75,6 +75,7 @@ class NominaViewModel @Inject constructor(
                     }
                 }
                 .onFailure { error ->
+                    if (error is CancellationException) return@onFailure
                     _uiState.update { it.copy(cargandoPeriodos = false) }
                     manejarError(error)
                 }
@@ -112,6 +113,7 @@ class NominaViewModel @Inject constructor(
             res.onSuccess { lista ->
                 _uiState.update { it.copy(contratos = lista, cargandoContratos = false) }
             }.onFailure { error ->
+                if (error is CancellationException) return@onFailure
                 _uiState.update { it.copy(cargandoContratos = false) }
                 manejarError(error)
             }
@@ -121,7 +123,7 @@ class NominaViewModel @Inject constructor(
     fun preliquidar(contrato: ContratoElegibleNomina) {
         val estado = EstadoNominaContrato.desde(contrato)
         if (estado is EstadoNominaContrato.Liquidada) {
-            emitirMensaje("El contrato ya se encuentra liquidado. No se puede preliquidar.")
+            emitirMensaje(NominaMensajes.ERROR_CONTRATO_LIQUIDADO)
             return
         }
 
@@ -148,13 +150,13 @@ class NominaViewModel @Inject constructor(
     fun liquidar(contrato: ContratoElegibleNomina) {
         val estado = EstadoNominaContrato.desde(contrato)
         if (estado !is EstadoNominaContrato.PreliquidadaLista) {
-            emitirMensaje("El contrato no está listo para liquidar. Debe preliquidarse primero.")
+            emitirMensaje(NominaMensajes.ERROR_CONTRATO_NO_LISTO)
             return
         }
 
         val idPreliq = contrato.idPreliquidacionVigente
         if (idPreliq == null) {
-            emitirMensaje("No existe una preliquidación vigente para este contrato.")
+            emitirMensaje(NominaMensajes.ERROR_SIN_PRELIQUIDACION_VIGENTE)
             return
         }
 
@@ -182,6 +184,7 @@ class NominaViewModel @Inject constructor(
                     _uiState.update { it.copy(detallePreliquidacion = detalle, cargandoDetalle = false) }
                 }
                 .onFailure { error ->
+                    if (error is CancellationException) return@onFailure
                     _uiState.update { it.copy(cargandoDetalle = false) }
                     manejarError(error)
                 }
@@ -195,11 +198,11 @@ class NominaViewModel @Inject constructor(
     fun anularLiquidacion(idLiquidacion: Int, motivo: String) {
         val motivoLimpio = motivo.trim()
         if (motivoLimpio.isBlank()) {
-            emitirMensaje("El motivo de anulación es obligatorio.")
+            emitirMensaje(NominaMensajes.ERROR_MOTIVO_ANULACION_OBLIGATORIO)
             return
         }
         if (motivoLimpio.length > 1000) {
-            emitirMensaje("El motivo no puede superar los 1000 caracteres.")
+            emitirMensaje(NominaMensajes.ERROR_MOTIVO_ANULACION_LARGO)
             return
         }
 
@@ -278,6 +281,7 @@ class NominaViewModel @Inject constructor(
                     onExito(data)
                 }
                 .onFailure { error ->
+                    if (error is CancellationException) throw error
                     if (idContratoLaboral != null) desmarcarContratoEnAccion(idContratoLaboral)
                     if (idLiquidacion != null) desmarcarLiquidacionEnAccion(idLiquidacion)
                     manejarErrorAccion(error, idContratoLaboral)
@@ -291,15 +295,16 @@ class NominaViewModel @Inject constructor(
     }
 
     private fun manejarError(error: Throwable) {
+        if (error is CancellationException) return
         viewModelScope.launch(ioDispatcher) {
             if (error is NominaApiException) {
                 when {
                     error.esPreliquidacionDesactualizada() -> {
-                        _eventos.send(NominaEvent.MostrarMensaje("La preliquidación está desactualizada. Se recargará la lista."))
+                        _eventos.send(NominaEvent.MostrarMensaje(error.message))
                         cargarContratos()
                     }
                     error.esConflicto() -> {
-                        _eventos.send(NominaEvent.MostrarMensaje("Ya existe una liquidación vigente para este contrato y periodo."))
+                        _eventos.send(NominaEvent.MostrarMensaje(error.message))
                         cargarContratos()
                     }
                     error.esNoEncontrado() -> {
@@ -307,33 +312,34 @@ class NominaViewModel @Inject constructor(
                         cargarContratos()
                     }
                     error.esReintentable() -> {
-                        _eventos.send(NominaEvent.MostrarMensaje("El servidor está ocupado, inténtalo de nuevo."))
+                        _eventos.send(NominaEvent.MostrarMensaje(NominaMensajes.ERROR_SERVIDOR_OCUPADO))
                     }
                     else -> _eventos.send(NominaEvent.MostrarMensaje(error.message))
                 }
             } else {
-                _eventos.send(NominaEvent.MostrarMensaje(error.message ?: "Error desconocido"))
+                _eventos.send(NominaEvent.MostrarMensaje(NominaMensajes.mapearError(error)))
             }
         }
     }
 
     private fun manejarErrorAccion(error: Throwable, idContratoLaboral: Int?) {
+        if (error is CancellationException) return
         viewModelScope.launch(ioDispatcher) {
             if (error is NominaApiException) {
                 when {
                     error.esPreliquidacionDesactualizada() -> {
                         if (idContratoLaboral != null) {
                             _eventos.send(NominaEvent.MostrarRecalcular(
-                                "La preliquidación está desactualizada (cambiaron datos de origen).",
+                                NominaMensajes.ERROR_PRELIQUIDACION_DESACTUALIZADA_RECALCULAR,
                                 idContratoLaboral
                             ))
                         } else {
-                            _eventos.send(NominaEvent.MostrarMensaje("La preliquidación está desactualizada."))
+                            _eventos.send(NominaEvent.MostrarMensaje(error.message))
                         }
                         cargarContratos()
                     }
                     error.esConflicto() -> {
-                        _eventos.send(NominaEvent.MostrarMensaje("Ya existe una liquidación vigente para este contrato y periodo."))
+                        _eventos.send(NominaEvent.MostrarMensaje(error.message))
                         cargarContratos()
                     }
                     error.esNoEncontrado() -> {
@@ -341,12 +347,12 @@ class NominaViewModel @Inject constructor(
                         cargarContratos()
                     }
                     error.esReintentable() -> {
-                        _eventos.send(NominaEvent.MostrarMensaje("El servidor está ocupado, inténtalo de nuevo."))
+                        _eventos.send(NominaEvent.MostrarMensaje(NominaMensajes.ERROR_SERVIDOR_OCUPADO))
                     }
                     else -> _eventos.send(NominaEvent.MostrarMensaje(error.message))
                 }
             } else {
-                _eventos.send(NominaEvent.MostrarMensaje(error.message ?: "Error en la operación"))
+                _eventos.send(NominaEvent.MostrarMensaje(NominaMensajes.mapearError(error)))
             }
         }
     }

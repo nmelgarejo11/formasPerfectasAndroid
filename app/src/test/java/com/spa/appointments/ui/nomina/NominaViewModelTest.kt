@@ -151,7 +151,7 @@ class NominaViewModelTest {
 
         val evento = vm.eventos.first()
         assertTrue(evento is NominaEvent.MostrarMensaje)
-        assertTrue((evento as NominaEvent.MostrarMensaje).mensaje.contains("Ya existe una liquidación"))
+        assertEquals("Ya existe liquidacion", (evento as NominaEvent.MostrarMensaje).mensaje)
         assertEquals(1, fakeRepository.consultasContratosCount)
     }
 
