@@ -229,6 +229,20 @@ class NominaViewModelTest {
     }
 
     @Test
+    fun testDobleToque_DescargarDesprendible_IgnoraSegundaLlamada() = runTest(testDispatcher) {
+        fakeRepository.retardoDescargarDesprendibleMs = 1000L
+        val vm = crearViewModel()
+        advanceUntilIdle()
+
+        vm.descargarDesprendible(10)
+        vm.descargarDesprendible(10) // Segundo toque debe ignorarse
+
+        advanceUntilIdle()
+
+        assertEquals(1, fakeRepository.llamadasDescargarDesprendible)
+    }
+
+    @Test
     fun testRespuestaObsoletaAlCambiarDePeriodo_DescartaRespuestaAnterior() = runTest(testDispatcher) {
         fakeRepository.retardoContratosPeriodo1Ms = 1000L
         fakeRepository.retardoContratosPeriodo2Ms = 100L
@@ -282,12 +296,14 @@ class FakeNominaRepository : NominaRepository {
     var llamadasPreliquidar = 0
     var llamadasCrearDesdePreliquidacion = 0
     var llamadasAnular = 0
+    var llamadasDescargarDesprendible = 0
     var consultasContratosCount = 0
     var lastPeriodoNominaIdBuscado: Int? = null
     var lastBusquedaRealizada: String? = null
 
     var retardoPreliquidarMs = 0L
     var retardoAnularMs = 0L
+    var retardoDescargarDesprendibleMs = 0L
     var retardoContratosPeriodo1Ms = 0L
     var retardoContratosPeriodo2Ms = 0L
     var fallar503Count = 0
@@ -362,6 +378,8 @@ class FakeNominaRepository : NominaRepository {
     }
 
     override suspend fun descargarDesprendiblePdf(id: Int): Result<File> {
+        llamadasDescargarDesprendible++
+        if (retardoDescargarDesprendibleMs > 0) delay(retardoDescargarDesprendibleMs)
         return Result.success(File.createTempFile("test_", ".pdf"))
     }
 
