@@ -458,7 +458,7 @@ interface ApiService {
         @Body request: PreliquidarContratoRequest
     ): Response<PreliquidacionResponse>
 
-    @POST("LiquidacionNomina/desde-preliquidacion")
+    @POST("LiquidacionNomina/crear-desde-preliquidacion")
     suspend fun crearLiquidacionDesdePreliquidacion(
         @Body request: CrearLiquidacionDesdePreliquidacionRequest
     ): Response<RespuestaSimpleNomina>
