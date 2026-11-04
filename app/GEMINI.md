@@ -674,6 +674,27 @@ Parámetros explicados:
 
 ---
 
+# 35. Referencia y Uso de Skills Especializadas del Proyecto
+
+El proyecto cuenta con Skills especializadas (ubicadas en `.agents/skills/` y registradas globalmente en Android Studio). Gemini DEBE consultar y activar la Skill correspondiente según la naturaleza de la solicitud:
+
+### 1. `android-feature-flow`
+- **Ubicación**: `.agents/skills/android-feature-flow/SKILL.md`
+- **Cuándo usarla**: Al crear, extender o modificar funcionalidades verticales completas que abarquen múltiples capas (UI Compose, ViewModel, Repository, API, DTOs).
+- **Reglas clave**: Respetar el patrón de Repository existente (Interface + Impl vs Clase Directa), mantener arquitectura MVVM sin UseCases no autorizados, protocolo PREGUNTAR PRIMERO antes de modificar, y asegurar cero omisiones en el flujo.
+
+### 2. `api-contract-maintenance`
+- **Ubicación**: `.agents/skills/api-contract-maintenance/SKILL.md`
+- **Cuándo usarla**: Al agregar/modificar endpoints en `ApiService` o `AuthApiService`, crear/actualizar DTOs en `domain/model`, resolver errores de serialización con Moshi, o verificar la consistencia entre Android (Moshi) y Backend (ASP.NET Core + Stored Procedures en SQL Server).
+- **Reglas clave**: Verificar el header `X-Platform: 3`, respetar nulabilidad real del contrato, no hardcodear IDs de empresas, y PREGUNTAR PRIMERO antes de cambiar tipos de datos o parámetros.
+
+### 3. `debug-and-recovery`
+- **Ubicación**: `.agents/skills/debug-and-recovery/SKILL.md`
+- **Cuándo usarla**: Al diagnosticar y solucionar crashes, excepciones en Logcat, errores de compilación, fallos de Hilt, respuestas de API con error (4xx, 5xx) o comportamientos inesperados en la UI.
+- **Reglas clave**: Recopilar evidencia primero (Logcat, inspección por capas UI -> VM -> Repo -> API -> SQL), formular hipótesis de causa raíz vs síntoma, proponer cambios quirúrgicos mínimos y PREGUNTAR PRIMERO antes de aplicar la corrección.
+
+---
+
 # 34. Regla final
 
 La prioridad de Gemini en este proyecto es:
