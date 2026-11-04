@@ -23,6 +23,9 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.spa.appointments.domain.model.Cita
 import com.spa.appointments.domain.model.EstadoCita
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.rememberDatePickerState
 
 // ─── Screen principal ─────────────────────────────────────────────────────────
 
@@ -297,14 +300,12 @@ private fun FiltrosPanel(
                     label    = "Desde",
                     value    = filtros.fechaDesde,
                     modifier = Modifier.weight(1f),
-                    context  = context,
                     onDate   = { onChange(filtros.copy(fechaDesde = it)) }
                 )
                 FiltroDatePicker(
                     label    = "Hasta",
                     value    = filtros.fechaHasta,
                     modifier = Modifier.weight(1f),
-                    context  = context,
                     onDate   = { onChange(filtros.copy(fechaHasta = it)) }
                 )
             }
@@ -342,15 +343,31 @@ private fun FiltrosPanel(
 
 // ─── DatePicker ───────────────────────────────────────────────────────────────
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun FiltroDatePicker(
     label:    String,
-    value:    String?,
+    value:    String?,          // "yyyy-MM-dd" o null
     modifier: Modifier = Modifier,
-    context:  android.content.Context,
     onDate:   (String?) -> Unit
 ) {
-    val calendar = remember { java.util.Calendar.getInstance() }
+    var mostrarPicker by remember { mutableStateOf(false) }
+
+    val initialMillis = remember(value) {
+        value?.let { iso ->
+            runCatching {
+                val (y, m, d) = iso.split("-").map { it.toInt() }
+                java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC")).apply {
+                    clear()
+                    set(y, m - 1, d)
+                }.timeInMillis
+            }.getOrNull()
+        }
+    }
+
+    val datePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = initialMillis
+    )
 
     OutlinedTextField(
         value         = value?.let { formatearFechaHistorial(it) } ?: "",
@@ -360,25 +377,15 @@ private fun FiltroDatePicker(
         shape         = RoundedCornerShape(12.dp),
         trailingIcon  = {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = {
-                    DatePickerDialog(
-                        context,
-                        { _, y, m, d ->
-                            onDate("%04d-%02d-%02d".format(y, m + 1, d))
-                        },
-                        calendar.get(java.util.Calendar.YEAR),
-                        calendar.get(java.util.Calendar.MONTH),
-                        calendar.get(java.util.Calendar.DAY_OF_MONTH)
-                    ).show()
-                }) {
-                    Icon(Icons.Default.CalendarMonth, "Seleccionar fecha")
+                IconButton(onClick = { mostrarPicker = true }) {
+                    Icon(Icons.Default.CalendarMonth, "Seleccionar $label")
                 }
                 if (value != null) {
                     IconButton(onClick = { onDate(null) }) {
                         Icon(
-                            imageVector        = Icons.Default.Clear,
-                            contentDescription = "Limpiar fecha",
-                            modifier           = Modifier.size(16.dp)
+                            Icons.Default.Clear,
+                            "Limpiar $label",
+                            modifier = Modifier.size(16.dp)
                         )
                     }
                 }
@@ -387,6 +394,33 @@ private fun FiltroDatePicker(
         singleLine = true,
         modifier   = modifier
     )
+
+    if (mostrarPicker) {
+        DatePickerDialog(
+            onDismissRequest = { mostrarPicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        val cal = java.util.Calendar.getInstance(
+                            java.util.TimeZone.getTimeZone("UTC")
+                        ).apply { timeInMillis = millis }
+                        val iso = "%04d-%02d-%02d".format(
+                            cal.get(java.util.Calendar.YEAR),
+                            cal.get(java.util.Calendar.MONTH) + 1,
+                            cal.get(java.util.Calendar.DAY_OF_MONTH)
+                        )
+                        onDate(iso)
+                    }
+                    mostrarPicker = false
+                }) { Text("Aceptar") }
+            },
+            dismissButton = {
+                TextButton(onClick = { mostrarPicker = false }) { Text("Cancelar") }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
 }
 
 // ─── Dropdown de estados ──────────────────────────────────────────────────────

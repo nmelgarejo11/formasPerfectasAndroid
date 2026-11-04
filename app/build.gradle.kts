@@ -1,7 +1,17 @@
+import java.util.Properties
+
+val localProperties = Properties()
+val localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.inputStream().use { localProperties.load(it) }
+}
+val rawBaseUrl = localProperties.getProperty("api.base.url") ?: "http://10.0.2.2:5005/api/"
+val debugBaseUrl = if (rawBaseUrl.endsWith("/")) rawBaseUrl else "$rawBaseUrl/"
+
 plugins {
     id("com.android.application")
-    id("org.jetbrains.kotlin.android") version "1.9.10"
-    id("org.jetbrains.kotlin.kapt") version "1.9.10"
+    id("org.jetbrains.kotlin.android") version "1.9.24"
+    id("org.jetbrains.kotlin.kapt") version "1.9.24"
     id("com.google.dagger.hilt.android")
     id("com.google.gms.google-services")
 }
@@ -41,9 +51,7 @@ android {
 
     buildTypes {
         debug {
-            // ← cambia esta IP por la de tu PC (ipconfig en CMD)
-            //buildConfigField("String", "BASE_URL", "\"http://192.168.40.76:5005/api/\"")
-            buildConfigField("String", "BASE_URL", "\"http://192.168.11.14:5005/api/\"")
+            buildConfigField("String", "BASE_URL", "\"$debugBaseUrl\"")
             isDebuggable = true
         }
         release {
@@ -58,7 +66,7 @@ android {
     }
 
     composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.3"
+        kotlinCompilerExtensionVersion = "1.5.14"
     }
 
     packaging {
@@ -128,6 +136,7 @@ dependencies {
 
     // Unit tests
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
 
     // Android tests
     androidTestImplementation("androidx.test.ext:junit:1.2.1")

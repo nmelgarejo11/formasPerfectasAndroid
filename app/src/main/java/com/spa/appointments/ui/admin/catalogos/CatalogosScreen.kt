@@ -1,5 +1,8 @@
 package com.spa.appointments.ui.admin.catalogos
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -23,12 +26,12 @@ import com.spa.appointments.domain.model.CategoriaAdmin
 import com.spa.appointments.domain.model.ServicioAdmin
 import com.spa.appointments.domain.model.ServicioRequest
 
-// ─── Screen principal ─────────────────────────────────────────────────────────
+// ─── Screen principal ──────────────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ServiciosAdminScreen(
-    onBack:    () -> Unit,
+    onBack: () -> Unit,
     viewModel: CatalogosViewModel = hiltViewModel()
 ) {
     val servicios  by viewModel.servicios.collectAsState()
@@ -43,7 +46,8 @@ fun ServiciosAdminScreen(
         if (busqueda.isBlank()) servicios
         else servicios.filter {
             it.nombre.contains(busqueda, ignoreCase = true) ||
-                    it.nombreCategoria.contains(busqueda, ignoreCase = true)
+                    it.nombreCategoria.contains(busqueda, ignoreCase = true) ||
+                    (busqueda.contains("grupal", ignoreCase = true) && it.esGrupal)
         }
     }
 
@@ -110,7 +114,7 @@ fun ServiciosAdminScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // ── Buscador ──────────────────────────────────────────────────
+            // ── Buscador ───────────────────────────────────────────────────
             OutlinedTextField(
                 value         = busqueda,
                 onValueChange = { busqueda = it },
@@ -163,13 +167,14 @@ fun ServiciosAdminScreen(
                                     imageVector        = if (busqueda.isBlank()) Icons.Default.Spa
                                     else Icons.Default.SearchOff,
                                     contentDescription = null,
-                                    modifier           = Modifier.padding(20.dp).size(48.dp),
+                                    modifier           = Modifier
+                                        .padding(20.dp)
+                                        .size(48.dp),
                                     tint               = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                             Text(
-                                text       = if (busqueda.isBlank()) "Sin servicios aún"
-                                else "Sin resultados",
+                                text       = if (busqueda.isBlank()) "Sin servicios aún" else "Sin resultados",
                                 style      = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
@@ -187,11 +192,11 @@ fun ServiciosAdminScreen(
 
                     else -> {
                         LazyColumn(
-                            contentPadding      = PaddingValues(
+                            contentPadding = PaddingValues(
                                 start  = 16.dp,
-                                end    = 16.dp,
                                 top    = 4.dp,
-                                bottom = 88.dp   // espacio para el FAB extendido
+                                end    = 16.dp,
+                                bottom = 88.dp
                             ),
                             verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
@@ -220,7 +225,7 @@ fun ServiciosAdminScreen(
     }
 }
 
-// ─── Card de servicio ─────────────────────────────────────────────────────────
+// ─── Card de servicio ──────────────────────────────────────────────────────────
 
 @Composable
 private fun ServicioAdminCard(
@@ -243,18 +248,24 @@ private fun ServicioAdminCard(
                 .padding(horizontal = 14.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Ícono de servicio
+            // Ícono: individual o grupal
             Surface(
                 shape    = RoundedCornerShape(10.dp),
-                color    = MaterialTheme.colorScheme.secondaryContainer,
+                color    = if (servicio.esGrupal)
+                    MaterialTheme.colorScheme.tertiaryContainer
+                else
+                    MaterialTheme.colorScheme.secondaryContainer,
                 modifier = Modifier.size(44.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
-                        imageVector        = Icons.Default.Spa,
+                        imageVector        = if (servicio.esGrupal) Icons.Default.Groups else Icons.Default.Spa,
                         contentDescription = null,
                         modifier           = Modifier.size(22.dp),
-                        tint               = MaterialTheme.colorScheme.onSecondaryContainer
+                        tint               = if (servicio.esGrupal)
+                            MaterialTheme.colorScheme.onTertiaryContainer
+                        else
+                            MaterialTheme.colorScheme.onSecondaryContainer
                     )
                 }
             }
@@ -263,12 +274,43 @@ private fun ServicioAdminCard(
 
             // Información del servicio
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text       = servicio.nombre,
-                    style      = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier   = Modifier.fillMaxWidth()
-                )
+                Row(
+                    verticalAlignment      = Alignment.CenterVertically,
+                    horizontalArrangement  = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text       = servicio.nombre,
+                        style      = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier   = Modifier.weight(1f, fill = false)
+                    )
+
+                    if (servicio.esGrupal) {
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.15f)
+                        ) {
+                            Row(
+                                verticalAlignment     = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(3.dp),
+                                modifier              = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Icon(
+                                    imageVector        = Icons.Default.Groups,
+                                    contentDescription = null,
+                                    modifier           = Modifier.size(10.dp),
+                                    tint               = MaterialTheme.colorScheme.tertiary
+                                )
+                                Text(
+                                    text       = "Grupal",
+                                    style      = MaterialTheme.typography.labelSmall,
+                                    color      = MaterialTheme.colorScheme.tertiary,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+                    }
+                }
 
                 // Categoría
                 Row(
@@ -324,35 +366,38 @@ private fun ServicioAdminCard(
 
             Spacer(Modifier.width(8.dp))
 
-            // ─── ACCIONES AJUSTADAS (Pendiente #1) ────────────────────────
+            // Acciones
             Column(
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                // 1. Indicador de activo encima del toggle
-                Surface(
-                    shape = RoundedCornerShape(6.dp),
-                    color = if (servicio.estado)
-                        MaterialTheme.colorScheme.primaryContainer
-                    else
-                        MaterialTheme.colorScheme.surfaceVariant
-                ) {
-
-                    Text(
-                        text = if (servicio.estado) "Activa" else "Inactiva",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = if (servicio.estado)
-                            MaterialTheme.colorScheme.onPrimaryContainer
-                        else
-                            MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                    )
-                }
+                // Indicador de estado con punto de color
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
+                    verticalAlignment     = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    // 2. Lápiz junto al toggle
+                    Surface(
+                        shape  = RoundedCornerShape(50),
+                        color  = if (servicio.estado)
+                            MaterialTheme.colorScheme.primary
+                        else
+                            MaterialTheme.colorScheme.outline,
+                        modifier = Modifier.size(7.dp)
+                    ) {}
+                    Text(
+                        text  = if (servicio.estado) "Activa" else "Inactiva",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (servicio.estado)
+                            MaterialTheme.colorScheme.primary
+                        else
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                Row(
+                    verticalAlignment      = Alignment.CenterVertically,
+                    horizontalArrangement  = Arrangement.spacedBy(4.dp)
+                ) {
                     IconButton(
                         onClick  = onEditar,
                         modifier = Modifier.size(32.dp)
@@ -365,9 +410,9 @@ private fun ServicioAdminCard(
                     }
 
                     Switch(
-                        checked          = servicio.estado,
-                        onCheckedChange  = { onToggle() },
-                        modifier         = Modifier.scale(0.8f) // Escala para ajustar mejor visualmente al lado del icono
+                        checked         = servicio.estado,
+                        onCheckedChange = { onToggle() },
+                        modifier        = Modifier.scale(0.8f)
                     )
                 }
             }
@@ -375,7 +420,7 @@ private fun ServicioAdminCard(
     }
 }
 
-// ─── Diálogo crear / editar servicio ─────────────────────────────────────────
+// ─── Diálogo crear / editar ────────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -390,11 +435,11 @@ private fun ServicioDialog(
     var descripcion by remember(servicio) { mutableStateOf(servicio?.descripcion ?: "") }
     var duracion    by remember(servicio) { mutableStateOf(servicio?.duracionMinutos?.toString() ?: "") }
     var precio      by remember(servicio) { mutableStateOf(servicio?.precioBase?.toString() ?: "") }
+    var esGrupal    by remember(servicio) { mutableStateOf(servicio?.esGrupal ?: false) }
 
     var iconoSeleccionado by remember(servicio) {
         mutableStateOf(ICONOS_DISPONIBLES.firstOrNull { it.clave == servicio?.icono })
     }
-    var showIconoPicker by remember { mutableStateOf(false) }
 
     val categoriaInicial      = categorias.firstOrNull { it.id == servicio?.idCategoria }
     var categoriaSeleccionada by remember(servicio) { mutableStateOf(categoriaInicial) }
@@ -408,7 +453,7 @@ private fun ServicioDialog(
     AlertDialog(
         onDismissRequest = { if (!guardando) onDismiss() },
         shape = RoundedCornerShape(16.dp),
-        icon  = {
+        icon = {
             Surface(
                 shape = RoundedCornerShape(50),
                 color = MaterialTheme.colorScheme.primaryContainer
@@ -417,7 +462,9 @@ private fun ServicioDialog(
                     imageVector        = if (servicio != null) Icons.Default.Edit else Icons.Default.Add,
                     contentDescription = null,
                     tint               = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier           = Modifier.padding(10.dp).size(22.dp)
+                    modifier           = Modifier
+                        .padding(10.dp)
+                        .size(22.dp)
                 )
             }
         },
@@ -483,25 +530,107 @@ private fun ServicioDialog(
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
-                        value         = duracion,
-                        onValueChange = { duracion = it },
-                        label         = { Text("Min *") },
-                        leadingIcon   = { Icon(Icons.Default.Timer, null, modifier = Modifier.size(18.dp)) },
-                        modifier      = Modifier.weight(1f),
-                        singleLine    = true,
-                        shape         = RoundedCornerShape(12.dp),
+                        value           = duracion,
+                        onValueChange   = { duracion = it },
+                        label           = { Text("Min *") },
+                        leadingIcon     = { Icon(Icons.Default.Timer, null, modifier = Modifier.size(18.dp)) },
+                        modifier        = Modifier.weight(1f),
+                        singleLine      = true,
+                        shape           = RoundedCornerShape(12.dp),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                     )
                     OutlinedTextField(
-                        value         = precio,
-                        onValueChange = { precio = it },
-                        label         = { Text("Precio *") },
-                        leadingIcon   = { Icon(Icons.Default.AttachMoney, null, modifier = Modifier.size(18.dp)) },
-                        modifier      = Modifier.weight(1f),
-                        singleLine    = true,
-                        shape         = RoundedCornerShape(12.dp),
+                        value           = precio,
+                        onValueChange   = { precio = it },
+                        label           = { Text("Precio *") },
+                        leadingIcon     = { Icon(Icons.Default.AttachMoney, null, modifier = Modifier.size(18.dp)) },
+                        modifier        = Modifier.weight(1f),
+                        singleLine      = true,
+                        shape           = RoundedCornerShape(12.dp),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
                     )
+                }
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp))
+
+                // Toggle grupal
+                Row(
+                    modifier              = Modifier.fillMaxWidth(),
+                    verticalAlignment     = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        verticalAlignment     = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = if (esGrupal)
+                                MaterialTheme.colorScheme.tertiaryContainer
+                            else
+                                MaterialTheme.colorScheme.surfaceVariant,
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector        = Icons.Default.Groups,
+                                    contentDescription = null,
+                                    modifier           = Modifier.size(20.dp),
+                                    tint               = if (esGrupal)
+                                        MaterialTheme.colorScheme.onTertiaryContainer
+                                    else
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                        Column {
+                            Text(
+                                text       = "Modalidad grupal",
+                                style      = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text  = "Múltiples clientes simultáneos",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    Switch(
+                        checked         = esGrupal,
+                        onCheckedChange = { esGrupal = it },
+                        modifier        = Modifier.scale(0.85f)
+                    )
+                }
+
+                // Hint informativo cuando está activo grupal
+                AnimatedVisibility(
+                    visible = esGrupal,
+                    enter   = expandVertically(),
+                    exit    = shrinkVertically()
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
+                    ) {
+                        Row(
+                            modifier              = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment     = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector        = Icons.Default.Info,
+                                contentDescription = null,
+                                modifier           = Modifier.size(14.dp),
+                                tint               = MaterialTheme.colorScheme.tertiary
+                            )
+                            Text(
+                                text  = "Los datos del responsable se solicitarán al momento de crear la cita.",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onTertiaryContainer
+                            )
+                        }
+                    }
                 }
             }
         },
@@ -515,7 +644,8 @@ private fun ServicioDialog(
                             descripcion     = descripcion.trim().ifBlank { null },
                             duracionMinutos = duracion.toInt(),
                             precioBase      = precio.toDouble(),
-                            icono           = iconoSeleccionado?.clave
+                            icono           = iconoSeleccionado?.clave,
+                            esGrupal        = esGrupal
                         )
                     )
                 },
@@ -543,12 +673,4 @@ private fun ServicioDialog(
             ) { Text("Cancelar") }
         }
     )
-
-    if (showIconoPicker) {
-        IconoPickerDialog(
-            iconoActual   = iconoSeleccionado?.clave,
-            onSeleccionar = { opcion -> iconoSeleccionado = opcion; showIconoPicker = false },
-            onDismiss     = { showIconoPicker = false }
-        )
-    }
 }

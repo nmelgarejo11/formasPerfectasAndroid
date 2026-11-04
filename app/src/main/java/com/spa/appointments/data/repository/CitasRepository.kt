@@ -78,4 +78,11 @@ class CitasRepository @Inject constructor(
             ?: throw Exception("Sin datos de WhatsApp")
         return data
     }
+
+    suspend fun asignarCitaGrupal(
+        idCita: Int,
+        request: AsignarCitaGrupalRequest
+    ): AccionCitaResponse {
+        return api.asignarCitaGrupal(idCita, request)
+    }
 }

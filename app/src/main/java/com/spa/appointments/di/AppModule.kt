@@ -22,6 +22,8 @@ import com.spa.appointments.data.repository.FinancieroRepositoryImpl
 import com.spa.appointments.data.repository.GastoRepositoryImpl
 import com.spa.appointments.data.repository.MetodoPagoRepositoryImpl
 import com.spa.appointments.data.repository.TemaRepositoryImpl
+import com.spa.appointments.domain.repository.AdministracionRepository
+import com.spa.appointments.domain.repository.AdministracionRepositoryImpl
 import com.spa.appointments.domain.repository.FinancieroRepository
 import com.spa.appointments.domain.repository.GastoRepository
 import com.spa.appointments.domain.repository.MetodoPagoRepository
@@ -40,6 +42,12 @@ object AppModule {
         Moshi.Builder()
             .add(com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory())
             .build()
+
+    // ---------- Coroutine Dispatcher ----------
+    @Provides
+    @Singleton
+    fun provideIoDispatcher(): kotlinx.coroutines.CoroutineDispatcher =
+        kotlinx.coroutines.Dispatchers.IO
 
     // ---------- Token Storage ----------
     @Provides
@@ -138,5 +146,16 @@ object AppModule {
         api: ApiService
     ): MetodoPagoRepository {
         return MetodoPagoRepositoryImpl(api)
+    }
+
+    // core/di/AdministracionModule.kt
+    @Module
+    @InstallIn(SingletonComponent::class)
+    object AdministracionModule {
+
+        @Provides
+        @Singleton
+        fun provideAdministracionRepository(api: ApiService): AdministracionRepository =
+            AdministracionRepositoryImpl(api)
     }
 }

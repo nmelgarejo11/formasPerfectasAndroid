@@ -76,7 +76,7 @@ fun GastoScreen(
                     ) {
                         Text(
                             text = "Gastos",
-                            style = MaterialTheme.typography.titleLarge,
+                            style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
                         Row(verticalAlignment = Alignment.CenterVertically) {

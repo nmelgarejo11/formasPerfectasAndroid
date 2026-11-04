@@ -1,6 +1,6 @@
 package com.spa.appointments.ui.citas
 
-import android.app.DatePickerDialog
+import android.widget.Toast
 import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -19,22 +19,30 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import com.spa.appointments.R
 import com.spa.appointments.domain.model.Cita
 import com.spa.appointments.domain.model.EstadoCita
 import com.spa.appointments.domain.model.MetodoPago
-import androidx.compose.ui.res.painterResource
-import com.spa.appointments.R
 import com.spa.appointments.domain.model.MetodoPagoDetalle
+import com.spa.appointments.domain.model.Profesional
+import com.spa.appointments.domain.model.ServicioCita
+import com.spa.appointments.ui.theme.AppDynamicTheme
+import com.squareup.moshi.Moshi
+import com.squareup.moshi.Types
+import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
+import java.util.Calendar
+import java.util.TimeZone
 
-// ─── Screen principal ─────────────────────────────────────────────────────────
+// ─── Screen principal (Stateful) ──────────────────────────────────────────────
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MisCitasScreen(
     onBack:               () -> Unit,
@@ -42,25 +50,14 @@ fun MisCitasScreen(
     onVerReagendamientos: () -> Unit,
     vm: MisCitasViewModel = hiltViewModel()
 ) {
-    val uiState     by vm.uiState.collectAsState()
-    val accionState by vm.accionState.collectAsState()
-    val metodosPago by vm.metodosPago.collectAsState()
-    val filtros     by vm.filtros.collectAsState()
-    val estados     by vm.estados.collectAsState()
-    val showFiltros by vm.mostrarFiltros.collectAsState()
+    val uiState       by vm.uiState.collectAsState()
+    val accionState   by vm.accionState.collectAsState()
+    val metodosPago   by vm.metodosPago.collectAsState()
+    val filtros       by vm.filtros.collectAsState()
+    val estados       by vm.estados.collectAsState()
+    val showFiltros   by vm.mostrarFiltros.collectAsState()
+    val profesionales by vm.profesionales.collectAsState()
     val context = LocalContext.current
-
-    var filtrosTemp by remember { mutableStateOf(FiltrosMisCitas()) }
-
-    var citaAccion             by remember { mutableStateOf<Cita?>(null) }
-    var mostrarCancelar        by remember { mutableStateOf(false) }
-    var mostrarReagendar       by remember { mutableStateOf(false) }
-    var mostrarFinalizar       by remember { mutableStateOf(false) }
-    var motivoReagendar        by remember { mutableStateOf("") }
-    var metodoPagoSeleccionado by remember { mutableStateOf<MetodoPago?>(null) }
-
-    val snackbarHost = remember { SnackbarHostState() }
-    val totalCitas   = (uiState as? MisCitasUiState.Success)?.citas?.size
 
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
@@ -71,10 +68,74 @@ fun MisCitasScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
+    MisCitasContent(
+        uiState               = uiState,
+        accionState           = accionState,
+        metodosPago           = metodosPago,
+        filtros               = filtros,
+        estados               = estados,
+        showFiltros           = showFiltros,
+        profesionales         = profesionales,
+        onBack                = onBack,
+        onVerHistorial        = onVerHistorial,
+        onVerReagendamientos  = onVerReagendamientos,
+        onCargar              = { vm.cargar() },
+        onLimpiarFiltros      = { vm.limpiarFiltros() },
+        onToggleFiltros       = { vm.toggleFiltros() },
+        onAplicarFiltros      = { vm.aplicarFiltros(it) },
+        onCancelarCita        = { vm.cancelarCita(it) },
+        onReagendarCita       = { id, motivo -> vm.reagendarCita(id, motivo) },
+        onFinalizarCita       = { idCita, idMetodo, idDetalle -> vm.finalizarCita(idCita, idMetodo, idDetalle) },
+        onAsignarCitaGrupal   = { idCita, ids, inicio, fin -> vm.asignarCitaGrupal(idCita, ids, inicio, fin) },
+        onWhatsApp            = { idCita -> vm.abrirWhatsApp(idCita, context) },
+        onResetAccion         = { vm.resetAccion() },
+        onCargarProfesionales = { sedeId -> vm.cargarProfesionales(sedeId) }
+    )
+}
+
+// ─── Content principal (Stateless respecto al ViewModel) ──────────────────────
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MisCitasContent(
+    uiState:               MisCitasUiState,
+    accionState:           AccionUiState,
+    metodosPago:           List<MetodoPago>,
+    filtros:               FiltrosMisCitas,
+    estados:               List<EstadoCita>,
+    showFiltros:           Boolean,
+    profesionales:         List<Profesional>,
+    onBack:                () -> Unit,
+    onVerHistorial:        () -> Unit,
+    onVerReagendamientos:  () -> Unit,
+    onCargar:              () -> Unit,
+    onLimpiarFiltros:      () -> Unit,
+    onToggleFiltros:       () -> Unit,
+    onAplicarFiltros:      (FiltrosMisCitas) -> Unit,
+    onCancelarCita:        (Int) -> Unit,
+    onReagendarCita:       (Int, String?) -> Unit,
+    onFinalizarCita:       (Int, Int, Int?) -> Unit,
+    onAsignarCitaGrupal:   (Int, List<Int>?, String?, String?) -> Unit,
+    onWhatsApp:            (Int) -> Unit,
+    onResetAccion:         () -> Unit,
+    onCargarProfesionales: (Int) -> Unit
+) {
+    var filtrosTemp by remember { mutableStateOf(FiltrosMisCitas()) }
+
+    var citaAccion       by remember { mutableStateOf<Cita?>(null) }
+    var mostrarCancelar  by remember { mutableStateOf(false) }
+    var mostrarReagendar by remember { mutableStateOf(false) }
+    var mostrarFinalizar by remember { mutableStateOf(false) }
+    var mostrarAsignar   by remember { mutableStateOf(false) }
+    var motivoReagendar  by remember { mutableStateOf("") }
+
+    val snackbarHost = remember { SnackbarHostState() }
+    val totalCitas   = (uiState as? MisCitasUiState.Success)?.citas?.size
+
     LaunchedEffect(accionState) {
         when (val s = accionState) {
-            is AccionUiState.Success -> { snackbarHost.showSnackbar(s.mensaje); vm.resetAccion() }
-            is AccionUiState.Error   -> { snackbarHost.showSnackbar(s.mensaje); vm.resetAccion() }
+            is AccionUiState.Success -> { snackbarHost.showSnackbar(s.mensaje); onResetAccion() }
+            is AccionUiState.Error   -> { snackbarHost.showSnackbar(s.mensaje); onResetAccion() }
             else -> Unit
         }
     }
@@ -145,7 +206,7 @@ fun MisCitasScreen(
             },
             confirmButton = {
                 Button(
-                    onClick  = { mostrarCancelar = false; vm.cancelarCita(citaAccion!!.id) },
+                    onClick  = { mostrarCancelar = false; onCancelarCita(citaAccion!!.id) },
                     shape    = RoundedCornerShape(12.dp),
                     colors   = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                     modifier = Modifier.fillMaxWidth()
@@ -233,7 +294,7 @@ fun MisCitasScreen(
                 Button(
                     onClick  = {
                         mostrarReagendar = false
-                        vm.reagendarCita(citaAccion!!.id, motivoReagendar.ifBlank { null })
+                        onReagendarCita(citaAccion!!.id, motivoReagendar.ifBlank { null })
                         motivoReagendar = ""
                     },
                     shape    = RoundedCornerShape(12.dp),
@@ -258,21 +319,31 @@ fun MisCitasScreen(
     if (mostrarFinalizar && citaAccion != null) {
         FinalizarCitaDialog(
             metodos = metodosPago,
-
             onConfirm = { idMetodo, idDetalle ->
-
                 mostrarFinalizar = false
-
-                vm.finalizarCita(
+                onFinalizarCita(
                     citaAccion!!.id,
                     idMetodo,
                     idDetalle
                 )
             },
-
             onDismiss = {
                 mostrarFinalizar = false
             }
+        )
+    }
+
+    // ── Diálogo: Asignar Horario/Profesional Grupal ─────────────────────────
+    if (mostrarAsignar && citaAccion != null) {
+        AsignarCitaGrupalDialog(
+            cita                  = citaAccion!!,
+            profesionales         = profesionales,
+            onCargarProfesionales = onCargarProfesionales,
+            onConfirm             = { ids, fechaInicio, fechaFin ->
+                mostrarAsignar = false
+                onAsignarCitaGrupal(citaAccion!!.id, ids, fechaInicio, fechaFin)
+            },
+            onDismiss             = { mostrarAsignar = false }
         )
     }
 
@@ -305,13 +376,13 @@ fun MisCitasScreen(
                 },
                 actions = {
                     if (filtros.activo) {
-                        IconButton(onClick = { vm.limpiarFiltros() }) {
+                        IconButton(onClick = onLimpiarFiltros) {
                             BadgedBox(badge = { Badge() }) {
                                 Icon(Icons.Default.FilterAltOff, "Limpiar filtros")
                             }
                         }
                     }
-                    IconButton(onClick = { filtrosTemp = filtros; vm.toggleFiltros() }) {
+                    IconButton(onClick = { filtrosTemp = filtros; onToggleFiltros() }) {
                         Icon(
                             imageVector        = if (filtros.activo) Icons.Default.FilterAlt else Icons.Default.FilterList,
                             contentDescription = "Filtrar",
@@ -341,7 +412,7 @@ fun MisCitasScreen(
                             DropdownMenuItem(
                                 text        = { Text("Recargar") },
                                 leadingIcon = { Icon(Icons.Default.Refresh, null) },
-                                onClick     = { menuExpanded = false; vm.cargar() }
+                                onClick     = { menuExpanded = false; onCargar() }
                             )
                         }
                     }
@@ -358,18 +429,18 @@ fun MisCitasScreen(
                     filtros   = filtrosTemp,
                     estados   = estados,
                     onChange  = { filtrosTemp = it },
-                    onAplicar = { vm.aplicarFiltros(filtrosTemp) },
-                    onCerrar  = { vm.toggleFiltros() }
+                    onAplicar = { onAplicarFiltros(filtrosTemp) },
+                    onCerrar  = onToggleFiltros
                 )
             }
 
             AnimatedVisibility(visible = filtros.activo && !showFiltros, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
-                Surface(color = MaterialTheme.colorScheme.secondaryContainer, modifier = Modifier.fillMaxWidth()) {
-                    Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Surface(color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f), modifier = Modifier.fillMaxWidth()) {
+                    Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.FilterAlt, null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSecondaryContainer)
                         Spacer(Modifier.width(6.dp))
                         Text("Filtros aplicados", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSecondaryContainer, modifier = Modifier.weight(1f))
-                        TextButton(onClick = { vm.limpiarFiltros() }, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)) {
+                        TextButton(onClick = onLimpiarFiltros, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)) {
                             Text("Limpiar", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSecondaryContainer)
                         }
                     }
@@ -387,7 +458,6 @@ fun MisCitasScreen(
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             CircularProgressIndicator()
-
                             Text(
                                 text = "Cargando citas…",
                                 style = MaterialTheme.typography.bodySmall,
@@ -411,7 +481,6 @@ fun MisCitasScreen(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-
                             Box(
                                 modifier = Modifier
                                     .size(72.dp)
@@ -426,22 +495,19 @@ fun MisCitasScreen(
                                     tint = MaterialTheme.colorScheme.onErrorContainer
                                 )
                             }
-
                             Text(
                                 text = "Sin conexión",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
-
                             Text(
                                 text = state.mensaje,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 textAlign = TextAlign.Center,
                                 style = MaterialTheme.typography.bodySmall
                             )
-
                             Button(
-                                onClick = { vm.cargar() },
+                                onClick = onCargar,
                                 shape = RoundedCornerShape(12.dp)
                             ) {
                                 Icon(
@@ -449,9 +515,7 @@ fun MisCitasScreen(
                                     contentDescription = null,
                                     modifier = Modifier.size(16.dp)
                                 )
-
                                 Spacer(Modifier.width(6.dp))
-
                                 Text("Reintentar")
                             }
                         }
@@ -465,12 +529,10 @@ fun MisCitasScreen(
                             ),
                             verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-
                             items(
                                 state.citas,
                                 key = { it.id }
                             ) { cita ->
-
                                 CitaCard(
                                     cita = cita,
                                     onCancelar = {
@@ -485,16 +547,18 @@ fun MisCitasScreen(
                                         citaAccion = cita
                                         mostrarFinalizar = true
                                     },
-                                    onWhatsApp = {
-                                        vm.abrirWhatsApp(cita.id, context)
+                                    onAsignar = {
+                                        citaAccion = cita
+                                        mostrarAsignar = true
                                     },
-                                    accionCargando =
-                                    accionState is AccionUiState.Loading
+                                    onWhatsApp = {
+                                        onWhatsApp(cita.id)
+                                    },
+                                    accionCargando = accionState is AccionUiState.Loading
                                 )
                             }
                         }
                     }
-
                     else -> Unit
                 }
             }
@@ -513,8 +577,6 @@ private fun FiltrosMisCitasPanel(
     onAplicar: () -> Unit,
     onCerrar:  () -> Unit
 ) {
-    val context = LocalContext.current
-
     Surface(
         tonalElevation  = 4.dp,
         shadowElevation = 4.dp,
@@ -553,8 +615,18 @@ private fun FiltrosMisCitasPanel(
             Spacer(Modifier.height(10.dp))
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                MisCitasDatePicker(label = "Desde", value = filtros.fechaDesde, modifier = Modifier.weight(1f), context = context, onDate = { onChange(filtros.copy(fechaDesde = it)) })
-                MisCitasDatePicker(label = "Hasta", value = filtros.fechaHasta, modifier = Modifier.weight(1f), context = context, onDate = { onChange(filtros.copy(fechaHasta = it)) })
+                MisCitasDatePicker(
+                    label    = "Desde",
+                    value    = filtros.fechaDesde,
+                    modifier = Modifier.weight(1f),
+                    onDate   = { onChange(filtros.copy(fechaDesde = it)) }
+                )
+                MisCitasDatePicker(
+                    label    = "Hasta",
+                    value    = filtros.fechaHasta,
+                    modifier = Modifier.weight(1f),
+                    onDate   = { onChange(filtros.copy(fechaHasta = it)) }
+                )
             }
 
             Spacer(Modifier.height(10.dp))
@@ -582,15 +654,31 @@ private fun FiltrosMisCitasPanel(
 
 // ─── DatePicker ───────────────────────────────────────────────────────────────
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MisCitasDatePicker(
     label:    String,
     value:    String?,
     modifier: Modifier = Modifier,
-    context:  android.content.Context,
     onDate:   (String?) -> Unit
 ) {
-    val calendar = remember { java.util.Calendar.getInstance() }
+    var mostrarPicker by remember { mutableStateOf(false) }
+
+    val initialMillis = remember(value) {
+        value?.let { iso ->
+            runCatching {
+                val (y, m, d) = iso.split("-").map { it.toInt() }
+                Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply {
+                    clear()
+                    set(y, m - 1, d)
+                }.timeInMillis
+            }.getOrNull()
+        }
+    }
+
+    val datePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = initialMillis
+    )
 
     OutlinedTextField(
         value         = value?.let { formatearFecha(it) } ?: "",
@@ -600,18 +688,16 @@ private fun MisCitasDatePicker(
         shape         = RoundedCornerShape(12.dp),
         trailingIcon  = {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = {
-                    DatePickerDialog(
-                        context,
-                        { _, y, m, d -> onDate("%04d-%02d-%02d".format(y, m + 1, d)) },
-                        calendar.get(java.util.Calendar.YEAR),
-                        calendar.get(java.util.Calendar.MONTH),
-                        calendar.get(java.util.Calendar.DAY_OF_MONTH)
-                    ).show()
-                }) { Icon(Icons.Default.CalendarMonth, "Seleccionar fecha") }
+                IconButton(onClick = { mostrarPicker = true }) {
+                    Icon(Icons.Default.CalendarMonth, "Seleccionar $label")
+                }
                 if (value != null) {
                     IconButton(onClick = { onDate(null) }) {
-                        Icon(Icons.Default.Clear, "Limpiar", modifier = Modifier.size(16.dp))
+                        Icon(
+                            Icons.Default.Clear,
+                            "Limpiar $label",
+                            modifier = Modifier.size(16.dp)
+                        )
                     }
                 }
             }
@@ -619,6 +705,37 @@ private fun MisCitasDatePicker(
         singleLine = true,
         modifier   = modifier
     )
+
+    if (mostrarPicker) {
+        DatePickerDialog(
+            onDismissRequest = { mostrarPicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        val cal = Calendar.getInstance(
+                            TimeZone.getTimeZone("UTC")
+                        ).apply { timeInMillis = millis }
+                        val iso = "%04d-%02d-%02d".format(
+                            cal.get(Calendar.YEAR),
+                            cal.get(Calendar.MONTH) + 1,
+                            cal.get(Calendar.DAY_OF_MONTH)
+                        )
+                        onDate(iso)
+                    }
+                    mostrarPicker = false
+                }) {
+                    Text("Aceptar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { mostrarPicker = false }) {
+                    Text("Cancelar")
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
 }
 
 // ─── Dropdown de estados ──────────────────────────────────────────────────────
@@ -678,6 +795,7 @@ private fun CitaCard(
     onCancelar:     () -> Unit,
     onReagendar:    () -> Unit,
     onFinalizar:    () -> Unit,
+    onAsignar:      () -> Unit,
     onWhatsApp:     () -> Unit,
     accionCargando: Boolean
 ) {
@@ -690,24 +808,23 @@ private fun CitaCard(
     Card(
         modifier  = Modifier.fillMaxWidth(),
         shape     = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
         colors    = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border    = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+        border    = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
     ) {
-        Row(modifier = Modifier.fillMaxWidth()) {
+        Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
 
-            // ── Barra lateral de color con altura mínima garantizada ───────
+            // ── Borde indicador lateral ─────────────────────────────────────
             Box(
                 modifier = Modifier
                     .width(5.dp)
-                    .defaultMinSize(minHeight = 80.dp)
                     .fillMaxHeight()
                     .background(colorEstado)
             )
 
             Column(modifier = Modifier.weight(1f).padding(horizontal = 14.dp, vertical = 12.dp)) {
 
-                // ── Header: Estado + Fecha + WhatsApp (todo en un Row) ─────
+                // ── Encabezado: Estado + Fecha + WhatsApp ───────────────────
                 Row(
                     modifier              = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -724,23 +841,32 @@ private fun CitaCard(
                     }
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.CalendarToday, null, modifier = Modifier.size(11.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Spacer(Modifier.width(3.dp))
-                        Text(text = formatearFecha(cita.fechaHoraInicio), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Icon(
+                            Icons.Default.CalendarToday,
+                            contentDescription = null,
+                            modifier = Modifier.size(12.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            text  = formatearFecha(cita.fechaHoraInicio),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                         Spacer(Modifier.width(8.dp))
-                        // ── WhatsApp IconButton compacto ──────────────────
+
                         Box(
-                            modifier         = Modifier
-                                .size(30.dp)
+                            modifier = Modifier
+                                .size(28.dp)
                                 .clip(RoundedCornerShape(8.dp))
                                 .background(Color(0xFF25D366).copy(alpha = 0.12f)),
                             contentAlignment = Alignment.Center
                         ) {
-                            IconButton(onClick = onWhatsApp, enabled = !accionCargando, modifier = Modifier.size(30.dp)) {
+                            IconButton(onClick = onWhatsApp, enabled = !accionCargando, modifier = Modifier.size(28.dp)) {
                                 Icon(
                                     painter = painterResource(id = R.drawable.ic_whatsapp),
                                     contentDescription = "WhatsApp",
-                                    modifier = Modifier.size(16.dp),
+                                    modifier = Modifier.size(15.dp),
                                     tint = Color.Unspecified
                                 )
                             }
@@ -748,23 +874,22 @@ private fun CitaCard(
                     }
                 }
 
-                Spacer(Modifier.height(10.dp))
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(8.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                Spacer(Modifier.height(8.dp))
 
-                // ── Cliente ───────────────────────────────────────────────
+                // ── Información Principal ───────────────────────────────────
                 if (!cita.nombreCliente.isNullOrBlank()) {
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 6.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 4.dp)) {
                         Icon(Icons.Default.Person, null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
-                        Spacer(Modifier.width(5.dp))
+                        Spacer(Modifier.width(6.dp))
                         Text(text = cita.nombreCliente, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium)
                     }
                 }
 
-                // ── Profesional ───────────────────────────────────────────
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 4.dp)) {
                     Icon(Icons.Default.Badge, null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(Modifier.width(5.dp))
+                    Spacer(Modifier.width(6.dp))
                     Text(
                         text       = buildString { append(cita.profesional); cita.cargoProfesional?.let { append(" · $it") } },
                         style      = MaterialTheme.typography.bodySmall,
@@ -772,10 +897,9 @@ private fun CitaCard(
                     )
                 }
 
-                // ── Hora y sede ───────────────────────────────────────────
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 6.dp)) {
                     Icon(Icons.Default.Schedule, null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(Modifier.width(5.dp))
+                    Spacer(Modifier.width(6.dp))
                     Text(
                         text  = "${formatearHora(cita.fechaHoraInicio)} – ${formatearHora(cita.fechaHoraFin)} · ${cita.sede}",
                         style = MaterialTheme.typography.bodySmall,
@@ -783,91 +907,180 @@ private fun CitaCard(
                     )
                 }
 
-                // ── Total ─────────────────────────────────────────────────
-                Surface(shape = RoundedCornerShape(10.dp), color = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier.padding(bottom = 4.dp)) {
-                    Row(
-                        modifier              = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 7.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment     = Alignment.CenterVertically
+                // ── Fila de resumen: Total + Cantidad de Personas ───────────
+                Row(
+                    modifier              = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment     = Alignment.CenterVertically
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Row(
+                            modifier              = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                            verticalAlignment     = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
                             Icon(Icons.Default.Payments, null, modifier = Modifier.size(13.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
-                            Text("Total", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                            Text(
+                                text       = "Total: ${"$%,.0f".format(cita.total)}",
+                                style      = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color      = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
                         }
+                    }
+
+                    if (cita.cantidadPersonas != null && cita.cantidadPersonas > 0) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Group, null, modifier = Modifier.size(13.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                text  = "${cita.cantidadPersonas} ${if (cita.cantidadPersonas == 1) "persona" else "personas"}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+
+                // ── Notas ───────────────────────────────────────────────────
+                cita.notas?.let { nota ->
+                    Spacer(Modifier.height(4.dp))
+                    Row(
+                        modifier          = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        Icon(Icons.Default.Notes, null, modifier = Modifier.size(13.dp).padding(top = 2.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(Modifier.width(6.dp))
                         Text(
-                            text       = "${"$%,.0f".format(cita.total)}",
-                            style      = MaterialTheme.typography.bodySmall,
-                            fontWeight = FontWeight.Bold,
-                            color      = MaterialTheme.colorScheme.onPrimaryContainer
+                            text  = nota,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
 
-                // ── Notas ─────────────────────────────────────────────────
-                cita.notas?.let { nota ->
+                // ── Servicios ───────────────────────────────────────────────
+                val servicios = remember(cita.servicios) { parsearServicios(cita.servicios) }
+                if (servicios.isNotEmpty()) {
                     Spacer(Modifier.height(4.dp))
-                    Surface(shape = RoundedCornerShape(10.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
-                        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 7.dp), verticalAlignment = Alignment.Top) {
-                            Icon(Icons.Default.Notes, null, modifier = Modifier.size(12.dp).padding(top = 1.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Spacer(Modifier.width(5.dp))
-                            Text(text = nota, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Spa, null, modifier = Modifier.size(13.dp), tint = MaterialTheme.colorScheme.primary)
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                text       = "Servicios:",
+                                style      = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color      = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        servicios.forEach { s ->
+                            Text(
+                                text     = "• ${s.nombre} (${s.duracion} min)",
+                                style    = MaterialTheme.typography.bodySmall,
+                                color    = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(start = 19.dp, top = 1.dp)
+                            )
                         }
                     }
                 }
 
-                // ── Zona de acciones agrupada: Programada=1 o Confirmada=2 ─
+                // ── Zona de Acciones: Programada=1 o Confirmada=2 ──────────
                 if (cita.idEstado in listOf(1, 2)) {
-                    Spacer(Modifier.height(12.dp))
-                    Surface(
-                        shape    = RoundedCornerShape(12.dp),
-                        color    = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                        border   = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
-                        modifier = Modifier.fillMaxWidth()
+                    Spacer(Modifier.height(8.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                    Spacer(Modifier.height(8.dp))
+
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(
+                            onClick  = onReagendar,
+                            enabled  = !accionCargando,
+                            modifier = Modifier.weight(1f),
+                            shape    = RoundedCornerShape(10.dp)
+                        ) {
+                            Icon(Icons.Default.EditCalendar, null, modifier = Modifier.size(15.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Reagendar", style = MaterialTheme.typography.labelMedium)
+                        }
+                        OutlinedButton(
+                            onClick  = onCancelar,
+                            enabled  = !accionCargando,
+                            modifier = Modifier.weight(1f),
+                            shape    = RoundedCornerShape(10.dp),
+                            colors   = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                            border   = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
+                        ) {
+                            if (accionCargando) {
+                                CircularProgressIndicator(modifier = Modifier.size(15.dp), strokeWidth = 2.dp)
+                            } else {
+                                Icon(Icons.Default.Cancel, null, modifier = Modifier.size(15.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("Cancelar", style = MaterialTheme.typography.labelMedium)
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(6.dp))
+                    Button(
+                        onClick  = onFinalizar,
+                        enabled  = !accionCargando,
+                        modifier = Modifier.fillMaxWidth().height(40.dp),
+                        shape    = RoundedCornerShape(10.dp),
+                        colors   = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary)
                     ) {
-                        Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                OutlinedButton(onClick = onReagendar, enabled = !accionCargando, modifier = Modifier.weight(1f), shape = RoundedCornerShape(10.dp)) {
-                                    Icon(Icons.Default.EditCalendar, null, modifier = Modifier.size(15.dp))
-                                    Spacer(Modifier.width(4.dp))
-                                    Text("Reagendar", style = MaterialTheme.typography.labelMedium)
-                                }
-                                OutlinedButton(
-                                    onClick  = onCancelar,
-                                    enabled  = !accionCargando,
-                                    modifier = Modifier.weight(1f),
-                                    shape    = RoundedCornerShape(10.dp),
-                                    colors   = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                                    border   = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
-                                ) {
-                                    if (accionCargando) {
-                                        CircularProgressIndicator(modifier = Modifier.size(15.dp), strokeWidth = 2.dp)
-                                    } else {
-                                        Icon(Icons.Default.Cancel, null, modifier = Modifier.size(15.dp))
-                                        Spacer(Modifier.width(4.dp))
-                                        Text("Cancelar", style = MaterialTheme.typography.labelMedium)
-                                    }
-                                }
-                            }
-                            Button(
-                                onClick  = onFinalizar,
-                                enabled  = !accionCargando,
-                                modifier = Modifier.fillMaxWidth().height(44.dp),
-                                shape    = RoundedCornerShape(10.dp),
-                                colors   = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary)
-                            ) {
-                                Icon(Icons.Default.CheckCircle, null, modifier = Modifier.size(16.dp))
-                                Spacer(Modifier.width(6.dp))
-                                Text("Finalizar cita", fontWeight = FontWeight.SemiBold)
-                            }
+                        Icon(Icons.Default.CheckCircle, null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Finalizar cita", fontWeight = FontWeight.SemiBold)
+                    }
+                }
+
+                // ── Zona de Acciones: Estado 8 (Pendiente Asignación) ───────
+                if (cita.idEstado == 8) {
+                    Spacer(Modifier.height(8.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                    Spacer(Modifier.height(8.dp))
+
+                    Surface(shape = RoundedCornerShape(8.dp), color = Color(0xFFFFF8E1), modifier = Modifier.fillMaxWidth()) {
+                        Row(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.HourglassTop, null, modifier = Modifier.size(13.dp), tint = Color(0xFFF57F17))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Pendiente asignar horario y profesional", style = MaterialTheme.typography.labelSmall, color = Color(0xFFF57F17))
+                        }
+                    }
+                    Spacer(Modifier.height(6.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(
+                            onClick  = onAsignar,
+                            enabled  = !accionCargando,
+                            modifier = Modifier.weight(1f),
+                            shape    = RoundedCornerShape(10.dp)
+                        ) {
+                            Icon(Icons.Default.EditCalendar, null, modifier = Modifier.size(15.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Asignar", style = MaterialTheme.typography.labelMedium)
+                        }
+                        OutlinedButton(
+                            onClick  = onCancelar,
+                            enabled  = !accionCargando,
+                            modifier = Modifier.weight(1f),
+                            shape    = RoundedCornerShape(10.dp),
+                            colors   = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                            border   = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
+                        ) {
+                            Icon(Icons.Default.Cancel, null, modifier = Modifier.size(15.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Cancelar", style = MaterialTheme.typography.labelMedium)
                         }
                     }
                 }
 
-                // ── Pendiente de cambio ───────────────────────────────────
+                // ── Estado 4 (Pendiente de cambio) ──────────────────────────
                 if (cita.idEstado == 4) {
-                    Spacer(Modifier.height(8.dp))
-                    Surface(shape = RoundedCornerShape(10.dp), color = MaterialTheme.colorScheme.secondaryContainer) {
-                        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Spacer(Modifier.height(6.dp))
+                    Surface(shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.secondaryContainer, modifier = Modifier.fillMaxWidth()) {
+                        Row(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.HourglassTop, null, modifier = Modifier.size(13.dp), tint = MaterialTheme.colorScheme.onSecondaryContainer)
                             Spacer(Modifier.width(6.dp))
                             Text("Solicitud de cambio en revisión", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSecondaryContainer)
@@ -888,58 +1101,47 @@ private fun EmptyMisCitas(
 ) {
     Column(modifier = modifier.padding(40.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Box(
-            modifier         = Modifier.size(88.dp).clip(RoundedCornerShape(24.dp)).background(MaterialTheme.colorScheme.surfaceVariant),
+            modifier = Modifier.size(88.dp).clip(RoundedCornerShape(24.dp)).background(MaterialTheme.colorScheme.surfaceVariant),
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                imageVector        = if (conFiltros) Icons.Default.SearchOff else Icons.Default.CalendarMonth,
+                imageVector = if (conFiltros) Icons.Default.SearchOff else Icons.Default.CalendarMonth,
                 contentDescription = null,
-                modifier           = Modifier.size(44.dp),
-                tint               = MaterialTheme.colorScheme.onSurfaceVariant
+                modifier = Modifier.size(44.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         Text(text = if (conFiltros) "Sin resultados" else "No hay citas activas", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         Text(
-            text      = if (conFiltros) "Ninguna cita coincide con los filtros aplicados." else "Reserva tu primera cita desde el menú principal.",
-            style     = MaterialTheme.typography.bodyMedium,
-            color     = MaterialTheme.colorScheme.onSurfaceVariant,
+            text = if (conFiltros) "Ninguna cita coincide con los filtros aplicados." else "Reserva tu primera cita desde el menú principal.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
         )
     }
 }
 
+// ─── Diálogo: FinalizarCitaDialog ─────────────────────────────────────────────
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun FinalizarCitaDialog(
-    metodos: List<MetodoPago>,
+    metodos:   List<MetodoPago>,
     onConfirm: (Int, Int?) -> Unit,
     onDismiss: () -> Unit
 ) {
-
-    var seleccionado by remember {
-        mutableStateOf<MetodoPago?>(null)
-    }
-
-    var detalleSeleccionado by remember {
-        mutableStateOf<MetodoPagoDetalle?>(null)
-    }
-
-    var expanded by remember {
-        mutableStateOf(false)
-    }
-
-    var expandedDetalle by remember {
-        mutableStateOf(false)
-    }
+    var seleccionado by remember { mutableStateOf<MetodoPago?>(null) }
+    var detalleSeleccionado by remember { mutableStateOf<MetodoPagoDetalle?>(null) }
+    var expanded by remember { mutableStateOf(false) }
+    var expandedDetalle by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(20.dp),
-        containerColor = MaterialTheme.colorScheme.surface,
-
+        shape            = RoundedCornerShape(20.dp),
+        containerColor   = MaterialTheme.colorScheme.surface,
         icon = {
             Box(
-                modifier = Modifier
+                modifier         = Modifier
                     .size(56.dp)
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.tertiaryContainer),
@@ -953,69 +1155,43 @@ private fun FinalizarCitaDialog(
                 )
             }
         },
-
         title = {
             Text(
-                text = "Finalizar cita",
+                text       = "Finalizar cita",
                 fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
+                textAlign  = TextAlign.Center,
+                modifier   = Modifier.fillMaxWidth()
             )
         },
-
         text = {
-
-            Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
-                    text = "Selecciona el método de pago aplicado:",
+                    text  = "Selecciona el método de pago aplicado:",
                     style = MaterialTheme.typography.bodyMedium
                 )
 
-                // ── Selector principal ────────────────────────────────
-
                 ExposedDropdownMenuBox(
                     expanded = expanded,
-                    onExpandedChange = {
-                        expanded = it
-                    }
+                    onExpandedChange = { expanded = it }
                 ) {
-
                     OutlinedTextField(
-                        value = seleccionado?.nombre ?: "Seleccionar...",
+                        value      = seleccionado?.nombre ?: "Seleccionar...",
                         onValueChange = {},
-                        readOnly = true,
-                        trailingIcon = {
-                            ExposedDropdownMenuDefaults.TrailingIcon(expanded)
-                        },
-                        modifier = Modifier
-                            .menuAnchor()
-                            .fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
+                        readOnly   = true,
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+                        modifier   = Modifier.menuAnchor().fillMaxWidth(),
+                        shape      = RoundedCornerShape(12.dp)
                     )
-
                     ExposedDropdownMenu(
                         expanded = expanded,
-                        onDismissRequest = {
-                            expanded = false
-                        }
+                        onDismissRequest = { expanded = false }
                     ) {
-
                         metodos.forEach { mp ->
-
                             DropdownMenuItem(
-                                text = {
-                                    Text(mp.nombre)
-                                },
+                                text = { Text(mp.nombre) },
                                 onClick = {
-
                                     seleccionado = mp
-
-                                    // Limpiar detalle si cambia método
                                     detalleSeleccionado = null
-
                                     expanded = false
                                 }
                             )
@@ -1023,120 +1199,60 @@ private fun FinalizarCitaDialog(
                     }
                 }
 
-                // ── Selector detalle SOLO si es OTROS (ID = 8) ───────
-
-                if (seleccionado?.nombre == "Otro") {
-
+                if (seleccionado?.detalles?.isNotEmpty() == true) {
                     Text(
-                        text = "Especifique el método:",
+                        text  = "Especifique el detalle:",
                         style = MaterialTheme.typography.labelSmall
                     )
-
                     ExposedDropdownMenuBox(
                         expanded = expandedDetalle,
-                        onExpandedChange = {
-                            expandedDetalle = it
-                        }
+                        onExpandedChange = { expandedDetalle = it }
                     ) {
-
                         OutlinedTextField(
-                            value = detalleSeleccionado?.nombre
-                                ?: "Seleccionar detalle...",
+                            value      = detalleSeleccionado?.nombre ?: "Seleccionar detalle...",
                             onValueChange = {},
-                            readOnly = true,
-                            trailingIcon = {
-                                ExposedDropdownMenuDefaults
-                                    .TrailingIcon(expandedDetalle)
-                            },
-                            modifier = Modifier
-                                .menuAnchor()
-                                .fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
+                            readOnly   = true,
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expandedDetalle) },
+                            modifier   = Modifier.menuAnchor().fillMaxWidth(),
+                            shape      = RoundedCornerShape(12.dp)
                         )
-
                         ExposedDropdownMenu(
                             expanded = expandedDetalle,
-                            onDismissRequest = {
-                                expandedDetalle = false
-                            }
+                            onDismissRequest = { expandedDetalle = false }
                         ) {
-
-                            seleccionado
-                                ?.detalles
-                                ?.forEach { detalle ->
-
-                                    DropdownMenuItem(
-                                        text = {
-                                            Text(detalle.nombre)
-                                        },
-                                        onClick = {
-
-                                            detalleSeleccionado = detalle
-
-                                            expandedDetalle = false
-                                        }
-                                    )
-                                }
+                            (seleccionado?.detalles ?: emptyList()).forEach { detalle ->
+                                DropdownMenuItem(
+                                    text = { Text(detalle.nombre) },
+                                    onClick = {
+                                        detalleSeleccionado = detalle
+                                        expandedDetalle = false
+                                    }
+                                )
+                            }
                         }
                     }
                 }
             }
         },
-
         confirmButton = {
-
             Button(
-                onClick = {
-
-                    seleccionado?.let {
-
-                        onConfirm(
-                            it.id,
-                            detalleSeleccionado?.id
-                        )
-                    }
-                },
-
-                enabled =
-                seleccionado != null &&
-                        (
-                                seleccionado?.id != 8 ||
-                                        detalleSeleccionado != null
-                                ),
-
-                shape = RoundedCornerShape(12.dp),
-
+                onClick  = { seleccionado?.let { onConfirm(it.id, detalleSeleccionado?.id) } },
+                enabled  = seleccionado != null && (seleccionado?.detalles?.isEmpty() == true || detalleSeleccionado != null),
+                shape    = RoundedCornerShape(12.dp),
                 modifier = Modifier.fillMaxWidth(),
-
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.tertiary
-                )
+                colors   = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary)
             ) {
-
-                Icon(
-                    Icons.Default.CheckCircle,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp)
-                )
-
+                Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(16.dp))
                 Spacer(Modifier.width(6.dp))
-
-                Text(
-                    text = "Confirmar y finalizar",
-                    fontWeight = FontWeight.SemiBold
-                )
+                Text(text = "Confirmar y finalizar", fontWeight = FontWeight.SemiBold)
             }
         },
-
         dismissButton = {
-
             OutlinedButton(
-                onClick = onDismiss,
-                shape = RoundedCornerShape(12.dp),
+                onClick  = onDismiss,
+                shape    = RoundedCornerShape(12.dp),
                 modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Cancelar")
-            }
+            ) { Text("Cancelar") }
         }
     )
 }
@@ -1146,8 +1262,505 @@ private fun FinalizarCitaDialog(
 private fun formatearFecha(fechaIso: String): String = try {
     val p = fechaIso.substring(0, 10).split("-")
     "${p[2]}/${p[1]}/${p[0]}"
-} catch (e: Exception) { fechaIso }
+} catch (e: Exception) {
+    fechaIso
+}
 
 private fun formatearHora(fechaIso: String): String = try {
     fechaIso.substring(11, 16)
-} catch (e: Exception) { fechaIso }
+} catch (e: Exception) {
+    fechaIso
+}
+
+private fun parsearServicios(json: String?): List<ServicioCita> {
+    if (json.isNullOrBlank()) return emptyList()
+    return try {
+        val moshi = Moshi.Builder().addLast(KotlinJsonAdapterFactory()).build()
+        val type = Types.newParameterizedType(List::class.java, ServicioCita::class.java)
+        moshi.adapter<List<ServicioCita>>(type).fromJson(json) ?: emptyList()
+    } catch (e: Exception) {
+        emptyList()
+    }
+}
+
+// ─── AsignarCitaGrupalDialog ─────────────────────────────────────────────────
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AsignarCitaGrupalDialog(
+    cita:                  Cita,
+    profesionales:         List<Profesional>,
+    onCargarProfesionales: (Int) -> Unit,
+    onConfirm:             (idsProfesionales: List<Int>?, fechaHoraInicio: String?, fechaHoraFin: String?) -> Unit,
+    onDismiss:             () -> Unit
+) {
+    val context = LocalContext.current
+    val servicios = remember(cita.servicios) { parsearServicios(cita.servicios) }
+    val duracion = servicios.firstOrNull()?.duracion ?: 60
+
+    val hoyUtcMillis = remember {
+        Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply {
+            val local = Calendar.getInstance()
+            clear()
+            set(local.get(Calendar.YEAR), local.get(Calendar.MONTH), local.get(Calendar.DAY_OF_MONTH))
+        }.timeInMillis
+    }
+
+    val datePickerState = rememberDatePickerState(
+        selectableDates = object : SelectableDates {
+            override fun isSelectableDate(utcTimeMillis: Long): Boolean {
+                return utcTimeMillis >= hoyUtcMillis
+            }
+        }
+    )
+
+    val ahoraInstante = remember { Calendar.getInstance() }
+    val timePickerState = rememberTimePickerState(
+        initialHour = ahoraInstante.get(Calendar.HOUR_OF_DAY),
+        initialMinute = ahoraInstante.get(Calendar.MINUTE),
+        is24Hour = false
+    )
+
+    var mostrarDatePicker by remember { mutableStateOf(false) }
+    var mostrarTimePicker by remember { mutableStateOf(false) }
+
+    var fechaSeleccionada by remember { mutableStateOf<String?>(null) }
+    var horaSeleccionada  by remember { mutableStateOf<String?>(null) }
+    var profesionalesSel  by remember { mutableStateOf<List<Int>>(emptyList()) }
+    var mostrarSelProf    by remember { mutableStateOf(false) }
+
+    LaunchedEffect(datePickerState.selectedDateMillis) {
+        datePickerState.selectedDateMillis?.let { millis ->
+            val cal = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply { timeInMillis = millis }
+            fechaSeleccionada = "%04d-%02d-%02d".format(
+                cal.get(Calendar.YEAR),
+                cal.get(Calendar.MONTH) + 1,
+                cal.get(Calendar.DAY_OF_MONTH)
+            )
+            horaSeleccionada = null
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(25.dp),
+        containerColor = MaterialTheme.colorScheme.surface,
+        title = {
+            Text(
+                "Asignar Horario",
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedButton(
+                    onClick = { mostrarDatePicker = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(Icons.Default.CalendarMonth, null)
+                    Spacer(Modifier.width(8.dp))
+                    Text(fechaSeleccionada?.let { formatearFecha(it) } ?: "Seleccionar Fecha")
+                }
+
+                OutlinedButton(
+                    onClick = { mostrarTimePicker = true },
+                    enabled = fechaSeleccionada != null,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(Icons.Default.Schedule, null)
+                    Spacer(Modifier.width(8.dp))
+                    Text(horaSeleccionada ?: "Seleccionar Hora de Inicio")
+                }
+
+                OutlinedButton(
+                    onClick = { mostrarSelProf = true },
+                    enabled = horaSeleccionada != null,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(Icons.Default.People, null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Profesionales (${profesionalesSel.size})")
+                }
+
+                if (mostrarSelProf) {
+                    ProfesionalesSeleccionDialog(
+                        sedeId                = cita.idSede,
+                        fecha                 = fechaSeleccionada!!,
+                        hora                  = horaSeleccionada!!,
+                        duracion              = duracion,
+                        seleccionados         = profesionalesSel,
+                        profesionales         = profesionales,
+                        onCargarProfesionales = onCargarProfesionales,
+                        onDismiss             = { mostrarSelProf = false },
+                        onConfirm             = {
+                            profesionalesSel = it
+                            mostrarSelProf = false
+                        }
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val inicioIso = "${fechaSeleccionada}T${horaSeleccionada}:00"
+                    val calFin = Calendar.getInstance().apply {
+                        val partesF = fechaSeleccionada!!.split("-")
+                        val partesH = horaSeleccionada!!.split(":")
+                        set(partesF[0].toInt(), partesF[1].toInt() - 1, partesF[2].toInt(), partesH[0].toInt(), partesH[1].toInt())
+                        add(Calendar.MINUTE, duracion)
+                    }
+                    val finIso = "%04d-%02d-%02dT%02d:%02d:00".format(
+                        calFin.get(Calendar.YEAR), calFin.get(Calendar.MONTH) + 1, calFin.get(Calendar.DAY_OF_MONTH),
+                        calFin.get(Calendar.HOUR_OF_DAY), calFin.get(Calendar.MINUTE)
+                    )
+                    onConfirm(profesionalesSel.ifEmpty { null }, inicioIso, finIso)
+                },
+                enabled = fechaSeleccionada != null && horaSeleccionada != null,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Confirmar Asignación")
+            }
+        },
+        dismissButton = {
+            OutlinedButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
+                Text("Cancelar")
+            }
+        }
+    )
+
+    if (mostrarDatePicker) {
+        DatePickerDialog(
+            onDismissRequest = { mostrarDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = { mostrarDatePicker = false }) { Text("Aceptar") }
+            },
+            dismissButton = {
+                TextButton(onClick = { mostrarDatePicker = false }) { Text("Cancelar") }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
+    if (mostrarTimePicker) {
+        AlertDialog(
+            onDismissRequest = { mostrarTimePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    val horaElegida = timePickerState.hour
+                    val minutoElegido = timePickerState.minute
+
+                    val esHoy = datePickerState.selectedDateMillis?.let {
+                        val calSel = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply { timeInMillis = it }
+                        val calActual = Calendar.getInstance()
+                        calSel.get(Calendar.YEAR) == calActual.get(Calendar.YEAR) &&
+                                calSel.get(Calendar.DAY_OF_YEAR) == calActual.get(Calendar.DAY_OF_YEAR)
+                    } ?: false
+
+                    if (esHoy) {
+                        val ahora = Calendar.getInstance()
+                        val horaActual = ahora.get(Calendar.HOUR_OF_DAY)
+                        val minutoActual = ahora.get(Calendar.MINUTE)
+
+                        if (horaElegida < horaActual || (horaElegida == horaActual && minutoElegido < minutoActual)) {
+                            Toast.makeText(context, "No puedes elegir una hora pasada", Toast.LENGTH_SHORT).show()
+                            return@TextButton
+                        }
+                    }
+
+                    horaSeleccionada = "%02d:%02d".format(horaElegida, minutoElegido)
+                    mostrarTimePicker = false
+                }) { Text("Aceptar") }
+            },
+            dismissButton = {
+                TextButton(onClick = { mostrarTimePicker = false }) { Text("Cancelar") }
+            },
+            text = {
+                TimePicker(state = timePickerState)
+            }
+        )
+    }
+}
+
+// ─── ProfesionalesSeleccionDialog ──────────────────────────────────────────
+
+@Composable
+private fun ProfesionalesSeleccionDialog(
+    sedeId:                Int,
+    fecha:                 String,
+    hora:                  String,
+    duracion:              Int,
+    seleccionados:         List<Int>,
+    profesionales:         List<Profesional>,
+    onCargarProfesionales: (Int) -> Unit,
+    onDismiss:             () -> Unit,
+    onConfirm:             (List<Int>) -> Unit
+) {
+    var tempSel by remember { mutableStateOf(seleccionados) }
+
+    LaunchedEffect(sedeId) {
+        onCargarProfesionales(sedeId)
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape            = RoundedCornerShape(20.dp),
+        title            = { Text("Asignar profesionales", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) },
+        confirmButton    = {},
+        text = {
+            Column {
+                if (profesionales.isEmpty()) {
+                    Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                        Text("Sin profesionales disponibles", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                } else {
+                    profesionales.forEach { prof ->
+                        val checked = prof.id in tempSel
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(
+                                checked = checked,
+                                onCheckedChange = {
+                                    tempSel = if (it) tempSel + prof.id else tempSel - prof.id
+                                }
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Column {
+                                Text(prof.nombreCompleto, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                                Text(prof.cargo, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(16.dp))
+                Button(
+                    onClick  = { onConfirm(tempSel) },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape    = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Confirmar selección")
+                }
+            }
+        }
+    )
+}
+
+// ─── Previews y Datos Ficticios ───────────────────────────────────────────────
+
+private object MisCitasPreviewData {
+    val mockCitas = listOf(
+        Cita(
+            id                      = 101,
+            fechaHoraInicio         = "2025-05-20T10:00:00",
+            fechaHoraFin            = "2025-05-20T11:00:00",
+            notas                   = "Cliente prefiere atención puntual.",
+            idEstado                = 1,
+            estado                  = "Programada",
+            colorEstado             = "#2196F3",
+            idProfesional           = 10,
+            profesional             = "Dra. Maria Lopez",
+            fotoProfesional         = null,
+            cargoProfesional        = "Especialista Corporal",
+            sede                    = "Sede Principal",
+            servicios               = "[{\"id\":1,\"nombre\":\"Masaje Relajante\",\"duracion\":60,\"precio\":120000.0}]",
+            total                   = 120000.0,
+            idCitaOriginal          = null,
+            fechaHoraInicioOriginal = null,
+            nombreCliente           = "Ana Gomez",
+            cantidadPersonas        = 1,
+            idSede                  = 1
+        ),
+        Cita(
+            id                      = 102,
+            fechaHoraInicio         = "2025-05-21T15:00:00",
+            fechaHoraFin            = "2025-05-21T16:00:00",
+            notas                   = null,
+            idEstado                = 8,
+            estado                  = "Pendiente Asignación",
+            colorEstado             = "#FF9800",
+            idProfesional           = 0,
+            profesional             = "Sin Asignar",
+            fotoProfesional         = null,
+            cargoProfesional        = null,
+            sede                    = "Sede Principal",
+            servicios               = "[{\"id\":2,\"nombre\":\"Spa de Parejas\",\"duracion\":90,\"precio\":250000.0}]",
+            total                   = 250000.0,
+            idCitaOriginal          = null,
+            fechaHoraInicioOriginal = null,
+            nombreCliente           = "Carlos Perez",
+            cantidadPersonas        = 2,
+            idSede                  = 1
+        )
+    )
+
+    val mockEstados = listOf(
+        EstadoCita(id = 1, nombre = "Programada", color = "#2196F3", grupo = "Activas"),
+        EstadoCita(id = 2, nombre = "Confirmada", color = "#4CAF50", grupo = "Activas"),
+        EstadoCita(id = 3, nombre = "Cancelada", color = "#F44336", grupo = "Inactivas")
+    )
+
+    val mockMetodosPago = listOf(
+        MetodoPago(id = 1, nombre = "Efectivo", detalles = emptyList()),
+        MetodoPago(id = 2, nombre = "Transferencia", detalles = listOf(MetodoPagoDetalle(id = 10, nombre = "Bancolombia")))
+    )
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun MisCitasPreviewLoading() {
+    AppDynamicTheme {
+        MisCitasContent(
+            uiState               = MisCitasUiState.Loading,
+            accionState           = AccionUiState.Idle,
+            metodosPago           = emptyList(),
+            filtros               = FiltrosMisCitas(),
+            estados               = emptyList(),
+            showFiltros           = false,
+            profesionales         = emptyList(),
+            onBack                = {},
+            onVerHistorial        = {},
+            onVerReagendamientos  = {},
+            onCargar              = {},
+            onLimpiarFiltros      = {},
+            onToggleFiltros       = {},
+            onAplicarFiltros      = {},
+            onCancelarCita        = {},
+            onReagendarCita       = { _, _ -> },
+            onFinalizarCita       = { _, _, _ -> },
+            onAsignarCitaGrupal   = { _, _, _, _ -> },
+            onWhatsApp            = {},
+            onResetAccion         = {},
+            onCargarProfesionales = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun MisCitasPreviewEmptySinFiltros() {
+    AppDynamicTheme {
+        MisCitasContent(
+            uiState               = MisCitasUiState.Empty,
+            accionState           = AccionUiState.Idle,
+            metodosPago           = emptyList(),
+            filtros               = FiltrosMisCitas(esFiltroManual = false),
+            estados               = emptyList(),
+            showFiltros           = false,
+            profesionales         = emptyList(),
+            onBack                = {},
+            onVerHistorial        = {},
+            onVerReagendamientos  = {},
+            onCargar              = {},
+            onLimpiarFiltros      = {},
+            onToggleFiltros       = {},
+            onAplicarFiltros      = {},
+            onCancelarCita        = {},
+            onReagendarCita       = { _, _ -> },
+            onFinalizarCita       = { _, _, _ -> },
+            onAsignarCitaGrupal   = { _, _, _, _ -> },
+            onWhatsApp            = {},
+            onResetAccion         = {},
+            onCargarProfesionales = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun MisCitasPreviewEmptyConFiltros() {
+    AppDynamicTheme {
+        MisCitasContent(
+            uiState               = MisCitasUiState.Empty,
+            accionState           = AccionUiState.Idle,
+            metodosPago           = emptyList(),
+            filtros               = FiltrosMisCitas(esFiltroManual = true, nombreCliente = "Ana"),
+            estados               = emptyList(),
+            showFiltros           = false,
+            profesionales         = emptyList(),
+            onBack                = {},
+            onVerHistorial        = {},
+            onVerReagendamientos  = {},
+            onCargar              = {},
+            onLimpiarFiltros      = {},
+            onToggleFiltros       = {},
+            onAplicarFiltros      = {},
+            onCancelarCita        = {},
+            onReagendarCita       = { _, _ -> },
+            onFinalizarCita       = { _, _, _ -> },
+            onAsignarCitaGrupal   = { _, _, _, _ -> },
+            onWhatsApp            = {},
+            onResetAccion         = {},
+            onCargarProfesionales = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun MisCitasPreviewError() {
+    AppDynamicTheme {
+        MisCitasContent(
+            uiState               = MisCitasUiState.Error("No se pudo establecer conexión con el servidor. Por favor reintenta."),
+            accionState           = AccionUiState.Idle,
+            metodosPago           = emptyList(),
+            filtros               = FiltrosMisCitas(),
+            estados               = emptyList(),
+            showFiltros           = false,
+            profesionales         = emptyList(),
+            onBack                = {},
+            onVerHistorial        = {},
+            onVerReagendamientos  = {},
+            onCargar              = {},
+            onLimpiarFiltros      = {},
+            onToggleFiltros       = {},
+            onAplicarFiltros      = {},
+            onCancelarCita        = {},
+            onReagendarCita       = { _, _ -> },
+            onFinalizarCita       = { _, _, _ -> },
+            onAsignarCitaGrupal   = { _, _, _, _ -> },
+            onWhatsApp            = {},
+            onResetAccion         = {},
+            onCargarProfesionales = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun MisCitasPreviewSuccess() {
+    AppDynamicTheme {
+        MisCitasContent(
+            uiState               = MisCitasUiState.Success(MisCitasPreviewData.mockCitas),
+            accionState           = AccionUiState.Idle,
+            metodosPago           = MisCitasPreviewData.mockMetodosPago,
+            filtros               = FiltrosMisCitas(),
+            estados               = MisCitasPreviewData.mockEstados,
+            showFiltros           = false,
+            profesionales         = emptyList(),
+            onBack                = {},
+            onVerHistorial        = {},
+            onVerReagendamientos  = {},
+            onCargar              = {},
+            onLimpiarFiltros      = {},
+            onToggleFiltros       = {},
+            onAplicarFiltros      = {},
+            onCancelarCita        = {},
+            onReagendarCita       = { _, _ -> },
+            onFinalizarCita       = { _, _, _ -> },
+            onAsignarCitaGrupal   = { _, _, _, _ -> },
+            onWhatsApp            = {},
+            onResetAccion         = {},
+            onCargarProfesionales = {}
+        )
+    }
+}

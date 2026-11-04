@@ -21,10 +21,14 @@ data class ServicioDetalle(
 data class CrearCitaRequest(
     @Json(name = "idSede")        val idSede: Int,
     @Json(name = "idCliente")     val idCliente: Int,
-    @Json(name = "idProfesional") val idProfesional: Int,
-    @Json(name = "fechaInicio")   val fechaInicio: String,
-    @Json(name = "fechaFin")      val fechaFin: String,
+    @Json(name = "idProfesional") val idProfesional: Int?,
+    @Json(name = "fechaInicio")   val fechaInicio: String?,
+    @Json(name = "fechaFin")      val fechaFin: String?,
     @Json(name = "notas")         val notas: String?,
+    @Json(name = "cantidadPersonas")    val cantidadPersonas: Int,
+    @Json(name = "responsableNombre")   val responsableNombre: String?,
+    @Json(name = "responsableTelefono") val responsableTelefono: String?,
+    @Json(name = "responsableEmail")    val responsableEmail: String?,
     @Json(name = "servicios")     val servicios: List<ServicioDetalle>
 )
 
@@ -52,7 +56,9 @@ data class Cita(
     @Json(name = "total")                     val total: Double,
     @Json(name = "idCitaOriginal")            val idCitaOriginal: Int?,
     @Json(name = "fechaHoraInicioOriginal")   val fechaHoraInicioOriginal: String?,
-    @Json(name = "nombreCliente")             val nombreCliente: String?
+    @Json(name = "nombreCliente")             val nombreCliente: String?,
+    @Json(name = "cantidadPersonas")          val cantidadPersonas: Int? = null,
+    @Json(name = "idSede")                    val idSede: Int
 )
 
 @JsonClass(generateAdapter = true)

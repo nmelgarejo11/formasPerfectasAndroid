@@ -37,6 +37,10 @@ val ICONOS_DISPONIBLES = listOf(
     IconoOpcion("receipt_long", Icons.AutoMirrored.Filled.ReceiptLong, "Factura larga"),
     IconoOpcion("account_balance", Icons.Filled.AccountBalance, "Balance financiero"),
     IconoOpcion("payments", Icons.Filled.Payments, "Pagos"),
+    IconoOpcion("badge", Icons.Default.Badge, "Insignia"),
+    IconoOpcion("manage_accounts", Icons.Default.ManageAccounts, "Perfiles"),
+    IconoOpcion("extension", Icons.Default.Extension, "Submódulos"),
+    IconoOpcion("wallet", Icons.Default.AccountBalanceWallet, "Ingresos"),
 
     // -------------------- BELLEZA Y SPA --------------------
     IconoOpcion("spa", Icons.Default.Spa, "Spa"),

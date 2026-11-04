@@ -43,6 +43,10 @@ class ClientesViewModel @Inject constructor(
     private val repository: ClienteRepository
 ) : ViewModel() {
 
+    var estaEscuchandoVoz by mutableStateOf(false)
+    var cargandoParserVoz by mutableStateOf(false)
+        private set
+
     private val _listState = MutableStateFlow<ClientesUiState>(ClientesUiState.Idle)
     val listState: StateFlow<ClientesUiState> = _listState
 
@@ -70,6 +74,36 @@ class ClientesViewModel @Inject constructor(
             runCatching { repository.buscarClientes(value) }
                 .onSuccess { _listState.value = ClientesUiState.Results(it) }
                 .onFailure { _listState.value = ClientesUiState.Error(it.message ?: "Error") }
+        }
+    }
+
+    fun procesarRafagaVoz(
+        textoAcumulado: String,
+        onResultado: (nombre: String?, apellido: String?, telefono: String?, email: String?) -> Unit
+    ) {
+        if (textoAcumulado.isBlank()) return
+
+        viewModelScope.launch {
+            cargandoParserVoz = true
+
+            // LOG INICIAL: Para confirmar que Android disparó la acción
+            android.util.Log.d("IA_VOZ_DEBUG", "Enviando texto a la API: '$textoAcumulado'")
+
+            runCatching {
+                repository.extraerDatosDesdeVoz(textoAcumulado)
+            }
+                .onSuccess { dto ->
+                    android.util.Log.d("IA_VOZ_DEBUG", "¡Éxito! Datos recibidos: $dto")
+                    // Devolvemos los campos extraídos por la IA mediante un callback
+                    onResultado(dto.nombre, dto.apellido, dto.telefono, dto.email)
+                }
+                .onFailure { error ->
+                    // ─── AQUÍ REVELAMOS EL COMPORTAMIENTO OCULTO ───────────────────
+                    android.util.Log.e("IA_VOZ_DEBUG", "ERROR CRÍTICO AL LLAMAR A C#", error)
+                }
+                .also {
+                    cargandoParserVoz = false
+                }
         }
     }
 
@@ -110,5 +144,6 @@ class ClientesViewModel @Inject constructor(
     }
 
     fun resetActionState() { _actionState.value = ClienteActionState.Idle }
+
     fun resetDetalleState() { _detalleState.value = ClienteDetalleState.Idle }
 }

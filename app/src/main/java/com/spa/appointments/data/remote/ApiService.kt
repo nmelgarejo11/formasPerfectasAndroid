@@ -4,6 +4,7 @@ import com.spa.appointments.domain.model.*
 import retrofit2.http.*
 import retrofit2.Response
 import okhttp3.MultipartBody
+import okhttp3.ResponseBody
 
 interface ApiService {
 
@@ -52,6 +53,13 @@ interface ApiService {
         @Query("idProfesional")  idProfesional:  Int?    = null,
         @Query("idEstado")       idEstado:       Int?    = null
     ): List<Cita>
+
+
+    @POST("Citas/{id}/asignar-grupal")
+    suspend fun asignarCitaGrupal(
+        @Path("id") idCita: Int,
+        @Body request: AsignarCitaGrupalRequest
+    ): AccionCitaResponse
 
     @GET("Citas/historial")
     suspend fun getCitasHistorial(
@@ -324,6 +332,14 @@ interface ApiService {
         @Query("fechaFin")    fechaFin    : String
     ): IngresosVsGastosResponse
 
+    @GET("Financiero/ingresos-vs-gastos/exportar-excel")
+    @Streaming
+    suspend fun exportarIngresosVsGastosExcel(
+        @Query("idSede")      idSede      : Int,
+        @Query("fechaInicio") fechaInicio : String,
+        @Query("fechaFin")    fechaFin    : String
+    ): Response<ResponseBody>
+
     // Admin metodo pago
     @GET("MetodoPago")
     suspend fun listarMetodosPago(): Response<List<MetodoPagoAdmin>>
@@ -355,5 +371,143 @@ interface ApiService {
         @Path("idDetalle") idDetalle: Int,
         @Body request: ActualizarDetalleRequest
     ): Response<Unit>
+
+
+    @POST("Administracion/usuario")
+    suspend fun crearUsuario(@Body req: CrearUsuarioRequest): Response<Unit>
+
+    @POST("Administracion/perfil")
+    suspend fun crearPerfil(@Body req: CrearPerfilRequest): Response<Unit>
+
+    @GET("Administracion/submodulos")
+    suspend fun obtenerSubModulos(): Response<List<SubModuloAdmin>>
+
+    @GET("Administracion/cargos")
+    suspend fun obtenerCargos(): Response<List<Cargo>>
+
+    @POST("Administracion/cargo")
+    suspend fun crearCargo(@Body req: CrearCargoRequest): Response<Unit>
+
+    @PATCH("Administracion/cargo/{id}/estado")
+    suspend fun cambiarEstadoCargo(
+        @Path("id") id: Int,
+        @Query("estado") estado: Boolean
+    ): Response<Unit>
+
+    @GET("Administracion/perfiles")
+    suspend fun obtenerPerfiles(): Response<List<ConsultaPerfil>>
+
+    @GET("Administracion/usuarios")
+    suspend fun obtenerUsuarios(): Response<List<Usuario>>
+
+    @PATCH("Administracion/usuario/perfil")
+    suspend fun cambiarPerfilUsuario(@Body req: CambiarPerfilRequest): Response<Unit>
+
+    @GET("Administracion/submodulos/perfil/{idPerfil}")
+    suspend fun getSubModulosPorPerfil(
+        @Path("idPerfil") idPerfil: Int
+    ): Response<List<SubModuloAsignadoDto>>
+
+    // Asignar
+    @POST("Administracion/submodulos/asignar")
+    suspend fun asignarSubModulo(
+        @Body req: AsignarSubModuloRequest
+    ): Response<Unit>
+
+    // Quitar
+    @POST("Administracion/submodulos/quitar")
+    suspend fun quitarSubModulo(
+        @Body req: AsignarSubModuloRequest
+    ): Response<Unit>
+
+    //IA
+    @POST("IA/extraer-datos-voz")
+    suspend fun extraerDatosDosVoz(
+        @Body request: ExtraerDatosVozRequest
+    ): ExtraccionVoz
+
+    //Ingreso
+
+    @GET("Financiero/ingresos")
+    suspend fun listarIngresos(
+        @Query("IdSede") idSede: Int?,
+        @Query("FechaDesde") fechaDesde: String?,
+        @Query("FechaHasta") fechaHasta: String?
+    ): List<IngresoResponse>
+
+    @POST("Financiero/ingresos")
+    suspend fun registrarIngreso(@Body request: IngresoRequest): IngresoResultado
+
+    @DELETE("Financiero/ingresos/{id}")
+    suspend fun eliminarIngreso(@Path("id") id: Int): IngresoResultado
+
+    // ── Liquidación de Nómina ───────────────────────
+    @GET("LiquidacionNomina/{id}")
+    suspend fun obtenerLiquidacionNominaPorId(
+        @Path("id") id: Int
+    ): Response<LiquidacionNominaResponse>
+
+    @GET("LiquidacionNomina/{id}/desprendible")
+    @Streaming
+    suspend fun descargarDesprendiblePdf(
+        @Path("id") id: Int
+    ): Response<ResponseBody>
+
+    @POST("LiquidacionNomina/preliquidar")
+    suspend fun preliquidarNomina(
+        @Body request: PreliquidarContratoRequest
+    ): Response<PreliquidacionResponse>
+
+    @POST("LiquidacionNomina/crear-desde-preliquidacion")
+    suspend fun crearLiquidacionDesdePreliquidacion(
+        @Body request: CrearLiquidacionDesdePreliquidacionRequest
+    ): Response<RespuestaSimpleNomina>
+
+    @POST("LiquidacionNomina/{id}/anular")
+    suspend fun anularLiquidacionNomina(
+        @Path("id") id: Int,
+        @Body request: AnularLiquidacionRequest
+    ): Response<RespuestaSimpleNomina>
+
+    @GET("LiquidacionNomina/periodos")
+    suspend fun listarPeriodosNomina(
+        @Query("soloAbiertos") soloAbiertos: Boolean = true
+    ): Response<List<PeriodoNominaItem>>
+
+    @GET("LiquidacionNomina/contratos-elegibles")
+    suspend fun listarContratosElegiblesNomina(
+        @Query("idPeriodoNomina") idPeriodoNomina: Int,
+        @Query("idSede") idSede: Int? = null,
+        @Query("busqueda") busqueda: String? = null
+    ): Response<List<ContratoElegibleNomina>>
+
+    @GET("LiquidacionNomina/preliquidaciones/vigentes")
+    suspend fun listarPreliquidacionesVigentesNomina(
+        @Query("idPeriodoNomina") idPeriodoNomina: Int
+    ): Response<List<PreliquidacionVigenteItem>>
+
+    @GET("LiquidacionNomina/preliquidaciones/{id}")
+    suspend fun obtenerPreliquidacionPorId(
+        @Path("id") id: Int
+    ): Response<PreliquidacionResponse>
+
+    @GET("LiquidacionNomina")
+    suspend fun listarLiquidacionesNomina(
+        @Query("idPeriodoNomina") idPeriodoNomina: Int? = null,
+        @Query("idContratoLaboral") idContratoLaboral: Int? = null,
+        @Query("estado") estado: Int? = null,
+        @Query("pagina") pagina: Int = 1,
+        @Query("tamanoPagina") tamanoPagina: Int = 20
+    ): Response<PaginaLiquidaciones>
+
+    // ── Catálogos Nómina ─────────────────────────────
+    @GET("catalogos/bancos")
+    suspend fun getBancos(): Response<List<BancoItem>>
+
+    @GET("catalogos/tipos-documento")
+    suspend fun getTiposDocumento(): Response<List<TipoDocumentoItem>>
+
+    @GET("catalogos/tipos-cuenta")
+    suspend fun getTiposCuenta(): Response<List<TipoCuentaItem>>
 
 }

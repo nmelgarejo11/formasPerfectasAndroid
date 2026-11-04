@@ -37,4 +37,21 @@ class FinancieroRepositoryImpl @Inject constructor(
             fechaFin    = fechaFin.toString()
         )
     }
+
+    override suspend fun exportarIngresosVsGastosExcel(
+        idSede      : Int,
+        fechaInicio : String,
+        fechaFin    : String
+    ): ByteArray = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        val response = api.exportarIngresosVsGastosExcel(
+            idSede      = idSede,
+            fechaInicio = fechaInicio,
+            fechaFin    = fechaFin
+        )
+        if (!response.isSuccessful)
+            throw Exception("Error ${response.code()}")
+
+        response.body()?.bytes()
+            ?: throw Exception("Respuesta vacía del servidor")
+    }
 }

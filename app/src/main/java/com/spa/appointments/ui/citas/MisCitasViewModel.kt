@@ -3,13 +3,16 @@ package com.spa.appointments.ui.citas
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.spa.appointments.data.repository.CitasRepository
+import com.spa.appointments.domain.model.AsignarCitaGrupalRequest
 import com.spa.appointments.domain.model.Cita
 import com.spa.appointments.domain.model.EstadoCita
 import com.spa.appointments.domain.model.MetodoPago
+import com.spa.appointments.domain.model.Profesional
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import java.time.LocalDate
 
 sealed class MisCitasUiState {
     object Loading                            : MisCitasUiState()
@@ -26,16 +29,15 @@ sealed class AccionUiState {
 }
 
 data class FiltrosMisCitas(
-    val nombreCliente:  String? = null,
-    val fechaDesde:     String? = null,
-    val fechaHasta:     String? = null,
-    val idProfesional:  Int?    = null,
-    val idEstado:       Int?    = null,
-    val nombreEstado:   String? = null
+    val nombreCliente : String? = null,
+    val fechaDesde    : String? = null,
+    val fechaHasta    : String? = null,
+    val idProfesional : Int?    = null,
+    val idEstado      : Int?    = null,
+    val nombreEstado  : String? = null,
+    val esFiltroManual: Boolean = false   // ← nuevo campo
 ) {
-    val activo: Boolean get() =
-        nombreCliente != null || fechaDesde  != null ||
-                fechaHasta    != null || idProfesional != null || idEstado != null
+    val activo: Boolean get() = esFiltroManual
 }
 
 @HiltViewModel
@@ -61,9 +63,18 @@ class MisCitasViewModel @Inject constructor(
     private val _mostrarFiltros = MutableStateFlow(false)
     val mostrarFiltros: StateFlow<Boolean> = _mostrarFiltros.asStateFlow()
 
+    private val _profesionales = MutableStateFlow<List<Profesional>>(emptyList())
+    val profesionales: StateFlow<List<Profesional>> = _profesionales.asStateFlow()
+
+    companion object {
+        fun hoyIso(): String = LocalDate.now().toString()
+        fun filtroHoy() = FiltrosMisCitas(fechaDesde = hoyIso(), fechaHasta = hoyIso())
+    }
+
     init {
         cargarEstados()
         cargarMetodosPago()
+        _filtros.value = filtroHoy()
         cargar()
     }
 
@@ -89,6 +100,8 @@ class MisCitasViewModel @Inject constructor(
         }
     }
 
+    private fun hoyIso(): String = LocalDate.now().toString()
+
     private fun cargarEstados() {
         viewModelScope.launch {
             runCatching { repo.getEstadosCita("ACTIVAS") }
@@ -106,13 +119,13 @@ class MisCitasViewModel @Inject constructor(
     fun toggleFiltros() { _mostrarFiltros.update { !it } }
 
     fun aplicarFiltros(nuevos: FiltrosMisCitas) {
-        _filtros.value        = nuevos
+        _filtros.value        = nuevos.copy(esFiltroManual = true)
         _mostrarFiltros.value = false
         cargar()
     }
 
     fun limpiarFiltros() {
-        _filtros.value = FiltrosMisCitas()
+        _filtros.value = filtroHoy()
         cargar()
     }
 
@@ -177,6 +190,34 @@ class MisCitasViewModel @Inject constructor(
                     e.localizedMessage ?: "No se pudo abrir WhatsApp"
                 )
             }
+        }
+    }
+
+    fun asignarCitaGrupal(idCita: Int, idsProfesionales: List<Int>?, fechaHoraInicio: String?, fechaHoraFin: String?) {
+        viewModelScope.launch {
+            _accionState.value = AccionUiState.Loading
+            try {
+                val resp = repo.asignarCitaGrupal(
+                    idCita,
+                    AsignarCitaGrupalRequest(
+                        fechaHoraInicio  = fechaHoraInicio,
+                        fechaHoraFin     = fechaHoraFin,
+                        idsProfesionales = idsProfesionales?.ifEmpty { null }
+                    )
+                )
+                if (resp.ok) { _accionState.value = AccionUiState.Success(resp.mensaje); cargar() }
+                else           _accionState.value = AccionUiState.Error(resp.mensaje)
+            } catch (e: Exception) {
+                _accionState.value = AccionUiState.Error(e.localizedMessage ?: "Error al asignar la cita")
+            }
+        }
+    }
+
+
+    fun cargarProfesionales(idSede: Int) {
+        viewModelScope.launch {
+            runCatching { repo.getProfesionales(idSede = idSede) }
+                .onSuccess { _profesionales.value = it }
         }
     }
 }

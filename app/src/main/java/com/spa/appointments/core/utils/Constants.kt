@@ -21,8 +21,6 @@ object Constants {
         const val SPLASH_EMPRESA = "splash_empresa"
         const val SELECCIONAR_CLIENTE = "seleccionar_cliente"
         const val CLIENTES = "clientes"
-        const val CLIENTE_DETALLE = "cliente_detalle"
-        const val CLIENTE_NUEVO = "cliente_nuevo"
         const val REAGENDAMIENTOS = "reagendamientos"
         const val ADMIN_CATEGORIAS = "admin_categorias"
         const val ADMIN_SERVICIOS  = "admin_servicios"
@@ -35,6 +33,13 @@ object Constants {
         const val INGRESOS_VS_GASTOS = "ingresos_vs_gastos"
         const val METODOS_PAGO = "admin_metodo_pago"
         const val METODOS_PAGO_DETALLE = "metodos_pago_detalle"
+        const val RESPONSABLE_GRUPAL = "responsable_grupal"
+        const val ADMIN_USUARIO = "admin_usuario"
+        const val ADMIN_CARGO = "admin_cargo"
+        const val ADMIN_USUARIO_PERFIL = "admin_usuario_perfil"
+        const val ADMIN_SUBMODULO = "admin_submodulo"
+        const val INGRESOS = "ingresos"
+        const val ADMIN_NOMINA = "admin_nomina"
     }
 
     // ID de sede por defecto (puedes hacerlo dinámico después)
