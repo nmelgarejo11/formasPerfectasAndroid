@@ -695,6 +695,12 @@ El proyecto cuenta con Skills especializadas (ubicadas en `.agents/skills/` y re
 
 ---
 
+# 36. Configuración de Entorno (local.properties)
+
+* **`api.base.url`**: Define la URL base de la API para el buildType `debug`. Se configura en `local.properties` (ej: `api.base.url=http://<IP_LOCAL>:5005/api/`). Valor por defecto para emulador Android: `http://10.0.2.2:5005/api/`.
+
+---
+
 # 34. Regla final
 
 La prioridad de Gemini en este proyecto es:

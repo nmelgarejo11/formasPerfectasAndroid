@@ -1,3 +1,13 @@
+import java.util.Properties
+
+val localProperties = Properties()
+val localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.inputStream().use { localProperties.load(it) }
+}
+val rawBaseUrl = localProperties.getProperty("api.base.url") ?: "http://10.0.2.2:5005/api/"
+val debugBaseUrl = if (rawBaseUrl.endsWith("/")) rawBaseUrl else "$rawBaseUrl/"
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android") version "1.9.24"
@@ -41,9 +51,7 @@ android {
 
     buildTypes {
         debug {
-            // ← cambia esta IP por la de tu PC (ipconfig en CMD)
-            //buildConfigField("String", "BASE_URL", "\"http://192.168.40.76:5005/api/\"")
-            buildConfigField("String", "BASE_URL", "\"http://192.168.1.10:5005/api/\"")
+            buildConfigField("String", "BASE_URL", "\"$debugBaseUrl\"")
             isDebuggable = true
         }
         release {
