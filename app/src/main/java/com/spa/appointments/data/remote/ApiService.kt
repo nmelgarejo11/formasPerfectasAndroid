@@ -500,6 +500,32 @@ interface ApiService {
         @Query("tamanoPagina") tamanoPagina: Int = 20
     ): Response<PaginaLiquidaciones>
 
+    // ── Novedades y Conceptos de Nómina ──────────────
+    @GET("NovedadNomina")
+    suspend fun listarNovedadesNomina(
+        @Query("idContratoLaboral") idContratoLaboral: Int
+    ): Response<List<NovedadNominaResponse>>
+
+    @POST("NovedadNomina")
+    suspend fun crearNovedadNomina(
+        @Body request: CrearNovedadNominaRequest
+    ): Response<RespuestaSimpleNomina>
+
+    @PUT("NovedadNomina/{id}")
+    suspend fun actualizarNovedadNomina(
+        @Path("id") id: Int,
+        @Body request: ActualizarNovedadNominaRequest
+    ): Response<RespuestaSimpleNomina>
+
+    @PATCH("NovedadNomina/{id}/estado")
+    suspend fun cambiarEstadoNovedadNomina(
+        @Path("id") id: Int,
+        @Body nuevoEstado: Boolean
+    ): Response<RespuestaSimpleNomina>
+
+    @GET("Concepto")
+    suspend fun listarConceptosNomina(): Response<List<ConceptoResponse>>
+
     // ── Catálogos Nómina ─────────────────────────────
     @GET("catalogos/bancos")
     suspend fun getBancos(): Response<List<BancoItem>>

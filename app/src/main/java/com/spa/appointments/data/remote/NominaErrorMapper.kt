@@ -15,16 +15,25 @@ object NominaErrorMapper {
             try {
                 val adapter = moshi.adapter(RespuestaSimpleNomina::class.java)
                 val errObj = adapter.fromJson(rawJson)
-                if (errObj != null) {
+                if (errObj != null && !errObj.mensaje.isNullOrBlank()) {
                     return NominaApiException(
                         httpStatus = httpCode,
                         codigo = errObj.codigo,
-                        message = errObj.mensaje ?: "Error de red ($httpCode)",
+                        message = errObj.mensaje,
                         retryAfterSegundos = retryAfter
                     )
                 }
             } catch (_: Exception) { }
         }
-        return NominaApiException(httpCode, null, "Error HTTP $httpCode", retryAfter)
+
+        val defaultMsg = when (httpCode) {
+            400 -> "Datos inválidos en la solicitud"
+            404 -> "Contrato, concepto o novedad no encontrada"
+            422 -> "Acción no permitida en el estado o período actual"
+            503 -> "El servidor de nómina está ocupado. Intenta de nuevo en unos momentos"
+            else -> "Error de red ($httpCode)"
+        }
+
+        return NominaApiException(httpCode, null, defaultMsg, retryAfter)
     }
 }

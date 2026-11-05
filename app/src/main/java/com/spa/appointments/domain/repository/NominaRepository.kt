@@ -16,4 +16,11 @@ interface NominaRepository {
     suspend fun listarPreliquidacionesVigentesNomina(idPeriodoNomina: Int): Result<List<PreliquidacionVigenteItem>>
     suspend fun obtenerPreliquidacionPorId(id: Int): Result<PreliquidacionResponse>
     suspend fun listarLiquidacionesNomina(idPeriodoNomina: Int? = null, idContratoLaboral: Int? = null, estado: Int? = null, pagina: Int = 1, tamanoPagina: Int = 20): Result<PaginaLiquidaciones>
+
+    // ── Novedades y Conceptos ────────────────────────────────────
+    suspend fun listarNovedadesNomina(idContratoLaboral: Int): Result<List<NovedadNominaResponse>>
+    suspend fun crearNovedadNomina(request: CrearNovedadNominaRequest): Result<RespuestaSimpleNomina>
+    suspend fun actualizarNovedadNomina(id: Int, request: ActualizarNovedadNominaRequest): Result<RespuestaSimpleNomina>
+    suspend fun cambiarEstadoNovedadNomina(id: Int, nuevoEstado: Boolean): Result<RespuestaSimpleNomina>
+    suspend fun listarConceptosNomina(): Result<List<ConceptoResponse>>
 }

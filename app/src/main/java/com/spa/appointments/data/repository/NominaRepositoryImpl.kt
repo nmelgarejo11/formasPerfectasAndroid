@@ -88,6 +88,41 @@ class NominaRepositoryImpl @Inject constructor(
         procesarRespuesta(response)
     }
 
+    override suspend fun listarNovedadesNomina(
+        idContratoLaboral: Int
+    ): Result<List<NovedadNominaResponse>> = runCatchingSuspend {
+        val response = apiService.listarNovedadesNomina(idContratoLaboral)
+        procesarRespuesta(response)
+    }
+
+    override suspend fun crearNovedadNomina(
+        request: CrearNovedadNominaRequest
+    ): Result<RespuestaSimpleNomina> = runCatchingSuspend {
+        val response = apiService.crearNovedadNomina(request)
+        procesarRespuesta(response)
+    }
+
+    override suspend fun actualizarNovedadNomina(
+        id: Int,
+        request: ActualizarNovedadNominaRequest
+    ): Result<RespuestaSimpleNomina> = runCatchingSuspend {
+        val response = apiService.actualizarNovedadNomina(id, request)
+        procesarRespuesta(response)
+    }
+
+    override suspend fun cambiarEstadoNovedadNomina(
+        id: Int,
+        nuevoEstado: Boolean
+    ): Result<RespuestaSimpleNomina> = runCatchingSuspend {
+        val response = apiService.cambiarEstadoNovedadNomina(id, nuevoEstado)
+        procesarRespuesta(response)
+    }
+
+    override suspend fun listarConceptosNomina(): Result<List<ConceptoResponse>> = runCatchingSuspend {
+        val response = apiService.listarConceptosNomina()
+        procesarRespuesta(response)
+    }
+
     override suspend fun descargarDesprendiblePdf(id: Int): Result<File> = withContext(Dispatchers.IO) {
         runCatchingSuspend {
             val response = apiService.descargarDesprendiblePdf(id)

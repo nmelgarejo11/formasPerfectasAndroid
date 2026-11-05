@@ -212,4 +212,64 @@ class NominaJsonContractTest {
         assertEquals(1, result.items.size)
         assertEquals("Juan Perez Dummy", result.items[0].profesionalNombre)
     }
+
+    @Test
+    fun testParseoNovedadNominaResponse() {
+        val json = """
+            {
+                "id": 1,
+                "idEmpresa": 1,
+                "idContratoLaboral": 101,
+                "idConcepto": 5,
+                "nombreConcepto": "Bonificación Especial",
+                "fechaNovedad": "2026-10-05",
+                "valor": 150000.0,
+                "dias": null,
+                "observaciones": "Novedad de prueba",
+                "estado": true,
+                "fechaCreacion": "2026-10-05T10:00:00"
+            }
+        """.trimIndent()
+
+        val adapter = moshi.adapter(NovedadNominaResponse::class.java)
+        val result = adapter.fromJson(json)
+
+        assertNotNull(result)
+        assertEquals(1, result!!.id)
+        assertEquals(101, result.idContratoLaboral)
+        assertEquals("Bonificación Especial", result.nombreConcepto)
+        assertEquals(150000.0, result.valor, 0.001)
+        assertTrue(result.estado)
+    }
+
+    @Test
+    fun testParseoConceptoResponse() {
+        val json = """
+            {
+                "id": 5,
+                "codigo": "BON01",
+                "nombre": "Bonificación",
+                "tipoConcepto": 1,
+                "aplicaSalarioBase": false,
+                "descuentaDiasSueldo": true
+            }
+        """.trimIndent()
+
+        val adapter = moshi.adapter(ConceptoResponse::class.java)
+        val result = adapter.fromJson(json)
+
+        assertNotNull(result)
+        assertEquals(5, result!!.id)
+        assertEquals("BON01", result.codigo)
+        assertEquals(1, result.tipoConcepto)
+        assertFalse(result.aplicaSalarioBase)
+        assertTrue(result.descuentaDiasSueldo)
+    }
+
+    @Test
+    fun testSerializacionBoolBodyPatch() {
+        val adapter = moshi.adapter(Boolean::class.javaObjectType)
+        assertEquals("true", adapter.toJson(true))
+        assertEquals("false", adapter.toJson(false))
+    }
 }

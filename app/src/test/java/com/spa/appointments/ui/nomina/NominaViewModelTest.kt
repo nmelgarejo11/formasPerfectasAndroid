@@ -468,4 +468,40 @@ class FakeNominaRepository : NominaRepository {
     ): Result<PaginaLiquidaciones> {
         return Result.success(PaginaLiquidaciones(emptyList(), 0, pagina, tamanoPagina))
     }
+
+    var novedadesLista: List<NovedadNominaResponse> = emptyList()
+    var conceptosLista: List<ConceptoResponse> = listOf(
+        ConceptoResponse(1, "DEV01", "Horas Extra", 1, aplicaSalarioBase = false, descuentaDiasSueldo = false),
+        ConceptoResponse(2, "DED01", "Ausencia", 2, aplicaSalarioBase = false, descuentaDiasSueldo = true)
+    )
+    var llamadasListarNovedades = 0
+    var llamadasCrearNovedad = 0
+    var llamadasActualizarNovedad = 0
+    var llamadasCambiarEstadoNovedad = 0
+    var llamadasListarConceptos = 0
+
+    override suspend fun listarNovedadesNomina(idContratoLaboral: Int): Result<List<NovedadNominaResponse>> {
+        llamadasListarNovedades++
+        return Result.success(novedadesLista)
+    }
+
+    override suspend fun crearNovedadNomina(request: CrearNovedadNominaRequest): Result<RespuestaSimpleNomina> {
+        llamadasCrearNovedad++
+        return Result.success(RespuestaSimpleNomina(id = 1, mensaje = "Novedad creada"))
+    }
+
+    override suspend fun actualizarNovedadNomina(id: Int, request: ActualizarNovedadNominaRequest): Result<RespuestaSimpleNomina> {
+        llamadasActualizarNovedad++
+        return Result.success(RespuestaSimpleNomina(id = id, mensaje = "Novedad actualizada"))
+    }
+
+    override suspend fun cambiarEstadoNovedadNomina(id: Int, nuevoEstado: Boolean): Result<RespuestaSimpleNomina> {
+        llamadasCambiarEstadoNovedad++
+        return Result.success(RespuestaSimpleNomina(id = id, mensaje = "Estado cambiado"))
+    }
+
+    override suspend fun listarConceptosNomina(): Result<List<ConceptoResponse>> {
+        llamadasListarConceptos++
+        return Result.success(conceptosLista)
+    }
 }

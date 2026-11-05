@@ -83,4 +83,20 @@ class NominaErrorMappingTest {
         assertNull(exception.codigo)
         assertTrue(exception.esNoEncontrado())
     }
+
+    @Test
+    fun testParseoError400_SinMensajeCuerpo() {
+        val response = Response.error<Any>(400, "".toResponseBody())
+        val exception = NominaErrorMapper.parsearError(response, moshi)
+        assertEquals(400, exception.httpStatus)
+        assertEquals("Datos inválidos en la solicitud", exception.message)
+    }
+
+    @Test
+    fun testParseoError422_SinMensajeCuerpo() {
+        val response = Response.error<Any>(422, "".toResponseBody())
+        val exception = NominaErrorMapper.parsearError(response, moshi)
+        assertEquals(422, exception.httpStatus)
+        assertEquals("Acción no permitida en el estado o período actual", exception.message)
+    }
 }
