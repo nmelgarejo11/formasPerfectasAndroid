@@ -1,6 +1,7 @@
 package com.spa.appointments.ui.metodopago
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -24,7 +25,7 @@ import com.spa.appointments.domain.model.MetodoPagoAdmin
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MetodoPagoScreen(
-    onBack: () -> Unit,                                  // ← navegación atrás
+    onBack: () -> Unit,
     viewModel: MetodoPagoViewModel = hiltViewModel(),
     onVerDetalles: (MetodoPagoAdmin) -> Unit
 ) {
@@ -64,7 +65,7 @@ fun MetodoPagoScreen(
                         )
                         if (metodos.isNotEmpty()) {
                             Text(
-                                text  = "${metodos.size} ${if (metodos.size == 1) "método" else "métodos"}",
+                                text  = "${metodos.size} ${if (metodos.size == 1) "método registrado" else "métodos registrados"}",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -72,17 +73,29 @@ fun MetodoPagoScreen(
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {          // ← flecha atrás
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
+                    IconButton(
+                        onClick  = onBack,
+                        modifier = Modifier.size(48.dp)
+                    ) {
+                        Icon(
+                            imageVector        = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Volver"
+                        )
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
             )
         },
         floatingActionButton = {
             ExtendedFloatingActionButton(
-                onClick = { editando = null; showDialog = true },
-                icon    = { Icon(Icons.Default.Add, null) },
-                text    = { Text("Nuevo método") }
+                onClick        = { editando = null; showDialog = true },
+                icon           = { Icon(Icons.Default.Add, contentDescription = null) },
+                text           = { Text("Nuevo método", fontWeight = FontWeight.SemiBold) },
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor   = MaterialTheme.colorScheme.onPrimary,
+                shape          = RoundedCornerShape(16.dp)
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -93,23 +106,35 @@ fun MetodoPagoScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // ── Buscador ──────────────────────────────────────────────────
+            // ── Buscador Integrado ─────────────────────────────────────────
             OutlinedTextField(
                 value         = busqueda,
                 onValueChange = { busqueda = it },
-                label         = { Text("Buscar método") },
-                leadingIcon   = { Icon(Icons.Default.Search, null) },
+                label         = { Text("Buscar método de pago") },
+                leadingIcon   = {
+                    Icon(
+                        imageVector        = Icons.Default.Search,
+                        contentDescription = null,
+                        tint               = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                },
                 trailingIcon  = {
                     if (busqueda.isNotBlank()) {
-                        IconButton(onClick = { busqueda = "" }) {
-                            Icon(Icons.Default.Clear, null)
+                        IconButton(
+                            onClick  = { busqueda = "" },
+                            modifier = Modifier.size(48.dp)
+                        ) {
+                            Icon(
+                                imageVector        = Icons.Default.Clear,
+                                contentDescription = "Limpiar búsqueda"
+                            )
                         }
                     }
                 },
                 modifier   = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp),
-                shape      = RoundedCornerShape(12.dp),
+                shape      = RoundedCornerShape(14.dp),
                 singleLine = true
             )
 
@@ -122,9 +147,12 @@ fun MetodoPagoScreen(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            CircularProgressIndicator()
+                            CircularProgressIndicator(
+                                color       = MaterialTheme.colorScheme.primary,
+                                strokeWidth = 3.dp
+                            )
                             Text(
-                                "Cargando métodos…",
+                                text  = "Cargando métodos…",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -136,13 +164,13 @@ fun MetodoPagoScreen(
                         Column(
                             modifier            = Modifier
                                 .align(Alignment.Center)
-                                .padding(40.dp),
+                                .padding(32.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             Surface(
-                                shape = RoundedCornerShape(24.dp),
-                                color = MaterialTheme.colorScheme.surfaceVariant
+                                shape = RoundedCornerShape(20.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                             ) {
                                 Icon(
                                     imageVector        = if (busqueda.isBlank()) Icons.Default.CreditCard
@@ -158,7 +186,8 @@ fun MetodoPagoScreen(
                                 text       = if (busqueda.isBlank()) "Sin métodos aún"
                                 else "Sin resultados",
                                 style      = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.Bold,
+                                color      = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
                                 text      = if (busqueda.isBlank())
@@ -178,10 +207,10 @@ fun MetodoPagoScreen(
                             contentPadding      = PaddingValues(
                                 start  = 16.dp,
                                 end    = 16.dp,
-                                top    = 4.dp,
-                                bottom = 88.dp          // espacio para el FAB
+                                top    = 8.dp,
+                                bottom = 88.dp
                             ),
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             items(filtrados, key = { it.id }) { metodo ->
                                 MetodoPagoCard(
@@ -221,81 +250,108 @@ private fun MetodoPagoCard(
     onVerDetalles: (MetodoPagoAdmin) -> Unit
 ) {
     Card(
-        onClick    = onEditar,                          // ← tap en toda la card
-        modifier   = Modifier.fillMaxWidth(),
-        shape      = RoundedCornerShape(14.dp),
-        elevation  = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors     = CardDefaults.cardColors(
+        shape     = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        colors    = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+        border    = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant),
+        modifier  = Modifier.fillMaxWidth()
     ) {
         Row(
             modifier          = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 12.dp),
+                .clickable { onEditar() }
+                .padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Ícono contextual
+            // Ícono contextual con contenedor M3
             Surface(
-                shape    = RoundedCornerShape(10.dp),
+                shape    = RoundedCornerShape(12.dp),
                 color    = MaterialTheme.colorScheme.primaryContainer,
-                modifier = Modifier.size(44.dp)
+                modifier = Modifier.size(48.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         imageVector        = Icons.Default.CreditCard,
                         contentDescription = null,
-                        modifier           = Modifier.size(22.dp),
+                        modifier           = Modifier.size(24.dp),
                         tint               = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 }
             }
 
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(14.dp))
 
             Column(modifier = Modifier.weight(1f)) {
-                Row(
-                    modifier              = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment     = Alignment.CenterVertically
+                Text(
+                    text       = metodo.nombre,
+                    style      = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color      = MaterialTheme.colorScheme.onSurface
+                )
+
+                Spacer(Modifier.height(4.dp))
+
+                // Badge accesible de estado (Icono + Texto + Contenedor M3)
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = if (metodo.activo)
+                        MaterialTheme.colorScheme.primaryContainer
+                    else
+                        MaterialTheme.colorScheme.surfaceVariant
                 ) {
-                    Text(
-                        text       = metodo.nombre,
-                        style      = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier   = Modifier.weight(1f)
-                    )
-                    Surface(
-                        shape = RoundedCornerShape(6.dp),
-                        color = if (metodo.activo)
-                            MaterialTheme.colorScheme.primaryContainer
-                        else
-                            MaterialTheme.colorScheme.surfaceVariant
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                     ) {
+                        Icon(
+                            imageVector = if (metodo.activo)
+                                Icons.Default.CheckCircle
+                            else
+                                Icons.Default.RemoveCircleOutline,
+                            contentDescription = null,
+                            modifier = Modifier.size(12.dp),
+                            tint = if (metodo.activo)
+                                MaterialTheme.colorScheme.onPrimaryContainer
+                            else
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                         Text(
                             text     = if (metodo.activo) "Activo" else "Inactivo",
                             style    = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Medium,
                             color    = if (metodo.activo)
                                 MaterialTheme.colorScheme.onPrimaryContainer
                             else
-                                MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
             }
 
-            // Solo ícono de ver detalles
+            Spacer(Modifier.width(8.dp))
+
+            // Botón de detalles con área táctil ergonómica (48dp x 48dp)
             IconButton(
                 onClick  = { onVerDetalles(metodo) },
-                modifier = Modifier.size(36.dp)
+                modifier = Modifier.size(48.dp)
             ) {
-                Icon(
-                    Icons.Default.Visibility, "Ver detalles",
-                    modifier = Modifier.size(18.dp),
-                    tint     = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector        = Icons.Default.Visibility,
+                            contentDescription = "Ver detalles",
+                            modifier           = Modifier.size(18.dp),
+                            tint               = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
             }
         }
     }
@@ -316,7 +372,7 @@ private fun MetodoPagoDialog(
 
     AlertDialog(
         onDismissRequest = { if (!guardando) onDismiss() },
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(20.dp),
         icon  = {
             Surface(
                 shape = RoundedCornerShape(50),
@@ -327,24 +383,30 @@ private fun MetodoPagoDialog(
                     contentDescription = null,
                     tint               = MaterialTheme.colorScheme.onPrimaryContainer,
                     modifier           = Modifier
-                        .padding(10.dp)
-                        .size(22.dp)
+                        .padding(12.dp)
+                        .size(24.dp)
                 )
             }
         },
         title = {
             Text(
                 text       = if (esNuevo) "Nuevo método" else "Editar método",
+                style      = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
         },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 OutlinedTextField(
                     value         = nombre,
                     onValueChange = { nombre = it },
                     label         = { Text("Nombre *") },
-                    leadingIcon   = { Icon(Icons.Default.CreditCard, null) },
+                    leadingIcon   = {
+                        Icon(
+                            imageVector        = Icons.Default.CreditCard,
+                            contentDescription = null
+                        )
+                    },
                     modifier      = Modifier.fillMaxWidth(),
                     singleLine    = true,
                     shape         = RoundedCornerShape(12.dp)
@@ -353,18 +415,19 @@ private fun MetodoPagoDialog(
                 // Toggle estado (solo al editar)
                 if (!esNuevo) {
                     Row(
-                        modifier          = Modifier.fillMaxWidth(),
+                        modifier              = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment     = Alignment.CenterVertically
                     ) {
                         Column {
                             Text(
-                                "Estado",
+                                text       = "Estado",
                                 style      = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Medium
+                                fontWeight = FontWeight.Medium,
+                                color      = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
-                                if (activo) "Visible en reservas" else "Oculto en reservas",
+                                text  = if (activo) "Visible en reservas" else "Oculto en reservas",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -381,18 +444,26 @@ private fun MetodoPagoDialog(
             Button(
                 onClick  = { onGuardar(nombre.trim(), activo) },
                 enabled  = nombre.isNotBlank() && !guardando,
-                shape    = RoundedCornerShape(10.dp)
+                shape    = RoundedCornerShape(12.dp),
+                colors   = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor   = MaterialTheme.colorScheme.onPrimary
+                )
             ) {
                 if (guardando) {
                     CircularProgressIndicator(
-                        modifier    = Modifier.size(16.dp),
+                        modifier    = Modifier.size(18.dp),
                         strokeWidth = 2.dp,
                         color       = MaterialTheme.colorScheme.onPrimary
                     )
                 } else {
-                    Icon(Icons.Default.Save, null, modifier = Modifier.size(16.dp))
+                    Icon(
+                        imageVector        = Icons.Default.Save,
+                        contentDescription = null,
+                        modifier           = Modifier.size(18.dp)
+                    )
                     Spacer(Modifier.width(6.dp))
-                    Text("Guardar")
+                    Text("Guardar", fontWeight = FontWeight.Medium)
                 }
             }
         },
@@ -400,7 +471,7 @@ private fun MetodoPagoDialog(
             OutlinedButton(
                 onClick  = onDismiss,
                 enabled  = !guardando,
-                shape    = RoundedCornerShape(10.dp)
+                shape    = RoundedCornerShape(12.dp)
             ) { Text("Cancelar") }
         }
     )
