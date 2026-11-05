@@ -1,3 +1,8 @@
+---
+name: debug-and-recovery
+description: Procedimiento operativo sistemático para diagnosticar la causa raíz de fallos técnicos y proponer correcciones quirúrgicas en el proyecto Formas Perfectas.
+---
+
 # Skill: debug-and-recovery
 **Versión**: 1.0
 **Contexto**: Formas Perfectas Android

@@ -1,3 +1,8 @@
+---
+name: api-contract-maintenance
+description: Garantizar la integridad, sincronización y protección de los contratos de datos que permiten la comunicación entre la aplicación Android y el Backend.
+---
+
 # Skill: api-contract-maintenance
 **Versión**: 1.0
 **Contexto**: Integración Android ↔ Backend (ASP.NET Core + SQL Server)
