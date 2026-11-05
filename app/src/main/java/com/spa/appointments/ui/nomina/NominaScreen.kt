@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.widget.Toast
 import androidx.core.content.FileProvider
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -17,6 +18,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
@@ -90,15 +92,27 @@ fun NominaScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.titulo_nomina), fontWeight = FontWeight.Bold) },
+                title = {
+                    Text(
+                        text = stringResource(R.string.titulo_nomina),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(
+                        onClick = onBack,
+                        modifier = Modifier.size(48.dp)
+                    ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.cd_volver)
                         )
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -111,16 +125,18 @@ fun NominaScreen(
         ) {
             // Selector de Periodos
             if (uiState.cargandoPeriodos) {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp))
             } else if (uiState.periodos.isEmpty()) {
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
                     modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
                 ) {
                     Text(
                         text = stringResource(R.string.msg_sin_periodos),
                         modifier = Modifier.padding(16.dp),
-                        style = MaterialTheme.typography.bodyMedium
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             } else {
@@ -141,7 +157,7 @@ fun NominaScreen(
                         label = { Text(stringResource(R.string.label_periodo_nomina)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = menuPeriodosExpandido) },
                         modifier = Modifier.menuAnchor().fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(14.dp)
                     )
 
                     ExposedDropdownMenu(
@@ -155,7 +171,8 @@ fun NominaScreen(
                                         Text(periodo.nombre, fontWeight = FontWeight.Bold)
                                         Text(
                                             "${formatearFechaDisplay(periodo.fechaInicio)} al ${formatearFechaDisplay(periodo.fechaFin)} - ${periodo.nombreEstado}",
-                                            style = MaterialTheme.typography.bodySmall
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
                                 },
@@ -171,27 +188,39 @@ fun NominaScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Campo de búsqueda
+            // Campo de búsqueda de profesionales
             OutlinedTextField(
                 value = uiState.busqueda,
                 onValueChange = { viewModel.actualizarBusqueda(it) },
                 placeholder = { Text(stringResource(R.string.label_buscar_profesional)) },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = stringResource(R.string.cd_buscar)) },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = stringResource(R.string.cd_buscar),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                },
                 trailingIcon = {
                     if (uiState.busqueda.isNotBlank()) {
-                        IconButton(onClick = { viewModel.actualizarBusqueda("") }) {
-                            Icon(Icons.Default.Clear, contentDescription = stringResource(R.string.cd_limpiar_busqueda))
+                        IconButton(
+                            onClick = { viewModel.actualizarBusqueda("") },
+                            modifier = Modifier.size(48.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Clear,
+                                contentDescription = stringResource(R.string.cd_limpiar_busqueda)
+                            )
                         }
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(14.dp)
             )
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Indicador de recarga sobre la lista si ya hay contratos cargados
+            // Indicador de recarga sobre la lista
             if (uiState.cargandoContratos && uiState.contratos.isNotEmpty()) {
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp))
             }
@@ -199,21 +228,50 @@ fun NominaScreen(
             // Lista de Contratos / Indicadores
             if (uiState.cargandoContratos && uiState.contratos.isEmpty()) {
                 Box(modifier = Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        CircularProgressIndicator(strokeWidth = 3.dp)
+                        Text(
+                            text = "Cargando nómina…",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             } else if (!uiState.cargandoContratos && uiState.contratos.isEmpty()) {
                 Box(modifier = Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
-                    Text(
-                        text = stringResource(R.string.msg_sin_contratos),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Surface(
+                        shape = RoundedCornerShape(20.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        modifier = Modifier.padding(24.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.ReceiptLong,
+                                contentDescription = null,
+                                modifier = Modifier.size(48.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = stringResource(R.string.msg_sin_contratos),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
                 }
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxWidth().weight(1f),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(bottom = 16.dp)
+                    contentPadding = PaddingValues(bottom = 24.dp)
                 ) {
                     items(uiState.contratos, key = { it.idContratoLaboral }) { contrato ->
                         val enAccion = uiState.contratosEnAccion.contains(contrato.idContratoLaboral) ||
@@ -244,12 +302,13 @@ fun NominaScreen(
     // BottomSheet de Detalle de Preliquidación
     if (uiState.detallePreliquidacion != null || uiState.cargandoDetalle) {
         ModalBottomSheet(
-            onDismissRequest = { viewModel.cerrarDetallePreliquidacion() }
+            onDismissRequest = { viewModel.cerrarDetallePreliquidacion() },
+            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
         ) {
             val detalle = uiState.detallePreliquidacion
             if (uiState.cargandoDetalle || detalle == null) {
                 Box(modifier = Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+                    CircularProgressIndicator(strokeWidth = 3.dp)
                 }
             } else {
                 DetallePreliquidacionSheetContent(
@@ -268,14 +327,36 @@ fun NominaScreen(
     contratoParaLiquidar?.let { contrato ->
         AlertDialog(
             onDismissRequest = { idContratoParaLiquidar = null },
-            title = { Text(stringResource(R.string.titulo_confirmar_liquidacion)) },
+            shape = RoundedCornerShape(20.dp),
+            icon = {
+                Surface(
+                    shape = RoundedCornerShape(50),
+                    color = MaterialTheme.colorScheme.primaryContainer
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Payments,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.padding(12.dp).size(24.dp)
+                    )
+                }
+            },
+            title = {
+                Text(
+                    text = stringResource(R.string.titulo_confirmar_liquidacion),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            },
             text = {
                 Text(
-                    stringResource(
+                    text = stringResource(
                         R.string.msg_confirmar_liquidacion,
                         contrato.profesionalNombre,
                         formatearCop(contrato.netoPreliquidado)
-                    )
+                    ),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             },
             confirmButton = {
@@ -285,14 +366,20 @@ fun NominaScreen(
                         idContratoParaLiquidar = null
                         viewModel.liquidar(c)
                     },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    ),
                     modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
                 ) {
-                    Text(stringResource(R.string.btn_confirmar))
+                    Text(stringResource(R.string.btn_confirmar), fontWeight = FontWeight.Medium)
                 }
             },
             dismissButton = {
-                TextButton(
+                OutlinedButton(
                     onClick = { idContratoParaLiquidar = null },
+                    shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
                 ) {
                     Text(stringResource(R.string.btn_cancelar))
@@ -308,19 +395,47 @@ fun NominaScreen(
                 idLiquidacionParaAnular = null
                 motivoAnulacion = ""
             },
-            title = { Text(stringResource(R.string.titulo_anular_liquidacion)) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        stringResource(R.string.nota_anulacion_prestamos),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error
+            shape = RoundedCornerShape(20.dp),
+            icon = {
+                Surface(
+                    shape = RoundedCornerShape(50),
+                    color = MaterialTheme.colorScheme.errorContainer
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Cancel,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onErrorContainer,
+                        modifier = Modifier.padding(12.dp).size(24.dp)
                     )
+                }
+            },
+            title = {
+                Text(
+                    text = stringResource(R.string.titulo_anular_liquidacion),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.errorContainer,
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = stringResource(R.string.nota_anulacion_prestamos),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            modifier = Modifier.padding(10.dp)
+                        )
+                    }
                     OutlinedTextField(
                         value = motivoAnulacion,
                         onValueChange = { if (it.length <= 1000) motivoAnulacion = it },
                         label = { Text(stringResource(R.string.label_motivo_anulacion)) },
                         modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
                         supportingText = { Text("${motivoAnulacion.length}/1000") },
                         isError = motivoAnulacion.isNotBlank() && motivoAnulacion.trim().isEmpty()
                     )
@@ -336,17 +451,23 @@ fun NominaScreen(
                         motivoAnulacion = ""
                         viewModel.anularLiquidacion(id, motivo)
                     },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError
+                    ),
                     modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
                 ) {
-                    Text(stringResource(R.string.btn_confirmar))
+                    Text(stringResource(R.string.btn_confirmar), fontWeight = FontWeight.Medium)
                 }
             },
             dismissButton = {
-                TextButton(
+                OutlinedButton(
                     onClick = {
                         idLiquidacionParaAnular = null
                         motivoAnulacion = ""
                     },
+                    shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
                 ) {
                     Text(stringResource(R.string.btn_cancelar))
@@ -372,22 +493,43 @@ fun ContratoNominaCard(
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
+            // Header del profesional + Avatar M3 + Badge de estado
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    modifier = Modifier.size(44.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(
+                            text = contrato.profesionalNombre.firstOrNull()?.uppercase() ?: "P",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = contrato.profesionalNombre,
-                        style = MaterialTheme.typography.titleMedium,
+                        style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     if (!contrato.cargo.isNullOrBlank()) {
                         Text(
@@ -409,56 +551,83 @@ fun ContratoNominaCard(
                 EstadoBadge(estado = estado)
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+            // Resumen de Salario Base y Neto Liquidado
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Text(
-                    text = stringResource(R.string.lbl_salario_base),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    text = formatearCop(contrato.salarioBase),
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
-
-            if (estado is EstadoNominaContrato.Liquidada && contrato.netoLiquidado != null) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                Column(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    Text(
-                        text = stringResource(R.string.lbl_neto_liquidado),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Text(
-                        text = formatearCop(contrato.netoLiquidado),
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = stringResource(R.string.lbl_salario_base),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = formatearCop(contrato.salarioBase),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+
+                    if (estado is EstadoNominaContrato.Liquidada && contrato.netoLiquidado != null) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = stringResource(R.string.lbl_neto_liquidado),
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                text = formatearCop(contrato.netoLiquidado),
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
                 }
             }
 
             if (estado is EstadoNominaContrato.PreliquidacionDesactualizada) {
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(8.dp))
                 Surface(
                     color = MaterialTheme.colorScheme.errorContainer,
-                    shape = RoundedCornerShape(8.dp),
+                    shape = RoundedCornerShape(10.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(
-                        text = stringResource(R.string.lbl_advertencia_prefix, textoMotivoNomina(estado.motivo)),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onErrorContainer,
-                        modifier = Modifier.padding(8.dp)
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.padding(10.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                        Text(
+                            text = stringResource(R.string.lbl_advertencia_prefix, textoMotivoNomina(estado.motivo)),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    }
                 }
             }
 
@@ -471,16 +640,17 @@ fun ContratoNominaCard(
             } else {
                 FlowRow(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.End),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     when (estado) {
                         is EstadoNominaContrato.SinPreliquidar -> {
                             Button(
                                 onClick = onPreliquidar,
+                                shape = RoundedCornerShape(10.dp),
                                 modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
                             ) {
-                                Text(stringResource(R.string.btn_preliquidar))
+                                Text(stringResource(R.string.btn_preliquidar), fontWeight = FontWeight.Medium)
                             }
                         }
                         is EstadoNominaContrato.PreliquidadaLista -> {
@@ -492,36 +662,40 @@ fun ContratoNominaCard(
                             }
                             OutlinedButton(
                                 onClick = onRecalcular,
+                                shape = RoundedCornerShape(10.dp),
                                 modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
                             ) {
                                 Text(stringResource(R.string.btn_recalcular))
                             }
                             Button(
                                 onClick = onLiquidar,
+                                shape = RoundedCornerShape(10.dp),
                                 modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
                             ) {
-                                Text(stringResource(R.string.btn_liquidar))
+                                Text(stringResource(R.string.btn_liquidar), fontWeight = FontWeight.Medium)
                             }
                         }
                         is EstadoNominaContrato.PreliquidacionDesactualizada -> {
                             Button(
                                 onClick = onRecalcular,
+                                shape = RoundedCornerShape(10.dp),
                                 modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
                             ) {
-                                Text(stringResource(R.string.btn_recalcular))
+                                Text(stringResource(R.string.btn_recalcular), fontWeight = FontWeight.Medium)
                             }
                         }
                         is EstadoNominaContrato.Liquidada -> {
                             OutlinedButton(
                                 onClick = onDesprendible,
+                                shape = RoundedCornerShape(10.dp),
                                 modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
                             ) {
                                 Icon(
                                     Icons.Default.Download,
-                                    contentDescription = null, // Decorativo
+                                    contentDescription = null,
                                     modifier = Modifier.size(18.dp)
                                 )
-                                Spacer(modifier = Modifier.width(4.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
                                 Text(stringResource(R.string.btn_desprendible))
                             }
                             TextButton(
@@ -539,26 +713,39 @@ fun ContratoNominaCard(
     }
 }
 
+// ─── Badge Accesible de Estado M3 ─────────────────────────────────────────────
+
+private data class Quadruple<A, B, C, D>(
+    val first: A,
+    val second: B,
+    val third: C,
+    val fourth: D
+)
+
 @Composable
 fun EstadoBadge(estado: EstadoNominaContrato) {
-    val (texto, containerColor, contentColor) = when (estado) {
-        is EstadoNominaContrato.SinPreliquidar -> Triple(
+    val (texto, icono, containerColor, contentColor) = when (estado) {
+        is EstadoNominaContrato.SinPreliquidar -> Quadruple(
             stringResource(R.string.estado_sin_preliquidar),
+            Icons.Default.HourglassTop,
             MaterialTheme.colorScheme.surfaceVariant,
             MaterialTheme.colorScheme.onSurfaceVariant
         )
-        is EstadoNominaContrato.PreliquidadaLista -> Triple(
+        is EstadoNominaContrato.PreliquidadaLista -> Quadruple(
             stringResource(R.string.estado_preliquidada_lista),
+            Icons.Default.CheckCircle,
             MaterialTheme.colorScheme.primaryContainer,
             MaterialTheme.colorScheme.onPrimaryContainer
         )
-        is EstadoNominaContrato.PreliquidacionDesactualizada -> Triple(
+        is EstadoNominaContrato.PreliquidacionDesactualizada -> Quadruple(
             stringResource(R.string.estado_desactualizada),
+            Icons.Default.Warning,
             MaterialTheme.colorScheme.errorContainer,
             MaterialTheme.colorScheme.onErrorContainer
         )
-        is EstadoNominaContrato.Liquidada -> Triple(
+        is EstadoNominaContrato.Liquidada -> Quadruple(
             stringResource(R.string.estado_liquidada),
+            Icons.Default.Verified,
             MaterialTheme.colorScheme.tertiaryContainer,
             MaterialTheme.colorScheme.onTertiaryContainer
         )
@@ -567,14 +754,24 @@ fun EstadoBadge(estado: EstadoNominaContrato) {
     Surface(
         color = containerColor,
         contentColor = contentColor,
-        shape = RoundedCornerShape(16.dp)
+        shape = RoundedCornerShape(12.dp)
     ) {
-        Text(
-            text = texto,
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+        ) {
+            Icon(
+                imageVector = icono,
+                contentDescription = null,
+                modifier = Modifier.size(12.dp)
+            )
+            Text(
+                text = texto,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold
+            )
+        }
     }
 }
 
@@ -586,12 +783,13 @@ fun DetallePreliquidacionSheetContent(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp)
+            .padding(20.dp)
     ) {
         Text(
             text = stringResource(R.string.titulo_detalle_preliquidacion),
             style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
         )
         if (!detalle.profesionalNombre.isNullOrBlank()) {
             Text(
@@ -601,45 +799,73 @@ fun DetallePreliquidacionSheetContent(
             )
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
-        // Totales Resumen
-        Card(
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        // Card Prominente de Neto a Pagar M3
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.primaryContainer,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = stringResource(R.string.lbl_neto_pagar),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    Text(
+                        text = formatearCop(detalle.netoPagar),
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+
+                HorizontalDivider(
+                    thickness = 0.5.dp,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f)
+                )
+
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(stringResource(R.string.lbl_total_devengado))
-                    Text(formatearCop(detalle.totalDevengado), fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.lbl_total_devengado), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                    Text(formatearCop(detalle.totalDevengado), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
                 }
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(stringResource(R.string.lbl_total_deducciones))
-                    Text(formatearCop(detalle.totalDeducciones), fontWeight = FontWeight.Bold)
-                }
-                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(stringResource(R.string.lbl_neto_pagar), fontWeight = FontWeight.Bold)
-                    Text(formatearCop(detalle.netoPagar), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    Text(stringResource(R.string.lbl_total_deducciones), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                    Text(formatearCop(detalle.totalDeducciones), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
                 }
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(stringResource(R.string.lbl_ibc_calculado), style = MaterialTheme.typography.bodySmall)
-                    Text(formatearCop(detalle.ibcCalculado), style = MaterialTheme.typography.bodySmall)
+                    Text(stringResource(R.string.lbl_ibc_calculado), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f))
+                    Text(formatearCop(detalle.ibcCalculado), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f))
                 }
                 if (detalle.diasComerciales != null) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(stringResource(R.string.lbl_dias_comerciales), style = MaterialTheme.typography.bodySmall)
-                        Text(formatearCantidad(detalle.diasComerciales), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+                        Text(stringResource(R.string.lbl_dias_comerciales), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f))
+                        Text(formatearCantidad(detalle.diasComerciales), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onPrimaryContainer)
                     }
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         // Lista de conceptos agrupados
-        Text(stringResource(R.string.lbl_conceptos), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = stringResource(R.string.lbl_conceptos),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Spacer(modifier = Modifier.height(8.dp))
 
         val devengados = detalle.detalles.filter { it.tipoConcepto == 1 }
         val deducciones = detalle.detalles.filter { it.tipoConcepto == 2 }
@@ -650,14 +876,25 @@ fun DetallePreliquidacionSheetContent(
         ) {
             if (devengados.isNotEmpty()) {
                 item {
-                    Text(stringResource(R.string.lbl_devengados), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                    Text(
+                        text = stringResource(R.string.lbl_devengados).uppercase(),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
                 }
                 items(devengados) { item -> ConceptoItemRow(item) }
             }
 
             if (deducciones.isNotEmpty()) {
                 item {
-                    Text(stringResource(R.string.lbl_deducciones), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.error)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = stringResource(R.string.lbl_deducciones).uppercase(),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.error
+                    )
                 }
                 items(deducciones) { item -> ConceptoItemRow(item) }
             }
@@ -669,21 +906,28 @@ fun DetallePreliquidacionSheetContent(
         if (detalle.liquidable == true) {
             Button(
                 onClick = onLiquidarClick,
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                ),
                 modifier = Modifier.fillMaxWidth().defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
             ) {
-                Text(stringResource(R.string.btn_liquidar))
+                Icon(imageVector = Icons.Default.Payments, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(stringResource(R.string.btn_liquidar), fontWeight = FontWeight.Bold)
             }
         } else {
             Surface(
                 color = MaterialTheme.colorScheme.errorContainer,
-                shape = RoundedCornerShape(8.dp),
+                shape = RoundedCornerShape(12.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
                     text = stringResource(R.string.lbl_no_liquidable_prefix, textoMotivoNomina(detalle.motivo)),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onErrorContainer,
-                    modifier = Modifier.padding(12.dp)
+                    modifier = Modifier.padding(14.dp)
                 )
             }
         }
@@ -692,18 +936,38 @@ fun DetallePreliquidacionSheetContent(
 
 @Composable
 fun ConceptoItemRow(item: PreliquidacionDetalleResponse) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+    Surface(
+        shape = RoundedCornerShape(10.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+        modifier = Modifier.fillMaxWidth()
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(item.nombreConcepto ?: item.codigoConcepto ?: stringResource(R.string.lbl_concepto_default), style = MaterialTheme.typography.bodyMedium)
-            if (item.cantidad != null && item.cantidad > 0) {
-                Text(stringResource(R.string.lbl_cantidad_prefix, formatearCantidad(item.cantidad)), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = item.nombreConcepto ?: item.codigoConcepto ?: stringResource(R.string.lbl_concepto_default),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                if (item.cantidad != null && item.cantidad > 0) {
+                    Text(
+                        text = stringResource(R.string.lbl_cantidad_prefix, formatearCantidad(item.cantidad)),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
+            Text(
+                text = formatearCop(item.valor),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
         }
-        Text(formatearCop(item.valor), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
     }
 }
 
