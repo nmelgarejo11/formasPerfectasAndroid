@@ -60,3 +60,17 @@ fun formatearFechaDisplay(fechaStr: String?): String {
         fechaStr
     }
 }
+
+data class NovedadFormDialogState(
+    val novedadEditar: com.spa.appointments.domain.model.NovedadNominaResponse? = null,
+    val idConceptoSeleccionado: Int? = null,
+    val fechaNovedad: String = "",
+    val valor: String = "",
+    val dias: String = "",
+    val observaciones: String = ""
+)
+
+fun com.spa.appointments.domain.model.PeriodoNominaItem?.esAbierto(): Boolean {
+    if (this == null) return false
+    return estado == 1 || nombreEstado.equals("Abierto", ignoreCase = true)
+}

@@ -26,7 +26,17 @@ data class NominaUiState(
     val contratosEnAccion: Set<Int> = emptySet(),
     val liquidacionesEnAccion: Set<Int> = emptySet(),
     val detallePreliquidacion: PreliquidacionResponse? = null,
-    val cargandoDetalle: Boolean = false
+    val cargandoDetalle: Boolean = false,
+
+    // ── Novedades ─────────────────────────────────────
+    val conceptos: List<ConceptoResponse> = emptyList(),
+    val cargandoConceptos: Boolean = false,
+    val contratoNovedadesSeleccionado: ContratoElegibleNomina? = null,
+    val novedadesContrato: List<NovedadNominaResponse> = emptyList(),
+    val cargandoNovedades: Boolean = false,
+    val mostrarInactivasNovedades: Boolean = false,
+    val novedadEnAccion: Boolean = false,
+    val novedadFormDialogState: NovedadFormDialogState? = null
 )
 
 sealed class NominaEvent {
@@ -231,6 +241,235 @@ class NominaViewModel @Inject constructor(
                     _eventos.send(NominaEvent.AbrirPdfDesprendible(archivoPdf))
                 }
             )
+        }
+    }
+
+    // ── Novedades de Nómina ───────────────────────────────────
+
+    fun cargarConceptosSiEsNecesario() {
+        if (_uiState.value.conceptos.isNotEmpty() || _uiState.value.cargandoConceptos) return
+        viewModelScope.launch(ioDispatcher) {
+            _uiState.update { it.copy(cargandoConceptos = true) }
+            repository.listarConceptosNomina()
+                .onSuccess { lista ->
+                    _uiState.update { it.copy(conceptos = lista, cargandoConceptos = false) }
+                }
+                .onFailure { error ->
+                    if (error is CancellationException) return@onFailure
+                    _uiState.update { it.copy(cargandoConceptos = false) }
+                    manejarError(error)
+                }
+        }
+    }
+
+    fun abrirNovedadesContrato(contrato: ContratoElegibleNomina) {
+        _uiState.update { it.copy(contratoNovedadesSeleccionado = contrato) }
+        cargarConceptosSiEsNecesario()
+        cargarNovedades(contrato.idContratoLaboral)
+    }
+
+    fun cerrarNovedadesContrato() {
+        _uiState.update {
+            it.copy(
+                contratoNovedadesSeleccionado = null,
+                novedadesContrato = emptyList(),
+                novedadFormDialogState = null
+            )
+        }
+    }
+
+    fun toggleMostrarInactivasNovedades(mostrar: Boolean) {
+        _uiState.update { it.copy(mostrarInactivasNovedades = mostrar) }
+    }
+
+    fun cargarNovedades(idContratoLaboral: Int? = null) {
+        val idContrato = idContratoLaboral ?: _uiState.value.contratoNovedadesSeleccionado?.idContratoLaboral ?: return
+        viewModelScope.launch(ioDispatcher) {
+            _uiState.update { it.copy(cargandoNovedades = true) }
+            repository.listarNovedadesNomina(idContrato)
+                .onSuccess { lista ->
+                    val periodo = _uiState.value.periodoSeleccionado
+                    val fechaInicio = periodo?.fechaInicio?.take(10)
+                    val fechaFin = periodo?.fechaFin?.take(10)
+
+                    val enPeriodo = lista.filter { nov ->
+                        val fechaNov = nov.fechaNovedad.take(10)
+                        (fechaInicio == null || fechaNov >= fechaInicio) &&
+                        (fechaFin == null || fechaNov <= fechaFin)
+                    }
+                    _uiState.update { it.copy(novedadesContrato = enPeriodo, cargandoNovedades = false) }
+                }
+                .onFailure { error ->
+                    if (error is CancellationException) return@onFailure
+                    _uiState.update { it.copy(cargandoNovedades = false) }
+                    manejarError(error)
+                }
+        }
+    }
+
+    fun abrirFormularioNuevaNovedad() {
+        val periodo = _uiState.value.periodoSeleccionado
+        if (!periodo.esAbierto()) {
+            emitirMensaje(NominaMensajes.ERROR_PERIODO_NO_ABIERTO)
+            return
+        }
+        val fechaInicial = periodo?.fechaInicio?.take(10) ?: ""
+        _uiState.update {
+            it.copy(
+                novedadFormDialogState = NovedadFormDialogState(
+                    novedadEditar = null,
+                    idConceptoSeleccionado = it.conceptos.firstOrNull()?.id,
+                    fechaNovedad = fechaInicial,
+                    valor = "",
+                    dias = "",
+                    observaciones = ""
+                )
+            )
+        }
+    }
+
+    fun abrirFormularioEditarNovedad(novedad: NovedadNominaResponse) {
+        val periodo = _uiState.value.periodoSeleccionado
+        if (!periodo.esAbierto()) {
+            emitirMensaje(NominaMensajes.ERROR_PERIODO_NO_ABIERTO)
+            return
+        }
+        _uiState.update {
+            it.copy(
+                novedadFormDialogState = NovedadFormDialogState(
+                    novedadEditar = novedad,
+                    idConceptoSeleccionado = novedad.idConcepto,
+                    fechaNovedad = novedad.fechaNovedad.take(10),
+                    valor = if (novedad.valor % 1.0 == 0.0) novedad.valor.toLong().toString() else novedad.valor.toString(),
+                    dias = novedad.dias?.let { d -> if (d % 1.0 == 0.0) d.toLong().toString() else d.toString() } ?: "",
+                    observaciones = novedad.observaciones ?: ""
+                )
+            )
+        }
+    }
+
+    fun cerrarFormularioNovedad() {
+        _uiState.update { it.copy(novedadFormDialogState = null) }
+    }
+
+    fun guardarNovedad(
+        idConcepto: Int,
+        fechaNovedad: String,
+        valorStr: String,
+        diasStr: String,
+        observacionesStr: String
+    ) {
+        val periodo = _uiState.value.periodoSeleccionado
+        if (!periodo.esAbierto()) {
+            emitirMensaje(NominaMensajes.ERROR_PERIODO_NO_ABIERTO)
+            return
+        }
+
+        val contrato = _uiState.value.contratoNovedadesSeleccionado
+        if (contrato == null) return
+
+        val concepto = _uiState.value.conceptos.firstOrNull { it.id == idConcepto }
+        if (concepto == null) {
+            emitirMensaje("Debe seleccionar un concepto válido.")
+            return
+        }
+
+        val valor = valorStr.replace(",", ".").toDoubleOrNull()
+        if (valor == null || valor <= 0) {
+            emitirMensaje("El valor debe ser un número mayor a cero.")
+            return
+        }
+
+        val requiereDias = concepto.descuentaDiasSueldo
+        val dias = diasStr.replace(",", ".").toDoubleOrNull()
+        if (requiereDias && (dias == null || dias <= 0)) {
+            emitirMensaje("El concepto elegido exige ingresar una cantidad de días mayor a 0.")
+            return
+        }
+
+        val fechaLimpia = fechaNovedad.trim().take(10)
+        val fInicio = periodo?.fechaInicio?.take(10)
+        val fFin = periodo?.fechaFin?.take(10)
+        if (fInicio != null && fFin != null && (fechaLimpia < fInicio || fechaLimpia > fFin)) {
+            emitirMensaje("La fecha de la novedad debe estar dentro del rango del período ($fInicio a $fFin).")
+            return
+        }
+
+        val observaciones = observacionesStr.trim().ifBlank { null }
+        val formState = _uiState.value.novedadFormDialogState
+        val esEdicion = formState?.novedadEditar != null
+        val novedadId = formState?.novedadEditar?.id
+
+        viewModelScope.launch(ioDispatcher) {
+            _uiState.update { it.copy(novedadEnAccion = true) }
+            val res = if (esEdicion && novedadId != null) {
+                repository.actualizarNovedadNomina(
+                    novedadId,
+                    ActualizarNovedadNominaRequest(
+                        idConcepto = idConcepto,
+                        fechaNovedad = fechaLimpia,
+                        valor = valor,
+                        dias = if (requiereDias) dias else null,
+                        observaciones = observaciones
+                    )
+                )
+            } else {
+                repository.crearNovedadNomina(
+                    CrearNovedadNominaRequest(
+                        idContratoLaboral = contrato.idContratoLaboral,
+                        idConcepto = idConcepto,
+                        fechaNovedad = fechaLimpia,
+                        valor = valor,
+                        dias = if (requiereDias) dias else null,
+                        observaciones = observaciones
+                    )
+                )
+            }
+
+            res.onSuccess { respuesta ->
+                _uiState.update { it.copy(novedadEnAccion = false, novedadFormDialogState = null) }
+                emitirMensaje(respuesta.mensaje ?: if (esEdicion) "Novedad actualizada con éxito" else "Novedad creada con éxito")
+
+                if (periodo != null) {
+                    repository.preliquidar(PreliquidarContratoRequest(contrato.idContratoLaboral, periodo.id))
+                }
+                cargarContratos()
+                cargarNovedades(contrato.idContratoLaboral)
+            }.onFailure { error ->
+                if (error is CancellationException) return@onFailure
+                _uiState.update { it.copy(novedadEnAccion = false) }
+                manejarError(error)
+            }
+        }
+    }
+
+    fun anularNovedad(novedad: NovedadNominaResponse) {
+        val periodo = _uiState.value.periodoSeleccionado
+        if (!periodo.esAbierto()) {
+            emitirMensaje(NominaMensajes.ERROR_PERIODO_NO_ABIERTO)
+            return
+        }
+
+        val contrato = _uiState.value.contratoNovedadesSeleccionado ?: return
+
+        viewModelScope.launch(ioDispatcher) {
+            _uiState.update { it.copy(novedadEnAccion = true) }
+            repository.cambiarEstadoNovedadNomina(novedad.id, nuevoEstado = false)
+                .onSuccess { respuesta ->
+                    _uiState.update { it.copy(novedadEnAccion = false) }
+                    emitirMensaje(respuesta.mensaje ?: "Novedad anulada con éxito")
+
+                    if (periodo != null) {
+                        repository.preliquidar(PreliquidarContratoRequest(contrato.idContratoLaboral, periodo.id))
+                    }
+                    cargarContratos()
+                    cargarNovedades(contrato.idContratoLaboral)
+                }
+                .onFailure { error ->
+                    if (error is CancellationException) return@onFailure
+                    _uiState.update { it.copy(novedadEnAccion = false) }
+                    manejarError(error)
+                }
         }
     }
 

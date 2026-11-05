@@ -15,6 +15,7 @@ object NominaMensajes {
     const val ERROR_SIN_PRELIQUIDACION_VIGENTE = "No existe una preliquidación vigente para este contrato."
     const val ERROR_SERVIDOR_OCUPADO = "El servidor está ocupado, inténtalo de nuevo."
     const val ERROR_PRELIQUIDACION_DESACTUALIZADA_RECALCULAR = "La preliquidación está desactualizada (cambiaron datos de origen)."
+    const val ERROR_PERIODO_NO_ABIERTO = "El período de nómina seleccionado no está abierto."
 
     fun mapearError(error: Throwable): String {
         return when (error) {

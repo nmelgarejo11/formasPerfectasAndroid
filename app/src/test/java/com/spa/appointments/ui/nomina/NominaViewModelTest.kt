@@ -290,6 +290,125 @@ class NominaViewModelTest {
         advanceUntilIdle() // Completa la segunda carga
         assertFalse(vm.uiState.value.cargandoContratos)
     }
+
+    @Test
+    fun testCargarConceptos_Exito() = runTest(testDispatcher) {
+        val vm = crearViewModel()
+        vm.cargarConceptosSiEsNecesario()
+        advanceUntilIdle()
+
+        assertEquals(2, vm.uiState.value.conceptos.size)
+        assertEquals("Horas Extra", vm.uiState.value.conceptos[0].nombre)
+    }
+
+    @Test
+    fun testCargarNovedades_FiltraPorFechasDePeriodo() = runTest(testDispatcher) {
+        fakeRepository.novedadesLista = listOf(
+            NovedadNominaResponse(1, 1, 1, 1, "Devengado", "2026-10-05", 50000.0, null, null, true, null),
+            NovedadNominaResponse(2, 1, 1, 1, "Devengado", "2026-10-20", 80000.0, null, null, true, null)
+        )
+
+        val vm = crearViewModel()
+        advanceUntilIdle()
+
+        val contrato = fakeRepository.contratoSinPreliquidar
+        vm.abrirNovedadesContrato(contrato)
+        advanceUntilIdle()
+
+        val novedades = vm.uiState.value.novedadesContrato
+        assertEquals(1, novedades.size)
+        assertEquals(1, novedades[0].id)
+    }
+
+    @Test
+    fun testGuardarNovedad_ValidacionDiasObligatorios() = runTest(testDispatcher) {
+        val vm = crearViewModel()
+        advanceUntilIdle()
+
+        vm.abrirNovedadesContrato(fakeRepository.contratoSinPreliquidar)
+        advanceUntilIdle()
+
+        vm.guardarNovedad(
+            idConcepto = 2,
+            fechaNovedad = "2026-10-05",
+            valorStr = "50000",
+            diasStr = "0",
+            observacionesStr = ""
+        )
+        advanceUntilIdle()
+
+        val evento = vm.eventos.first()
+        assertTrue(evento is NominaEvent.MostrarMensaje)
+        assertTrue((evento as NominaEvent.MostrarMensaje).mensaje.contains("días"))
+        assertEquals(0, fakeRepository.llamadasCrearNovedad)
+    }
+
+    @Test
+    fun testGuardarNovedad_BloqueadoSiPeriodoNoAbierto() = runTest(testDispatcher) {
+        fakeRepository.periodosResult = Result.success(
+            listOf(PeriodoNominaItem(1, "Periodo Cerrado", "2026-10-01", "2026-10-15", 2, "Cerrado"))
+        )
+        val vm = crearViewModel()
+        advanceUntilIdle()
+
+        vm.abrirNovedadesContrato(fakeRepository.contratoSinPreliquidar)
+        advanceUntilIdle()
+
+        vm.guardarNovedad(
+            idConcepto = 1,
+            fechaNovedad = "2026-10-05",
+            valorStr = "50000",
+            diasStr = "",
+            observacionesStr = ""
+        )
+        advanceUntilIdle()
+
+        val evento = vm.eventos.first()
+        assertTrue(evento is NominaEvent.MostrarMensaje)
+        assertEquals(NominaMensajes.ERROR_PERIODO_NO_ABIERTO, (evento as NominaEvent.MostrarMensaje).mensaje)
+        assertEquals(0, fakeRepository.llamadasCrearNovedad)
+    }
+
+    @Test
+    fun testGuardarNovedad_Exito_Creacion_AutoRecalculaPreliquidacion() = runTest(testDispatcher) {
+        val vm = crearViewModel()
+        advanceUntilIdle()
+
+        val preliquidarCountBefore = fakeRepository.llamadasPreliquidar
+
+        vm.abrirNovedadesContrato(fakeRepository.contratoSinPreliquidar)
+        advanceUntilIdle()
+
+        vm.guardarNovedad(
+            idConcepto = 1,
+            fechaNovedad = "2026-10-05",
+            valorStr = "150000",
+            diasStr = "",
+            observacionesStr = "Bono"
+        )
+        advanceUntilIdle()
+
+        assertEquals(1, fakeRepository.llamadasCrearNovedad)
+        assertEquals(preliquidarCountBefore + 1, fakeRepository.llamadasPreliquidar)
+    }
+
+    @Test
+    fun testAnularNovedad_Exito_AutoRecalculaPreliquidacion() = runTest(testDispatcher) {
+        val vm = crearViewModel()
+        advanceUntilIdle()
+
+        vm.abrirNovedadesContrato(fakeRepository.contratoSinPreliquidar)
+        advanceUntilIdle()
+
+        val preliquidarCountBefore = fakeRepository.llamadasPreliquidar
+        val novedad = NovedadNominaResponse(10, 1, 1, 1, "Horas Extra", "2026-10-05", 50000.0, null, null, true, null)
+
+        vm.anularNovedad(novedad)
+        advanceUntilIdle()
+
+        assertEquals(1, fakeRepository.llamadasCambiarEstadoNovedad)
+        assertEquals(preliquidarCountBefore + 1, fakeRepository.llamadasPreliquidar)
+    }
 }
 
 class FakeNominaRepository : NominaRepository {
