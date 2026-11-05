@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -30,7 +31,9 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import com.spa.appointments.R
+import com.spa.appointments.domain.model.ConceptoResponse
 import com.spa.appointments.domain.model.ContratoElegibleNomina
+import com.spa.appointments.domain.model.NovedadNominaResponse
 import com.spa.appointments.domain.model.PreliquidacionDetalleResponse
 import com.spa.appointments.domain.model.PreliquidacionResponse
 import kotlinx.coroutines.launch
@@ -291,7 +294,8 @@ fun NominaScreen(
                             },
                             onAnular = {
                                 contrato.idLiquidacionVigente?.let { idLiquidacionParaAnular = it }
-                            }
+                            },
+                            onNovedades = { viewModel.abrirNovedadesContrato(contrato) }
                         )
                     }
                 }
@@ -475,6 +479,32 @@ fun NominaScreen(
             }
         )
     }
+
+    // BottomSheet de Novedades del Contrato
+    if (uiState.contratoNovedadesSeleccionado != null) {
+        NovedadesBottomSheet(
+            uiState = uiState,
+            onDismiss = { viewModel.cerrarNovedadesContrato() },
+            onToggleInactivas = { viewModel.toggleMostrarInactivasNovedades(it) },
+            onNuevaNovedad = { viewModel.abrirFormularioNuevaNovedad() },
+            onEditarNovedad = { viewModel.abrirFormularioEditarNovedad(it) },
+            onAnularNovedad = { viewModel.anularNovedad(it) }
+        )
+    }
+
+    // Diálogo de Formulario de Novedad (Crear / Editar)
+    uiState.novedadFormDialogState?.let { formState ->
+        NovedadFormDialog(
+            dialogState = formState,
+            conceptos = uiState.conceptos,
+            periodo = uiState.periodoSeleccionado,
+            enAccion = uiState.novedadEnAccion,
+            onDismiss = { viewModel.cerrarFormularioNovedad() },
+            onGuardar = { idConcepto, fecha, valor, dias, obs ->
+                viewModel.guardarNovedad(idConcepto, fecha, valor, dias, obs)
+            }
+        )
+    }
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -487,7 +517,8 @@ fun ContratoNominaCard(
     onLiquidar: () -> Unit,
     onRecalcular: () -> Unit,
     onDesprendible: () -> Unit,
-    onAnular: () -> Unit
+    onAnular: () -> Unit,
+    onNovedades: () -> Unit
 ) {
     val estado = EstadoNominaContrato.desde(contrato)
 
@@ -643,6 +674,20 @@ fun ContratoNominaCard(
                     horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.End),
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
+                    OutlinedButton(
+                        onClick = onNovedades,
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
+                    ) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.List,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Novedades")
+                    }
+
                     when (estado) {
                         is EstadoNominaContrato.SinPreliquidar -> {
                             Button(
@@ -947,12 +992,43 @@ fun ConceptoItemRow(item: PreliquidacionDetalleResponse) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = item.nombreConcepto ?: item.codigoConcepto ?: stringResource(R.string.lbl_concepto_default),
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = item.nombreConcepto ?: item.codigoConcepto ?: stringResource(R.string.lbl_concepto_default),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    if (item.idNovedadNomina != null) {
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer
+                        ) {
+                            Text(
+                                text = "Novedad",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                    if (item.idDescuento != null) {
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = MaterialTheme.colorScheme.tertiaryContainer
+                        ) {
+                            Text(
+                                text = "Préstamo",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                }
                 if (item.cantidad != null && item.cantidad > 0) {
                     Text(
                         text = stringResource(R.string.lbl_cantidad_prefix, formatearCantidad(item.cantidad)),
@@ -993,4 +1069,434 @@ private fun abrirPdfConIntent(context: Context, file: File) {
     } catch (e: Exception) {
         Toast.makeText(context, context.getString(R.string.msg_error_pdf_prefix, e.message ?: ""), Toast.LENGTH_LONG).show()
     }
+}
+
+// ── Composables de Novedades ───────────────────────────────────────────────
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun NovedadesBottomSheet(
+    uiState: NominaUiState,
+    onDismiss: () -> Unit,
+    onToggleInactivas: (Boolean) -> Unit,
+    onNuevaNovedad: () -> Unit,
+    onEditarNovedad: (NovedadNominaResponse) -> Unit,
+    onAnularNovedad: (NovedadNominaResponse) -> Unit
+) {
+    val contrato = uiState.contratoNovedadesSeleccionado ?: return
+    val periodo = uiState.periodoSeleccionado
+    val esAbierto = periodo.esAbierto()
+
+    var novedadParaAnular by remember { mutableStateOf<NovedadNominaResponse?>(null) }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Novedades - ${contrato.profesionalNombre}",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    if (periodo != null) {
+                        Text(
+                            text = "Período: ${periodo.nombre} (${formatearFechaDisplay(periodo.fechaInicio)} al ${formatearFechaDisplay(periodo.fechaFin)})",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                IconButton(onClick = onDismiss) {
+                    Icon(Icons.Default.Close, contentDescription = "Cerrar")
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Switch(
+                        checked = uiState.mostrarInactivasNovedades,
+                        onCheckedChange = onToggleInactivas
+                    )
+                    Text(
+                        text = "Mostrar inactivas",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                Button(
+                    onClick = onNuevaNovedad,
+                    enabled = esAbierto && !uiState.novedadEnAccion,
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Nueva novedad", fontWeight = FontWeight.Medium)
+                }
+            }
+
+            if (!esAbierto) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = "El período seleccionado no está abierto. Solo lectura.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            if (uiState.cargandoNovedades) {
+                Box(modifier = Modifier.fillMaxWidth().height(150.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(strokeWidth = 3.dp)
+                }
+            } else {
+                val listaMostrar = if (uiState.mostrarInactivasNovedades) {
+                    uiState.novedadesContrato
+                } else {
+                    uiState.novedadesContrato.filter { it.estado }
+                }
+
+                if (listaMostrar.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = if (uiState.novedadesContrato.isEmpty())
+                                "No hay novedades registradas en este período"
+                            else
+                                "No hay novedades activas",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                } else {
+                    LazyColumn(
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        contentPadding = PaddingValues(bottom = 24.dp),
+                        modifier = Modifier.weight(1f, fill = false)
+                    ) {
+                        items(listaMostrar, key = { it.id }) { novedad ->
+                            NovedadItemCard(
+                                novedad = novedad,
+                                esPeriodoAbierto = esAbierto,
+                                enAccion = uiState.novedadEnAccion,
+                                onEditar = { onEditarNovedad(novedad) },
+                                onAnular = { novedadParaAnular = novedad }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    novedadParaAnular?.let { nov ->
+        AlertDialog(
+            onDismissRequest = { novedadParaAnular = null },
+            shape = RoundedCornerShape(20.dp),
+            title = {
+                Text("Anular Novedad", fontWeight = FontWeight.Bold)
+            },
+            text = {
+                Text("¿Desea anular la novedad '${nov.nombreConcepto ?: "Concepto"}' por valor de ${formatearCop(nov.valor)}?")
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val n = nov
+                        novedadParaAnular = null
+                        onAnularNovedad(n)
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Anular")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { novedadParaAnular = null }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+}
+
+@Composable
+fun NovedadItemCard(
+    novedad: NovedadNominaResponse,
+    esPeriodoAbierto: Boolean,
+    enAccion: Boolean,
+    onEditar: () -> Unit,
+    onAnular: () -> Unit
+) {
+    val activa = novedad.estado
+
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = if (activa) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f),
+        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = novedad.nombreConcepto ?: "Concepto #${novedad.idConcepto}",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = if (activa) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "Fecha: ${formatearFechaDisplay(novedad.fechaNovedad)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = if (activa) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.errorContainer
+                ) {
+                    Text(
+                        text = if (activa) "Activa" else "Inactiva",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (activa) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onErrorContainer,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = formatearCop(novedad.valor),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = if (activa) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    if (novedad.dias != null && novedad.dias > 0) {
+                        Text(
+                            text = "Días: ${formatearCantidad(novedad.dias)}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                if (activa && esPeriodoAbierto) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        IconButton(onClick = onEditar, enabled = !enAccion, modifier = Modifier.size(36.dp)) {
+                            Icon(Icons.Default.Edit, contentDescription = "Editar", modifier = Modifier.size(18.dp))
+                        }
+                        IconButton(onClick = onAnular, enabled = !enAccion, modifier = Modifier.size(36.dp)) {
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = "Anular",
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (!novedad.observaciones.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Obs: ${novedad.observaciones}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun NovedadFormDialog(
+    dialogState: NovedadFormDialogState,
+    conceptos: List<ConceptoResponse>,
+    periodo: com.spa.appointments.domain.model.PeriodoNominaItem?,
+    enAccion: Boolean,
+    onDismiss: () -> Unit,
+    onGuardar: (idConcepto: Int, fecha: String, valor: String, dias: String, obs: String) -> Unit
+) {
+    val esEdicion = dialogState.novedadEditar != null
+
+    var selectedConceptoId by remember { mutableStateOf(dialogState.idConceptoSeleccionado ?: conceptos.firstOrNull()?.id ?: 0) }
+    var fechaNovedad by remember { mutableStateOf(dialogState.fechaNovedad.ifBlank { periodo?.fechaInicio?.take(10) ?: "" }) }
+    var valor by remember { mutableStateOf(dialogState.valor) }
+    var dias by remember { mutableStateOf(dialogState.dias) }
+    var observaciones by remember { mutableStateOf(dialogState.observaciones) }
+    var conceptoMenuExpanded by remember { mutableStateOf(false) }
+
+    val selectedConcepto = remember(selectedConceptoId, conceptos) {
+        conceptos.find { it.id == selectedConceptoId }
+    }
+    val requiereDias = selectedConcepto?.descuentaDiasSueldo == true
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(20.dp),
+        title = {
+            Text(
+                text = if (esEdicion) "Editar Novedad" else "Nueva Novedad",
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                ExposedDropdownMenuBox(
+                    expanded = conceptoMenuExpanded,
+                    onExpandedChange = { if (!esEdicion) conceptoMenuExpanded = it },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    val textoConcepto = selectedConcepto?.let {
+                        val tipoTag = if (it.tipoConcepto == 1) "[Devengado]" else "[Deducción]"
+                        "${it.nombre} $tipoTag"
+                    } ?: "Seleccione un concepto"
+
+                    OutlinedTextField(
+                        value = textoConcepto,
+                        onValueChange = {},
+                        readOnly = true,
+                        enabled = !esEdicion,
+                        label = { Text("Concepto") },
+                        trailingIcon = { if (!esEdicion) ExposedDropdownMenuDefaults.TrailingIcon(expanded = conceptoMenuExpanded) },
+                        modifier = Modifier.menuAnchor().fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+
+                    ExposedDropdownMenu(
+                        expanded = conceptoMenuExpanded,
+                        onDismissRequest = { conceptoMenuExpanded = false }
+                    ) {
+                        conceptos.forEach { concepto ->
+                            DropdownMenuItem(
+                                text = {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(concepto.nombre, fontWeight = FontWeight.Medium)
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            if (concepto.tipoConcepto == 1) "Devengado" else "Deducción",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = if (concepto.tipoConcepto == 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                                        )
+                                    }
+                                },
+                                onClick = {
+                                    selectedConceptoId = concepto.id
+                                    conceptoMenuExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                OutlinedTextField(
+                    value = fechaNovedad,
+                    onValueChange = { fechaNovedad = it },
+                    label = { Text("Fecha (yyyy-MM-dd)") },
+                    placeholder = { Text("yyyy-MM-dd") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                )
+
+                OutlinedTextField(
+                    value = valor,
+                    onValueChange = { valor = it },
+                    label = { Text("Valor ($)") },
+                    placeholder = { Text("Ej: 150000") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                )
+
+                if (requiereDias) {
+                    OutlinedTextField(
+                        value = dias,
+                        onValueChange = { dias = it },
+                        label = { Text("Días (Obligatorio)") },
+                        placeholder = { Text("Ej: 1") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                }
+
+                OutlinedTextField(
+                    value = observaciones,
+                    onValueChange = { observaciones = it },
+                    label = { Text("Observaciones (Opcional)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    maxLines = 3,
+                    shape = RoundedCornerShape(12.dp)
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    onGuardar(selectedConceptoId, fechaNovedad, valor, dias, observaciones)
+                },
+                enabled = !enAccion,
+                shape = RoundedCornerShape(10.dp)
+            ) {
+                if (enAccion) {
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                } else {
+                    Text("Guardar")
+                }
+            }
+        },
+        dismissButton = {
+            OutlinedButton(onClick = onDismiss, enabled = !enAccion, shape = RoundedCornerShape(10.dp)) {
+                Text("Cancelar")
+            }
+        }
+    )
 }
