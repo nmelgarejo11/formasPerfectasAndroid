@@ -9,6 +9,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -128,7 +129,18 @@ fun NominaScreen(
                 .padding(padding)
                 .padding(horizontal = 16.dp)
         ) {
-            // Selector de Periodos
+            var anioFiltroSeleccionado by rememberSaveable { mutableStateOf<Int?>(null) }
+
+            val aniosDisponibles = remember(uiState.periodos) {
+                uiState.periodos.mapNotNull { p -> p.fechaInicio.take(4).toIntOrNull() }.distinct().sortedDescending()
+            }
+
+            val periodosFiltrados = remember(uiState.periodos, anioFiltroSeleccionado) {
+                if (anioFiltroSeleccionado == null) uiState.periodos
+                else uiState.periodos.filter { it.fechaInicio.startsWith(anioFiltroSeleccionado.toString()) }
+            }
+
+            // Selector de Periodos Compacto
             if (uiState.cargandoPeriodos) {
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp))
             } else if (uiState.periodos.isEmpty()) {
@@ -145,47 +157,109 @@ fun NominaScreen(
                     )
                 }
             } else {
-                ExposedDropdownMenuBox(
-                    expanded = menuPeriodosExpandido,
-                    onExpandedChange = { menuPeriodosExpandido = it },
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
-                ) {
-                    val pSel = uiState.periodoSeleccionado
-                    val textoPeriodo = if (pSel != null) {
-                        "${pSel.nombre} (${formatearFechaDisplay(pSel.fechaInicio)} - ${formatearFechaDisplay(pSel.fechaFin)})"
-                    } else stringResource(R.string.placeholder_seleccionar_periodo)
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    // Filtro de Año si existen varios años en el catálogo
+                    if (aniosDisponibles.size > 1) {
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp)
+                        ) {
+                            item {
+                                FilterChip(
+                                    selected = anioFiltroSeleccionado == null,
+                                    onClick = { anioFiltroSeleccionado = null },
+                                    label = { Text("Todos los años", style = MaterialTheme.typography.labelSmall) },
+                                    shape = RoundedCornerShape(8.dp)
+                                )
+                            }
+                            items(aniosDisponibles) { anio ->
+                                FilterChip(
+                                    selected = anioFiltroSeleccionado == anio,
+                                    onClick = { anioFiltroSeleccionado = anio },
+                                    label = { Text(anio.toString(), style = MaterialTheme.typography.labelSmall) },
+                                    shape = RoundedCornerShape(8.dp)
+                                )
+                            }
+                        }
+                    }
 
-                    OutlinedTextField(
-                        value = textoPeriodo,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text(stringResource(R.string.label_periodo_nomina)) },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = menuPeriodosExpandido) },
-                        modifier = Modifier.menuAnchor().fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp)
-                    )
-
-                    ExposedDropdownMenu(
+                    ExposedDropdownMenuBox(
                         expanded = menuPeriodosExpandido,
-                        onDismissRequest = { menuPeriodosExpandido = false }
+                        onExpandedChange = { menuPeriodosExpandido = it },
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        uiState.periodos.forEach { periodo ->
-                            DropdownMenuItem(
-                                text = {
-                                    Column {
-                                        Text(periodo.nombre, fontWeight = FontWeight.Bold)
-                                        Text(
-                                            "${formatearFechaDisplay(periodo.fechaInicio)} al ${formatearFechaDisplay(periodo.fechaFin)} - ${periodo.nombreEstado}",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
+                        val pSel = uiState.periodoSeleccionado
+                        val textoPeriodo = if (pSel != null) {
+                            "${pSel.nombre} (${formatearFechaDisplay(pSel.fechaInicio)} al ${formatearFechaDisplay(pSel.fechaFin)})"
+                        } else stringResource(R.string.placeholder_seleccionar_periodo)
+
+                        OutlinedTextField(
+                            value = textoPeriodo,
+                            onValueChange = {},
+                            readOnly = true,
+                            singleLine = true,
+                            placeholder = { Text(stringResource(R.string.label_periodo_nomina), style = MaterialTheme.typography.bodySmall) },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.DateRange,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = menuPeriodosExpandido) },
+                            textStyle = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier
+                                .menuAnchor()
+                                .fillMaxWidth()
+                                .defaultMinSize(minHeight = 48.dp),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+
+                        ExposedDropdownMenu(
+                            expanded = menuPeriodosExpandido,
+                            onDismissRequest = { menuPeriodosExpandido = false }
+                        ) {
+                            periodosFiltrados.forEach { periodo ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(
+                                                    text = periodo.nombre,
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                                Text(
+                                                    text = "${formatearFechaDisplay(periodo.fechaInicio)} al ${formatearFechaDisplay(periodo.fechaFin)}",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Surface(
+                                                shape = RoundedCornerShape(4.dp),
+                                                color = if (periodo.esAbierto()) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
+                                            ) {
+                                                Text(
+                                                    text = periodo.nombreEstado,
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = if (periodo.esAbierto()) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                )
+                                            }
+                                        }
+                                    },
+                                    onClick = {
+                                        viewModel.seleccionarPeriodo(periodo)
+                                        menuPeriodosExpandido = false
                                     }
-                                },
-                                onClick = {
-                                    viewModel.seleccionarPeriodo(periodo)
-                                    menuPeriodosExpandido = false
-                                }
-                            )
+                                )
+                            }
                         }
                     }
                 }
@@ -193,15 +267,16 @@ fun NominaScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Campo de búsqueda de profesionales
+            // Campo de búsqueda compacto (mismo estilo y tamaño que el selector de período)
             OutlinedTextField(
                 value = uiState.busqueda,
                 onValueChange = { viewModel.actualizarBusqueda(it) },
-                placeholder = { Text(stringResource(R.string.label_buscar_profesional)) },
+                placeholder = { Text(stringResource(R.string.label_buscar_profesional), style = MaterialTheme.typography.bodySmall) },
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.Search,
                         contentDescription = stringResource(R.string.cd_buscar),
+                        modifier = Modifier.size(20.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 },
@@ -209,18 +284,22 @@ fun NominaScreen(
                     if (uiState.busqueda.isNotBlank()) {
                         IconButton(
                             onClick = { viewModel.actualizarBusqueda("") },
-                            modifier = Modifier.size(48.dp)
+                            modifier = Modifier.size(36.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Clear,
-                                contentDescription = stringResource(R.string.cd_limpiar_busqueda)
+                                contentDescription = stringResource(R.string.cd_limpiar_busqueda),
+                                modifier = Modifier.size(18.dp)
                             )
                         }
                     }
                 },
-                modifier = Modifier.fillMaxWidth(),
+                textStyle = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .defaultMinSize(minHeight = 48.dp),
                 singleLine = true,
-                shape = RoundedCornerShape(14.dp)
+                shape = RoundedCornerShape(12.dp)
             )
 
             Spacer(modifier = Modifier.height(12.dp))
