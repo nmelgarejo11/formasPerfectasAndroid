@@ -526,6 +526,11 @@ interface ApiService {
     @GET("Concepto")
     suspend fun listarConceptosNomina(): Response<List<ConceptoResponse>>
 
+    @POST("PeriodoNomina")
+    suspend fun crearPeriodoNomina(
+        @Body request: CrearPeriodoNominaRequest
+    ): Response<RespuestaSimpleNomina>
+
     // ── Catálogos Nómina ─────────────────────────────
     @GET("catalogos/bancos")
     suspend fun getBancos(): Response<List<BancoItem>>

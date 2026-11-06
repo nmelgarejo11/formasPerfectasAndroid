@@ -28,7 +28,7 @@ data class NominaUiState(
     val detallePreliquidacion: PreliquidacionResponse? = null,
     val cargandoDetalle: Boolean = false,
 
-    // ── Novedades ─────────────────────────────────────
+    // ── Novedades y Períodos ──────────────────────────
     val conceptos: List<ConceptoResponse> = emptyList(),
     val cargandoConceptos: Boolean = false,
     val contratoNovedadesSeleccionado: ContratoElegibleNomina? = null,
@@ -36,13 +36,16 @@ data class NominaUiState(
     val cargandoNovedades: Boolean = false,
     val mostrarInactivasNovedades: Boolean = false,
     val novedadEnAccion: Boolean = false,
-    val novedadFormDialogState: NovedadFormDialogState? = null
+    val novedadFormDialogState: NovedadFormDialogState? = null,
+    val mostrarCrearPeriodoDialog: Boolean = false,
+    val creandoPeriodo: Boolean = false
 )
 
 sealed class NominaEvent {
     data class MostrarMensaje(val mensaje: String) : NominaEvent()
     data class MostrarRecalcular(val mensaje: String, val idContratoLaboral: Int) : NominaEvent()
     data class AbrirPdfDesprendible(val file: File) : NominaEvent()
+    data class CompartirPdfDesprendible(val file: File) : NominaEvent()
     data class LiquidacionExitosa(val idLiquidacion: Int, val mensaje: String) : NominaEvent()
 }
 
@@ -241,6 +244,87 @@ class NominaViewModel @Inject constructor(
                     _eventos.send(NominaEvent.AbrirPdfDesprendible(archivoPdf))
                 }
             )
+        }
+    }
+
+    fun compartirDesprendible(idLiquidacion: Int) {
+        if (!marcarLiquidacionEnAccion(idLiquidacion)) return
+
+        viewModelScope.launch(ioDispatcher) {
+            ejecutarAccionConReintento503(
+                accion = { repository.descargarDesprendiblePdf(idLiquidacion) },
+                idLiquidacion = idLiquidacion,
+                onExito = { archivoPdf ->
+                    _eventos.send(NominaEvent.CompartirPdfDesprendible(archivoPdf))
+                }
+            )
+        }
+    }
+
+    // ── Creación de Períodos de Nómina ─────────────────────────
+
+    fun abrirCrearPeriodoDialog() {
+        _uiState.update { it.copy(mostrarCrearPeriodoDialog = true) }
+    }
+
+    fun cerrarCrearPeriodoDialog() {
+        _uiState.update { it.copy(mostrarCrearPeriodoDialog = false) }
+    }
+
+    fun crearPeriodoNomina(
+        nombreStr: String,
+        fechaInicioStr: String,
+        fechaFinStr: String
+    ) {
+        val fInicio = fechaInicioStr.trim().take(10)
+        val fFin = fechaFinStr.trim().take(10)
+
+        if (fInicio.isBlank() || fInicio.length < 10) {
+            emitirMensaje("Debe ingresar la fecha de inicio del período.")
+            return
+        }
+        if (fFin.isBlank() || fFin.length < 10) {
+            emitirMensaje("Debe ingresar la fecha de fin del período.")
+            return
+        }
+        if (fFin < fInicio) {
+            emitirMensaje("La fecha de fin debe ser posterior a la fecha de inicio.")
+            return
+        }
+
+        val nombreFinal = nombreStr.trim().ifBlank { null }
+
+        viewModelScope.launch(ioDispatcher) {
+            _uiState.update { it.copy(creandoPeriodo = true) }
+            repository.crearPeriodoNomina(
+                CrearPeriodoNominaRequest(
+                    nombre = nombreFinal,
+                    fechaInicio = fInicio,
+                    fechaFin = fFin
+                )
+            ).onSuccess { respuesta ->
+                val nuevoId = respuesta.id
+                _uiState.update { it.copy(creandoPeriodo = false, mostrarCrearPeriodoDialog = false) }
+                emitirMensaje(respuesta.mensaje ?: "Período de nómina creado con éxito")
+
+                repository.listarPeriodosNomina(soloAbiertos = true)
+                    .onSuccess { lista ->
+                        val periodoCreado = lista.firstOrNull { p -> p.id == nuevoId } ?: lista.firstOrNull()
+                        _uiState.update {
+                            it.copy(
+                                periodos = lista,
+                                periodoSeleccionado = periodoCreado
+                            )
+                        }
+                        if (periodoCreado != null) {
+                            cargarContratos(periodoCreado.id, _uiState.value.busqueda)
+                        }
+                    }
+            }.onFailure { error ->
+                if (error is CancellationException) return@onFailure
+                _uiState.update { it.copy(creandoPeriodo = false) }
+                manejarError(error)
+            }
         }
     }
 

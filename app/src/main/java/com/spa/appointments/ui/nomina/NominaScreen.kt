@@ -87,6 +87,9 @@ fun NominaScreen(
                     is NominaEvent.AbrirPdfDesprendible -> {
                         abrirPdfConIntent(context, evento.file)
                     }
+                    is NominaEvent.CompartirPdfDesprendible -> {
+                        compartirPdfConIntent(context, evento.file)
+                    }
                     is NominaEvent.LiquidacionExitosa -> {
                         scope.launch { snackbarHostState.showSnackbar(evento.mensaje) }
                     }
@@ -183,83 +186,100 @@ fun NominaScreen(
                         }
                     }
 
-                    ExposedDropdownMenuBox(
-                        expanded = menuPeriodosExpandido,
-                        onExpandedChange = { menuPeriodosExpandido = it },
-                        modifier = Modifier.fillMaxWidth()
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        val pSel = uiState.periodoSeleccionado
-                        val textoPeriodo = if (pSel != null) {
-                            "${pSel.nombre} (${formatearFechaDisplay(pSel.fechaInicio)} al ${formatearFechaDisplay(pSel.fechaFin)})"
-                        } else stringResource(R.string.placeholder_seleccionar_periodo)
-
-                        OutlinedTextField(
-                            value = textoPeriodo,
-                            onValueChange = {},
-                            readOnly = true,
-                            singleLine = true,
-                            placeholder = { Text(stringResource(R.string.label_periodo_nomina), style = MaterialTheme.typography.bodySmall) },
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.DateRange,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(20.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = menuPeriodosExpandido) },
-                            textStyle = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier
-                                .menuAnchor()
-                                .fillMaxWidth()
-                                .defaultMinSize(minHeight = 48.dp),
-                            shape = RoundedCornerShape(12.dp)
-                        )
-
-                        ExposedDropdownMenu(
+                        ExposedDropdownMenuBox(
                             expanded = menuPeriodosExpandido,
-                            onDismissRequest = { menuPeriodosExpandido = false }
+                            onExpandedChange = { menuPeriodosExpandido = it },
+                            modifier = Modifier.weight(1f)
                         ) {
-                            periodosFiltrados.forEach { periodo ->
-                                DropdownMenuItem(
-                                    text = {
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.SpaceBetween,
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Column(modifier = Modifier.weight(1f)) {
-                                                Text(
-                                                    text = periodo.nombre,
-                                                    style = MaterialTheme.typography.bodyMedium,
-                                                    fontWeight = FontWeight.Bold
-                                                )
-                                                Text(
-                                                    text = "${formatearFechaDisplay(periodo.fechaInicio)} al ${formatearFechaDisplay(periodo.fechaFin)}",
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                                )
-                                            }
-                                            Spacer(modifier = Modifier.width(8.dp))
-                                            Surface(
-                                                shape = RoundedCornerShape(4.dp),
-                                                color = if (periodo.esAbierto()) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
+                            val pSel = uiState.periodoSeleccionado
+                            val textoPeriodo = if (pSel != null) {
+                                "${pSel.nombre} (${formatearFechaDisplay(pSel.fechaInicio)} al ${formatearFechaDisplay(pSel.fechaFin)})"
+                            } else stringResource(R.string.placeholder_seleccionar_periodo)
+
+                            OutlinedTextField(
+                                value = textoPeriodo,
+                                onValueChange = {},
+                                readOnly = true,
+                                singleLine = true,
+                                placeholder = { Text(stringResource(R.string.label_periodo_nomina), style = MaterialTheme.typography.bodySmall) },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.DateRange,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(20.dp),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = menuPeriodosExpandido) },
+                                textStyle = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier
+                                    .menuAnchor()
+                                    .fillMaxWidth()
+                                    .defaultMinSize(minHeight = 48.dp),
+                                shape = RoundedCornerShape(12.dp)
+                            )
+
+                            ExposedDropdownMenu(
+                                expanded = menuPeriodosExpandido,
+                                onDismissRequest = { menuPeriodosExpandido = false }
+                            ) {
+                                periodosFiltrados.forEach { periodo ->
+                                    DropdownMenuItem(
+                                        text = {
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically
                                             ) {
-                                                Text(
-                                                    text = periodo.nombreEstado,
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                    color = if (periodo.esAbierto()) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                                )
+                                                Column(modifier = Modifier.weight(1f)) {
+                                                    Text(
+                                                        text = periodo.nombre,
+                                                        style = MaterialTheme.typography.bodyMedium,
+                                                        fontWeight = FontWeight.Bold
+                                                    )
+                                                    Text(
+                                                        text = "${formatearFechaDisplay(periodo.fechaInicio)} al ${formatearFechaDisplay(periodo.fechaFin)}",
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                    )
+                                                }
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                                Surface(
+                                                    shape = RoundedCornerShape(4.dp),
+                                                    color = if (periodo.esAbierto()) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
+                                                ) {
+                                                    Text(
+                                                        text = periodo.nombreEstado,
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        color = if (periodo.esAbierto()) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                    )
+                                                }
                                             }
+                                        },
+                                        onClick = {
+                                            viewModel.seleccionarPeriodo(periodo)
+                                            menuPeriodosExpandido = false
                                         }
-                                    },
-                                    onClick = {
-                                        viewModel.seleccionarPeriodo(periodo)
-                                        menuPeriodosExpandido = false
-                                    }
-                                )
+                                    )
+                                }
                             }
+                        }
+
+                        FilledTonalIconButton(
+                            onClick = { viewModel.abrirCrearPeriodoDialog() },
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.size(48.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = "Nuevo Período"
+                            )
                         }
                     }
                 }
@@ -372,6 +392,9 @@ fun NominaScreen(
                             onRecalcular = { viewModel.preliquidar(contrato) },
                             onDesprendible = {
                                 contrato.idLiquidacionVigente?.let { viewModel.descargarDesprendible(it) }
+                            },
+                            onCompartirDesprendible = {
+                                contrato.idLiquidacionVigente?.let { viewModel.compartirDesprendible(it) }
                             },
                             onAnular = {
                                 contrato.idLiquidacionVigente?.let { idLiquidacionParaAnular = it }
@@ -586,6 +609,17 @@ fun NominaScreen(
             }
         )
     }
+
+    // Diálogo de Creación de Período de Nómina
+    if (uiState.mostrarCrearPeriodoDialog) {
+        CrearPeriodoDialog(
+            creando = uiState.creandoPeriodo,
+            onDismiss = { viewModel.cerrarCrearPeriodoDialog() },
+            onGuardar = { nombre, fInicio, fFin ->
+                viewModel.crearPeriodoNomina(nombre, fInicio, fFin)
+            }
+        )
+    }
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -598,6 +632,7 @@ fun ContratoNominaCard(
     onLiquidar: () -> Unit,
     onRecalcular: () -> Unit,
     onDesprendible: () -> Unit,
+    onCompartirDesprendible: () -> Unit,
     onAnular: () -> Unit,
     onNovedades: () -> Unit
 ) {
@@ -660,7 +695,39 @@ fun ContratoNominaCard(
                 }
 
                 Spacer(modifier = Modifier.width(8.dp))
-                EstadoBadge(estado = estado)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    if (estado is EstadoNominaContrato.Liquidada) {
+                        IconButton(
+                            onClick = onDesprendible,
+                            enabled = !enAccion,
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Download,
+                                contentDescription = "Descargar PDF",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                        IconButton(
+                            onClick = onCompartirDesprendible,
+                            enabled = !enAccion,
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Share,
+                                contentDescription = "Compartir PDF",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(2.dp))
+                    }
+                    EstadoBadge(estado = estado)
+                }
             }
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -1746,4 +1813,143 @@ fun NovedadFormDialog(
             }
         }
     )
+}
+
+// ── Composable de Creación de Período ───────────────────────────────────────
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CrearPeriodoDialog(
+    creando: Boolean,
+    onDismiss: () -> Unit,
+    onGuardar: (nombre: String, fechaInicio: String, fechaFin: String) -> Unit
+) {
+    val context = LocalContext.current
+
+    var nombre by remember { mutableStateOf("") }
+    var fechaInicio by remember { mutableStateOf(java.time.LocalDate.now().withDayOfMonth(1).format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE)) }
+    var fechaFin by remember { mutableStateOf(java.time.LocalDate.now().withDayOfMonth(15).format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE)) }
+
+    fun abrirDatePickerInicio() {
+        val fActual = try { java.time.LocalDate.parse(fechaInicio) } catch (_: Exception) { java.time.LocalDate.now() }
+        android.app.DatePickerDialog(
+            context,
+            { _, year, month, dayOfMonth ->
+                val fSel = java.time.LocalDate.of(year, month + 1, dayOfMonth)
+                fechaInicio = fSel.format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE)
+            },
+            fActual.year,
+            fActual.monthValue - 1,
+            fActual.dayOfMonth
+        ).show()
+    }
+
+    fun abrirDatePickerFin() {
+        val fActual = try { java.time.LocalDate.parse(fechaFin) } catch (_: Exception) { java.time.LocalDate.now() }
+        android.app.DatePickerDialog(
+            context,
+            { _, year, month, dayOfMonth ->
+                val fSel = java.time.LocalDate.of(year, month + 1, dayOfMonth)
+                fechaFin = fSel.format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE)
+            },
+            fActual.year,
+            fActual.monthValue - 1,
+            fActual.dayOfMonth
+        ).show()
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(20.dp),
+        title = {
+            Text("Nuevo Período de Nómina", fontWeight = FontWeight.Bold)
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                OutlinedTextField(
+                    value = nombre,
+                    onValueChange = { nombre = it },
+                    label = { Text("Nombre del Período (Opcional)") },
+                    placeholder = { Text("Ej: 1ra Quincena - Noviembre 2026") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                )
+
+                Box(modifier = Modifier.fillMaxWidth().clickable { abrirDatePickerInicio() }) {
+                    OutlinedTextField(
+                        value = fechaInicio,
+                        onValueChange = {},
+                        readOnly = true,
+                        enabled = false,
+                        label = { Text("Fecha de Inicio") },
+                        trailingIcon = { Icon(Icons.Default.CalendarToday, contentDescription = null) },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                            disabledBorderColor = MaterialTheme.colorScheme.outline,
+                            disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        ),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                }
+
+                Box(modifier = Modifier.fillMaxWidth().clickable { abrirDatePickerFin() }) {
+                    OutlinedTextField(
+                        value = fechaFin,
+                        onValueChange = {},
+                        readOnly = true,
+                        enabled = false,
+                        label = { Text("Fecha de Fin") },
+                        trailingIcon = { Icon(Icons.Default.CalendarToday, contentDescription = null) },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                            disabledBorderColor = MaterialTheme.colorScheme.outline,
+                            disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        ),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onGuardar(nombre, fechaInicio, fechaFin) },
+                enabled = !creando,
+                shape = RoundedCornerShape(10.dp)
+            ) {
+                if (creando) {
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                } else {
+                    Text("Crear Período")
+                }
+            }
+        },
+        dismissButton = {
+            OutlinedButton(onClick = onDismiss, enabled = !creando, shape = RoundedCornerShape(10.dp)) {
+                Text("Cancelar")
+            }
+        }
+    )
+}
+
+private fun compartirPdfConIntent(context: Context, file: File) {
+    try {
+        val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "application/pdf"
+            putExtra(Intent.EXTRA_STREAM, uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        val chooser = Intent.createChooser(intent, "Compartir Desprendible de Nómina")
+        context.startActivity(chooser)
+    } catch (e: Exception) {
+        Toast.makeText(context, "Error al compartir el PDF: ${e.message}", Toast.LENGTH_LONG).show()
+    }
 }

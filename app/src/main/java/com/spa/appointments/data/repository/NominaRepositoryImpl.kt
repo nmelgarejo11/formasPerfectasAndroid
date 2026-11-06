@@ -123,6 +123,13 @@ class NominaRepositoryImpl @Inject constructor(
         procesarRespuesta(response)
     }
 
+    override suspend fun crearPeriodoNomina(
+        request: CrearPeriodoNominaRequest
+    ): Result<RespuestaSimpleNomina> = runCatchingSuspend {
+        val response = apiService.crearPeriodoNomina(request)
+        procesarRespuesta(response)
+    }
+
     override suspend fun descargarDesprendiblePdf(id: Int): Result<File> = withContext(Dispatchers.IO) {
         runCatchingSuspend {
             val response = apiService.descargarDesprendiblePdf(id)

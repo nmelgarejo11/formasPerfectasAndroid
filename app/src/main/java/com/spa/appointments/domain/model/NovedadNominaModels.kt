@@ -46,3 +46,10 @@ data class ConceptoResponse(
     @Json(name = "aplicaSalarioBase") val aplicaSalarioBase: Boolean,
     @Json(name = "descuentaDiasSueldo") val descuentaDiasSueldo: Boolean
 )
+
+@JsonClass(generateAdapter = true)
+data class CrearPeriodoNominaRequest(
+    @Json(name = "nombre") val nombre: String? = null,
+    @Json(name = "fechaInicio") val fechaInicio: String,
+    @Json(name = "fechaFin") val fechaFin: String
+)

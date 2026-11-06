@@ -409,6 +409,37 @@ class NominaViewModelTest {
         assertEquals(1, fakeRepository.llamadasCambiarEstadoNovedad)
         assertEquals(preliquidarCountBefore + 1, fakeRepository.llamadasPreliquidar)
     }
+
+    @Test
+    fun testCompartirDesprendible_Exito_EmiteEventoCompartirPdf() = runTest(testDispatcher) {
+        val vm = crearViewModel()
+        advanceUntilIdle()
+
+        vm.compartirDesprendible(5)
+        advanceUntilIdle()
+
+        val evento = vm.eventos.first()
+        assertTrue(evento is NominaEvent.CompartirPdfDesprendible)
+    }
+
+    @Test
+    fun testCrearPeriodoNomina_Exito_RefrescaYSeleccionaNuevoPeriodo() = runTest(testDispatcher) {
+        val vm = crearViewModel()
+        advanceUntilIdle()
+
+        fakeRepository.periodosResult = Result.success(
+            listOf(
+                PeriodoNominaItem(1, "Quincena 1", "2026-10-01", "2026-10-15", 1, "Abierto"),
+                PeriodoNominaItem(99, "Quincena Noviembre", "2026-11-01", "2026-11-15", 1, "Abierto")
+            )
+        )
+
+        vm.crearPeriodoNomina("Quincena Noviembre", "2026-11-01", "2026-11-15")
+        advanceUntilIdle()
+
+        assertEquals(1, fakeRepository.llamadasCrearPeriodo)
+        assertEquals(99, vm.uiState.value.periodoSeleccionado?.id)
+    }
 }
 
 class FakeNominaRepository : NominaRepository {
@@ -586,6 +617,12 @@ class FakeNominaRepository : NominaRepository {
         tamanoPagina: Int
     ): Result<PaginaLiquidaciones> {
         return Result.success(PaginaLiquidaciones(emptyList(), 0, pagina, tamanoPagina))
+    }
+
+    var llamadasCrearPeriodo = 0
+    override suspend fun crearPeriodoNomina(request: CrearPeriodoNominaRequest): Result<RespuestaSimpleNomina> {
+        llamadasCrearPeriodo++
+        return Result.success(RespuestaSimpleNomina(id = 99, mensaje = "Período creado"))
     }
 
     var novedadesLista: List<NovedadNominaResponse> = emptyList()

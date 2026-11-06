@@ -23,4 +23,5 @@ interface NominaRepository {
     suspend fun actualizarNovedadNomina(id: Int, request: ActualizarNovedadNominaRequest): Result<RespuestaSimpleNomina>
     suspend fun cambiarEstadoNovedadNomina(id: Int, nuevoEstado: Boolean): Result<RespuestaSimpleNomina>
     suspend fun listarConceptosNomina(): Result<List<ConceptoResponse>>
+    suspend fun crearPeriodoNomina(request: CrearPeriodoNominaRequest): Result<RespuestaSimpleNomina>
 }
