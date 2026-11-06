@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -263,199 +264,257 @@ private fun ServicioAdminCard(
 ) {
     Card(
         modifier  = Modifier.fillMaxWidth(),
-        shape     = RoundedCornerShape(14.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        shape     = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
         colors    = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
     ) {
-        Row(
-            modifier          = Modifier
+        Column(
+            modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            // Ícono: individual o grupal
-            Surface(
-                shape    = RoundedCornerShape(10.dp),
-                color    = if (servicio.esGrupal)
-                    MaterialTheme.colorScheme.tertiaryContainer
-                else
-                    MaterialTheme.colorScheme.secondaryContainer,
-                modifier = Modifier.size(44.dp)
+            // ── Fila superior: Ícono, Título, Categoría y Switch de estado ──
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector        = if (servicio.esGrupal) Icons.Default.Groups else Icons.Default.Spa,
-                        contentDescription = null,
-                        modifier           = Modifier.size(22.dp),
-                        tint               = if (servicio.esGrupal)
-                            MaterialTheme.colorScheme.onTertiaryContainer
-                        else
-                            MaterialTheme.colorScheme.onSecondaryContainer
-                    )
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = if (servicio.esGrupal)
+                        MaterialTheme.colorScheme.tertiaryContainer
+                    else
+                        MaterialTheme.colorScheme.secondaryContainer,
+                    modifier = Modifier.size(44.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = if (servicio.esGrupal) Icons.Default.Groups else Icons.Default.Spa,
+                            contentDescription = null,
+                            modifier = Modifier.size(22.dp),
+                            tint = if (servicio.esGrupal)
+                                MaterialTheme.colorScheme.onTertiaryContainer
+                            else
+                                MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    }
                 }
+
+                Spacer(Modifier.width(12.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = servicio.nombre,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(top = 2.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Category,
+                            contentDescription = null,
+                            modifier = Modifier.size(12.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            text = servicio.nombreCategoria,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+
+                Spacer(Modifier.width(8.dp))
+
+                Switch(
+                    checked = servicio.estado,
+                    onCheckedChange = { onToggle() },
+                    modifier = Modifier.scale(0.85f)
+                )
             }
 
-            Spacer(Modifier.width(12.dp))
+            HorizontalDivider(
+                thickness = 0.5.dp,
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+            )
 
-            // Información del servicio
-            Column(modifier = Modifier.weight(1f)) {
+            // ── Fila media: Badges de Duración, Precio, Grupal y Estado Activo/Inactivo ──
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Row(
-                    verticalAlignment      = Alignment.CenterVertically,
-                    horizontalArrangement  = Arrangement.spacedBy(6.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text       = servicio.nombre,
-                        style      = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines   = 1,
-                        overflow   = TextOverflow.Ellipsis,
-                        modifier   = Modifier.weight(1f, fill = false)
-                    )
+                    // Duración
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Timer,
+                                contentDescription = null,
+                                modifier = Modifier.size(13.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = "${servicio.duracionMinutos} min",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
 
+                    // Precio Base
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.AttachMoney,
+                                contentDescription = null,
+                                modifier = Modifier.size(13.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                text = "%.0f".format(servicio.precioBase),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+
+                    // Badge Grupal
                     if (servicio.esGrupal) {
                         Surface(
-                            shape = RoundedCornerShape(6.dp),
-                            color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.15f)
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.tertiaryContainer
                         ) {
                             Row(
-                                verticalAlignment     = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(3.dp),
-                                modifier              = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
                                 Icon(
-                                    imageVector        = Icons.Default.Groups,
+                                    imageVector = Icons.Default.Groups,
                                     contentDescription = null,
-                                    modifier           = Modifier.size(10.dp),
-                                    tint               = MaterialTheme.colorScheme.tertiary
+                                    modifier = Modifier.size(13.dp),
+                                    tint = MaterialTheme.colorScheme.onTertiaryContainer
                                 )
                                 Text(
-                                    text       = "Grupal",
-                                    style      = MaterialTheme.typography.labelSmall,
-                                    color      = MaterialTheme.colorScheme.tertiary,
-                                    fontWeight = FontWeight.SemiBold
+                                    text = "Grupal",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer
                                 )
                             }
                         }
                     }
                 }
 
-                // Categoría
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier          = Modifier.padding(top = 2.dp)
+                // Estado (Pill Activo / Inactivo)
+                Surface(
+                    shape = RoundedCornerShape(50),
+                    color = if (servicio.estado)
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                    else
+                        MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
                 ) {
-                    Icon(
-                        Icons.Default.Category, null,
-                        modifier = Modifier.size(11.dp),
-                        tint     = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(Modifier.width(3.dp))
-                    Text(
-                        text  = servicio.nombreCategoria,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                // Duración y precio
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier              = Modifier.padding(top = 4.dp)
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Default.Timer, null,
-                            modifier = Modifier.size(11.dp),
-                            tint     = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(Modifier.width(3.dp))
-                        Text(
-                            text  = "${servicio.duracionMinutos} min",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Default.AttachMoney, null,
-                            modifier = Modifier.size(11.dp),
-                            tint     = MaterialTheme.colorScheme.primary
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .background(
+                                    color = if (servicio.estado)
+                                        MaterialTheme.colorScheme.primary
+                                    else
+                                        MaterialTheme.colorScheme.outline,
+                                    shape = RoundedCornerShape(50)
+                                )
                         )
                         Text(
-                            text       = "%.0f".format(servicio.precioBase),
-                            style      = MaterialTheme.typography.bodySmall,
-                            fontWeight = FontWeight.SemiBold,
-                            color      = MaterialTheme.colorScheme.primary
+                            text = if (servicio.estado) "Activo" else "Inactivo",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Medium,
+                            color = if (servicio.estado)
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
             }
 
-            Spacer(Modifier.width(8.dp))
-
-            // Acciones
-            Column(
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+            // ── Fila inferior: Botones de Acción ──────────────────────────────
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // Indicador de estado con punto de color
-                Row(
-                    verticalAlignment     = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Surface(
-                        shape  = RoundedCornerShape(50),
-                        color  = if (servicio.estado)
-                            MaterialTheme.colorScheme.primary
-                        else
-                            MaterialTheme.colorScheme.outline,
-                        modifier = Modifier.size(7.dp)
-                    ) {}
-                    Text(
-                        text  = if (servicio.estado) "Activa" else "Inactiva",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = if (servicio.estado)
-                            MaterialTheme.colorScheme.primary
-                        else
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                Row(
-                    verticalAlignment      = Alignment.CenterVertically,
-                    horizontalArrangement  = Arrangement.spacedBy(4.dp)
-                ) {
-                    if (servicio.esGrupal) {
-                        IconButton(
-                            onClick  = onVerPreciosRangos,
-                            modifier = Modifier.size(32.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.Groups, "Tarifas por persona",
-                                modifier = Modifier.size(20.dp),
-                                tint     = MaterialTheme.colorScheme.tertiary
-                            )
-                        }
-                    }
-
-                    IconButton(
-                        onClick  = onEditar,
-                        modifier = Modifier.size(32.dp)
+                if (servicio.esGrupal) {
+                    TextButton(
+                        onClick = onVerPreciosRangos,
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
                     ) {
                         Icon(
-                            Icons.Default.Edit, "Editar",
-                            modifier = Modifier.size(18.dp),
-                            tint     = MaterialTheme.colorScheme.onSurfaceVariant
+                            imageVector = Icons.Default.Groups,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.tertiary
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            text = "Tarifas por persona",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.tertiary,
+                            fontWeight = FontWeight.SemiBold
                         )
                     }
+                    Spacer(Modifier.width(8.dp))
+                }
 
-                    Switch(
-                        checked         = servicio.estado,
-                        onCheckedChange = { onToggle() },
-                        modifier        = Modifier.scale(0.8f)
+                OutlinedButton(
+                    onClick = onEditar,
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        text = "Editar",
+                        style = MaterialTheme.typography.labelMedium
                     )
                 }
             }
