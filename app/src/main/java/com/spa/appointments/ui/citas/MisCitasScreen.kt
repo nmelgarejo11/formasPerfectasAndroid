@@ -29,15 +29,21 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.spa.appointments.R
 import com.spa.appointments.domain.model.Cita
+import com.spa.appointments.domain.model.Cliente
 import com.spa.appointments.domain.model.EstadoCita
 import com.spa.appointments.domain.model.MetodoPago
 import com.spa.appointments.domain.model.MetodoPagoDetalle
 import com.spa.appointments.domain.model.Profesional
 import com.spa.appointments.domain.model.ServicioCita
+import com.spa.appointments.domain.model.SlotDisponible
+import com.spa.appointments.ui.citas.components.AsignarCitaGrupalClienteDialog
+import com.spa.appointments.ui.citas.components.CalendarioDiaView
+import com.spa.appointments.ui.citas.components.ReagendarCitaDirectoDialog
 import com.spa.appointments.ui.theme.AppDynamicTheme
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
+import java.time.LocalDate
 import java.util.Calendar
 import java.util.TimeZone
 
@@ -50,13 +56,18 @@ fun MisCitasScreen(
     onVerReagendamientos: () -> Unit,
     vm: MisCitasViewModel = hiltViewModel()
 ) {
-    val uiState       by vm.uiState.collectAsState()
-    val accionState   by vm.accionState.collectAsState()
-    val metodosPago   by vm.metodosPago.collectAsState()
-    val filtros       by vm.filtros.collectAsState()
-    val estados       by vm.estados.collectAsState()
-    val showFiltros   by vm.mostrarFiltros.collectAsState()
-    val profesionales by vm.profesionales.collectAsState()
+    val uiState             by vm.uiState.collectAsState()
+    val accionState         by vm.accionState.collectAsState()
+    val metodosPago         by vm.metodosPago.collectAsState()
+    val filtros             by vm.filtros.collectAsState()
+    val estados             by vm.estados.collectAsState()
+    val showFiltros         by vm.mostrarFiltros.collectAsState()
+    val profesionales       by vm.profesionales.collectAsState()
+    val modoVista           by vm.modoVista.collectAsState()
+    val fechaCalendario     by vm.fechaCalendario.collectAsState()
+    val slotsDisponibles    by vm.slotsDisponibles.collectAsState()
+    val cargandoSlots       by vm.cargandoSlots.collectAsState()
+    val clientesEncontrados by vm.clientesEncontrados.collectAsState()
     val context = LocalContext.current
 
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -69,27 +80,36 @@ fun MisCitasScreen(
     }
 
     MisCitasContent(
-        uiState               = uiState,
-        accionState           = accionState,
-        metodosPago           = metodosPago,
-        filtros               = filtros,
-        estados               = estados,
-        showFiltros           = showFiltros,
-        profesionales         = profesionales,
-        onBack                = onBack,
-        onVerHistorial        = onVerHistorial,
-        onVerReagendamientos  = onVerReagendamientos,
-        onCargar              = { vm.cargar() },
-        onLimpiarFiltros      = { vm.limpiarFiltros() },
-        onToggleFiltros       = { vm.toggleFiltros() },
-        onAplicarFiltros      = { vm.aplicarFiltros(it) },
-        onCancelarCita        = { vm.cancelarCita(it) },
-        onReagendarCita       = { id, motivo -> vm.reagendarCita(id, motivo) },
-        onFinalizarCita       = { idCita, idMetodo, idDetalle -> vm.finalizarCita(idCita, idMetodo, idDetalle) },
-        onAsignarCitaGrupal   = { idCita, ids, inicio, fin -> vm.asignarCitaGrupal(idCita, ids, inicio, fin) },
-        onWhatsApp            = { idCita -> vm.abrirWhatsApp(idCita, context) },
-        onResetAccion         = { vm.resetAccion() },
-        onCargarProfesionales = { sedeId -> vm.cargarProfesionales(sedeId) }
+        uiState                   = uiState,
+        accionState               = accionState,
+        metodosPago               = metodosPago,
+        filtros                   = filtros,
+        estados                   = estados,
+        showFiltros               = showFiltros,
+        profesionales             = profesionales,
+        modoVista                 = modoVista,
+        fechaCalendario           = fechaCalendario,
+        slotsDisponibles          = slotsDisponibles,
+        cargandoSlots             = cargandoSlots,
+        clientesEncontrados       = clientesEncontrados,
+        onBack                    = onBack,
+        onVerHistorial            = onVerHistorial,
+        onVerReagendamientos      = onVerReagendamientos,
+        onCargar                  = { vm.cargar() },
+        onLimpiarFiltros          = { vm.limpiarFiltros() },
+        onToggleFiltros           = { vm.toggleFiltros() },
+        onAplicarFiltros          = { vm.aplicarFiltros(it) },
+        onToggleModoVista         = { vm.toggleModoVista() },
+        onFechaCalendarioChange   = { vm.setFechaCalendario(it) },
+        onCancelarCita            = { vm.cancelarCita(it) },
+        onReagendarCitaDirecto    = { id, idProf, ini, fin -> vm.reagendarCitaDirecto(id, idProf, ini, fin) },
+        onFinalizarCita           = { idCita, idMetodo, idDetalle -> vm.finalizarCita(idCita, idMetodo, idDetalle) },
+        onAsignarCitaGrupal       = { idCita, ids, ini, fin -> vm.asignarCitaGrupal(idCita, ids, ini, fin) },
+        onCargarDisponibilidad    = { idProf, idSede, fecha, duracion -> vm.cargarDisponibilidad(idProf, idSede, fecha, duracion) },
+        onBuscarClientes          = { query -> vm.buscarClientes(query) },
+        onWhatsApp                = { idCita -> vm.abrirWhatsApp(idCita, context) },
+        onResetAccion             = { vm.resetAccion() },
+        onCargarProfesionales     = { sedeId -> vm.cargarProfesionales(sedeId) }
     )
 }
 
@@ -98,36 +118,45 @@ fun MisCitasScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MisCitasContent(
-    uiState:               MisCitasUiState,
-    accionState:           AccionUiState,
-    metodosPago:           List<MetodoPago>,
-    filtros:               FiltrosMisCitas,
-    estados:               List<EstadoCita>,
-    showFiltros:           Boolean,
-    profesionales:         List<Profesional>,
-    onBack:                () -> Unit,
-    onVerHistorial:        () -> Unit,
-    onVerReagendamientos:  () -> Unit,
-    onCargar:              () -> Unit,
-    onLimpiarFiltros:      () -> Unit,
-    onToggleFiltros:       () -> Unit,
-    onAplicarFiltros:      (FiltrosMisCitas) -> Unit,
-    onCancelarCita:        (Int) -> Unit,
-    onReagendarCita:       (Int, String?) -> Unit,
-    onFinalizarCita:       (Int, Int, Int?) -> Unit,
-    onAsignarCitaGrupal:   (Int, List<Int>?, String?, String?) -> Unit,
-    onWhatsApp:            (Int) -> Unit,
-    onResetAccion:         () -> Unit,
-    onCargarProfesionales: (Int) -> Unit
+    uiState:                   MisCitasUiState,
+    accionState:               AccionUiState,
+    metodosPago:               List<MetodoPago>,
+    filtros:                   FiltrosMisCitas,
+    estados:                   List<EstadoCita>,
+    showFiltros:               Boolean,
+    profesionales:             List<Profesional>,
+    modoVista:                 ModoVistaCitas,
+    fechaCalendario:           LocalDate,
+    slotsDisponibles:          List<SlotDisponible>,
+    cargandoSlots:             Boolean,
+    clientesEncontrados:       List<Cliente>,
+    onBack:                    () -> Unit,
+    onVerHistorial:            () -> Unit,
+    onVerReagendamientos:      () -> Unit,
+    onCargar:                  () -> Unit,
+    onLimpiarFiltros:          () -> Unit,
+    onToggleFiltros:           () -> Unit,
+    onAplicarFiltros:          (FiltrosMisCitas) -> Unit,
+    onToggleModoVista:         () -> Unit,
+    onFechaCalendarioChange:   (LocalDate) -> Unit,
+    onCancelarCita:            (Int) -> Unit,
+    onReagendarCitaDirecto:    (idCita: Int, idProfesional: Int, inicioIso: String, finIso: String) -> Unit,
+    onFinalizarCita:           (Int, Int, Int?) -> Unit,
+    onAsignarCitaGrupal:       (idCita: Int, idsProfesionales: List<Int>?, fechaInicio: String?, fechaFin: String?) -> Unit,
+    onCargarDisponibilidad:    (idProfesional: Int, idSede: Int, fecha: String, duracion: Int) -> Unit,
+    onBuscarClientes:          (String) -> Unit,
+    onWhatsApp:                (Int) -> Unit,
+    onResetAccion:             () -> Unit,
+    onCargarProfesionales:     (Int) -> Unit
 ) {
     var filtrosTemp by remember { mutableStateOf(FiltrosMisCitas()) }
 
-    var citaAccion       by remember { mutableStateOf<Cita?>(null) }
-    var mostrarCancelar  by remember { mutableStateOf(false) }
-    var mostrarReagendar by remember { mutableStateOf(false) }
-    var mostrarFinalizar by remember { mutableStateOf(false) }
-    var mostrarAsignar   by remember { mutableStateOf(false) }
-    var motivoReagendar  by remember { mutableStateOf("") }
+    var citaAccion           by remember { mutableStateOf<Cita?>(null) }
+    var mostrarCancelar      by remember { mutableStateOf(false) }
+    var mostrarReagendar     by remember { mutableStateOf(false) }
+    var mostrarFinalizar     by remember { mutableStateOf(false) }
+    var mostrarAsignar       by remember { mutableStateOf(false) }
+    var mostrarDetalleCita   by remember { mutableStateOf(false) }
 
     val snackbarHost = remember { SnackbarHostState() }
     val totalCitas   = (uiState as? MisCitasUiState.Success)?.citas?.size
@@ -226,92 +255,19 @@ fun MisCitasContent(
         )
     }
 
-    // ── Diálogo: Reagendar ───────────────────────────────────────────────────
+    // ── Diálogo: Reagendar Directo (Punto 2) ─────────────────────────
     if (mostrarReagendar && citaAccion != null) {
-        AlertDialog(
-            onDismissRequest = { mostrarReagendar = false },
-            shape            = RoundedCornerShape(20.dp),
-            containerColor   = MaterialTheme.colorScheme.surface,
-            icon = {
-                Box(
-                    modifier         = Modifier
-                        .size(56.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primaryContainer),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        Icons.Default.EditCalendar, null,
-                        tint     = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.size(28.dp)
-                    )
-                }
+        ReagendarCitaDirectoDialog(
+            cita = citaAccion!!,
+            profesionales = profesionales,
+            cargandoSlots = cargandoSlots,
+            slotsDisponibles = slotsDisponibles,
+            onCargarDisponibilidad = onCargarDisponibilidad,
+            onConfirmarReagendamiento = { idCita, idProf, iniIso, finIso ->
+                mostrarReagendar = false
+                onReagendarCitaDirecto(idCita, idProf, iniIso, finIso)
             },
-            title = {
-                Text(
-                    "Solicitar reagendamiento",
-                    fontWeight = FontWeight.Bold,
-                    textAlign  = TextAlign.Center,
-                    modifier   = Modifier.fillMaxWidth()
-                )
-            },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Surface(
-                        shape = RoundedCornerShape(10.dp),
-                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f)
-                    ) {
-                        Row(
-                            modifier              = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                            verticalAlignment     = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.Info, null,
-                                modifier = Modifier.size(14.dp),
-                                tint     = MaterialTheme.colorScheme.onSecondaryContainer
-                            )
-                            Text(
-                                text  = "Tu solicitud será revisada por el negocio.",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer
-                            )
-                        }
-                    }
-                    OutlinedTextField(
-                        value         = motivoReagendar,
-                        onValueChange = { motivoReagendar = it },
-                        label         = { Text("Motivo (opcional)") },
-                        placeholder   = { Text("Ej: Tengo un compromiso…") },
-                        modifier      = Modifier.fillMaxWidth(),
-                        shape         = RoundedCornerShape(12.dp),
-                        minLines      = 2,
-                        maxLines      = 3
-                    )
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick  = {
-                        mostrarReagendar = false
-                        onReagendarCita(citaAccion!!.id, motivoReagendar.ifBlank { null })
-                        motivoReagendar = ""
-                    },
-                    shape    = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(Icons.Default.Send, null, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text("Enviar solicitud", fontWeight = FontWeight.SemiBold)
-                }
-            },
-            dismissButton = {
-                OutlinedButton(
-                    onClick  = { mostrarReagendar = false; motivoReagendar = "" },
-                    shape    = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text("Cancelar") }
-            }
+            onDismiss = { mostrarReagendar = false }
         )
     }
 
@@ -333,17 +289,71 @@ fun MisCitasContent(
         )
     }
 
-    // ── Diálogo: Asignar Horario/Profesional Grupal ─────────────────────────
+    // ── Diálogo: Asignar Horario/Profesional Grupal con Cliente Existente (Punto 3) ──
     if (mostrarAsignar && citaAccion != null) {
-        AsignarCitaGrupalDialog(
-            cita                  = citaAccion!!,
-            profesionales         = profesionales,
-            onCargarProfesionales = onCargarProfesionales,
-            onConfirm             = { ids, fechaInicio, fechaFin ->
+        AsignarCitaGrupalClienteDialog(
+            cita = citaAccion!!,
+            clientesDisponibles = clientesEncontrados,
+            profesionales = profesionales,
+            onBuscarCliente = onBuscarClientes,
+            onConfirmar = { idCita, idCliente, cantidadPersonas, idsProfesionales ->
                 mostrarAsignar = false
-                onAsignarCitaGrupal(citaAccion!!.id, ids, fechaInicio, fechaFin)
+                onAsignarCitaGrupal(idCita, idsProfesionales, null, null)
             },
-            onDismiss             = { mostrarAsignar = false }
+            onDismiss = { mostrarAsignar = false }
+        )
+    }
+
+    // ── Pop-Up Detalle Cita (Desde vista Calendario) ─────────────────────────
+    if (mostrarDetalleCita && citaAccion != null) {
+        val c = citaAccion!!
+        AlertDialog(
+            onDismissRequest = { mostrarDetalleCita = false },
+            shape = RoundedCornerShape(20.dp),
+            title = {
+                Text(
+                    text = c.servicios ?: "Detalle de Cita",
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("• Cliente: ${c.nombreCliente ?: "Cliente General"}", style = MaterialTheme.typography.bodyMedium)
+                    Text("• Profesional: ${c.profesional}", style = MaterialTheme.typography.bodyMedium)
+                    Text("• Sede: ${c.sede}", style = MaterialTheme.typography.bodyMedium)
+                    Text("• Estado: ${c.estado}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                    if (!c.notas.isNullOrBlank()) {
+                        Text("• Notas: ${c.notas}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            },
+            confirmButton = {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Button(
+                        onClick = { mostrarDetalleCita = false; onCargarProfesionales(c.idSede); mostrarReagendar = true },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Reagendar")
+                    }
+                    Button(
+                        onClick = { mostrarDetalleCita = false; mostrarFinalizar = true },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Finalizar")
+                    }
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = { mostrarDetalleCita = false },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Cerrar")
+                }
+            }
         )
     }
 
@@ -375,6 +385,14 @@ fun MisCitasContent(
                     }
                 },
                 actions = {
+                    // Toggle entre Vista Lista y Vista Calendario (Punto 1)
+                    IconButton(onClick = onToggleModoVista) {
+                        Icon(
+                            imageVector = if (modoVista == ModoVistaCitas.CALENDARIO_DIA) Icons.Default.FormatListBulleted else Icons.Default.CalendarToday,
+                            contentDescription = if (modoVista == ModoVistaCitas.CALENDARIO_DIA) "Vista Lista" else "Vista Calendario"
+                        )
+                    }
+
                     if (filtros.activo) {
                         IconButton(onClick = onLimpiarFiltros) {
                             BadgedBox(badge = { Badge() }) {
@@ -522,40 +540,55 @@ fun MisCitasContent(
                     }
 
                     is MisCitasUiState.Success -> {
-                        LazyColumn(
-                            contentPadding = PaddingValues(
-                                horizontal = 16.dp,
-                                vertical = 12.dp
-                            ),
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            items(
-                                state.citas,
-                                key = { it.id }
-                            ) { cita ->
-                                CitaCard(
-                                    cita = cita,
-                                    onCancelar = {
-                                        citaAccion = cita
-                                        mostrarCancelar = true
-                                    },
-                                    onReagendar = {
-                                        citaAccion = cita
-                                        mostrarReagendar = true
-                                    },
-                                    onFinalizar = {
-                                        citaAccion = cita
-                                        mostrarFinalizar = true
-                                    },
-                                    onAsignar = {
-                                        citaAccion = cita
-                                        mostrarAsignar = true
-                                    },
-                                    onWhatsApp = {
-                                        onWhatsApp(cita.id)
-                                    },
-                                    accionCargando = accionState is AccionUiState.Loading
-                                )
+                        if (modoVista == ModoVistaCitas.CALENDARIO_DIA) {
+                            CalendarioDiaView(
+                                citas = state.citas,
+                                fechaSeleccionada = fechaCalendario,
+                                onFechaChange = onFechaCalendarioChange,
+                                onCitaClick = { cita ->
+                                    citaAccion = cita
+                                    mostrarDetalleCita = true
+                                }
+                            )
+                        } else {
+                            LazyColumn(
+                                contentPadding = PaddingValues(
+                                    horizontal = 16.dp,
+                                    vertical = 12.dp
+                                ),
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                items(
+                                    state.citas,
+                                    key = { it.id }
+                                ) { cita ->
+                                    CitaCard(
+                                        cita = cita,
+                                        onCancelar = {
+                                            citaAccion = cita
+                                            mostrarCancelar = true
+                                        },
+                                        onReagendar = {
+                                            citaAccion = cita
+                                            onCargarProfesionales(cita.idSede)
+                                            mostrarReagendar = true
+                                        },
+                                        onFinalizar = {
+                                            citaAccion = cita
+                                            mostrarFinalizar = true
+                                        },
+                                        onAsignar = {
+                                            citaAccion = cita
+                                            onCargarProfesionales(cita.idSede)
+                                            onBuscarClientes("")
+                                            mostrarAsignar = true
+                                        },
+                                        onWhatsApp = {
+                                            onWhatsApp(cita.id)
+                                        },
+                                        accionCargando = accionState is AccionUiState.Loading
+                                    )
+                                }
                             }
                         }
                     }
@@ -1620,27 +1653,36 @@ private object MisCitasPreviewData {
 private fun MisCitasPreviewLoading() {
     AppDynamicTheme {
         MisCitasContent(
-            uiState               = MisCitasUiState.Loading,
-            accionState           = AccionUiState.Idle,
-            metodosPago           = emptyList(),
-            filtros               = FiltrosMisCitas(),
-            estados               = emptyList(),
-            showFiltros           = false,
-            profesionales         = emptyList(),
-            onBack                = {},
-            onVerHistorial        = {},
-            onVerReagendamientos  = {},
-            onCargar              = {},
-            onLimpiarFiltros      = {},
-            onToggleFiltros       = {},
-            onAplicarFiltros      = {},
-            onCancelarCita        = {},
-            onReagendarCita       = { _, _ -> },
-            onFinalizarCita       = { _, _, _ -> },
-            onAsignarCitaGrupal   = { _, _, _, _ -> },
-            onWhatsApp            = {},
-            onResetAccion         = {},
-            onCargarProfesionales = {}
+            uiState                   = MisCitasUiState.Loading,
+            accionState               = AccionUiState.Idle,
+            metodosPago               = emptyList(),
+            filtros                   = FiltrosMisCitas(),
+            estados                   = emptyList(),
+            showFiltros               = false,
+            profesionales             = emptyList(),
+            modoVista                 = ModoVistaCitas.LISTA,
+            fechaCalendario           = LocalDate.now(),
+            slotsDisponibles          = emptyList(),
+            cargandoSlots             = false,
+            clientesEncontrados       = emptyList(),
+            onBack                    = {},
+            onVerHistorial            = {},
+            onVerReagendamientos      = {},
+            onCargar                  = {},
+            onLimpiarFiltros          = {},
+            onToggleFiltros           = {},
+            onAplicarFiltros          = {},
+            onToggleModoVista         = {},
+            onFechaCalendarioChange   = {},
+            onCancelarCita            = {},
+            onReagendarCitaDirecto    = { _, _, _, _ -> },
+            onFinalizarCita           = { _, _, _ -> },
+            onAsignarCitaGrupal       = { _, _, _, _ -> },
+            onCargarDisponibilidad    = { _, _, _, _ -> },
+            onBuscarClientes          = {},
+            onWhatsApp                = {},
+            onResetAccion             = {},
+            onCargarProfesionales     = {}
         )
     }
 }
@@ -1650,27 +1692,36 @@ private fun MisCitasPreviewLoading() {
 private fun MisCitasPreviewEmptySinFiltros() {
     AppDynamicTheme {
         MisCitasContent(
-            uiState               = MisCitasUiState.Empty,
-            accionState           = AccionUiState.Idle,
-            metodosPago           = emptyList(),
-            filtros               = FiltrosMisCitas(esFiltroManual = false),
-            estados               = emptyList(),
-            showFiltros           = false,
-            profesionales         = emptyList(),
-            onBack                = {},
-            onVerHistorial        = {},
-            onVerReagendamientos  = {},
-            onCargar              = {},
-            onLimpiarFiltros      = {},
-            onToggleFiltros       = {},
-            onAplicarFiltros      = {},
-            onCancelarCita        = {},
-            onReagendarCita       = { _, _ -> },
-            onFinalizarCita       = { _, _, _ -> },
-            onAsignarCitaGrupal   = { _, _, _, _ -> },
-            onWhatsApp            = {},
-            onResetAccion         = {},
-            onCargarProfesionales = {}
+            uiState                   = MisCitasUiState.Empty,
+            accionState               = AccionUiState.Idle,
+            metodosPago               = emptyList(),
+            filtros                   = FiltrosMisCitas(esFiltroManual = false),
+            estados                   = emptyList(),
+            showFiltros               = false,
+            profesionales             = emptyList(),
+            modoVista                 = ModoVistaCitas.LISTA,
+            fechaCalendario           = LocalDate.now(),
+            slotsDisponibles          = emptyList(),
+            cargandoSlots             = false,
+            clientesEncontrados       = emptyList(),
+            onBack                    = {},
+            onVerHistorial            = {},
+            onVerReagendamientos      = {},
+            onCargar                  = {},
+            onLimpiarFiltros          = {},
+            onToggleFiltros           = {},
+            onAplicarFiltros          = {},
+            onToggleModoVista         = {},
+            onFechaCalendarioChange   = {},
+            onCancelarCita            = {},
+            onReagendarCitaDirecto    = { _, _, _, _ -> },
+            onFinalizarCita           = { _, _, _ -> },
+            onAsignarCitaGrupal       = { _, _, _, _ -> },
+            onCargarDisponibilidad    = { _, _, _, _ -> },
+            onBuscarClientes          = {},
+            onWhatsApp                = {},
+            onResetAccion             = {},
+            onCargarProfesionales     = {}
         )
     }
 }
@@ -1680,27 +1731,36 @@ private fun MisCitasPreviewEmptySinFiltros() {
 private fun MisCitasPreviewEmptyConFiltros() {
     AppDynamicTheme {
         MisCitasContent(
-            uiState               = MisCitasUiState.Empty,
-            accionState           = AccionUiState.Idle,
-            metodosPago           = emptyList(),
-            filtros               = FiltrosMisCitas(esFiltroManual = true, nombreCliente = "Ana"),
-            estados               = emptyList(),
-            showFiltros           = false,
-            profesionales         = emptyList(),
-            onBack                = {},
-            onVerHistorial        = {},
-            onVerReagendamientos  = {},
-            onCargar              = {},
-            onLimpiarFiltros      = {},
-            onToggleFiltros       = {},
-            onAplicarFiltros      = {},
-            onCancelarCita        = {},
-            onReagendarCita       = { _, _ -> },
-            onFinalizarCita       = { _, _, _ -> },
-            onAsignarCitaGrupal   = { _, _, _, _ -> },
-            onWhatsApp            = {},
-            onResetAccion         = {},
-            onCargarProfesionales = {}
+            uiState                   = MisCitasUiState.Empty,
+            accionState               = AccionUiState.Idle,
+            metodosPago               = emptyList(),
+            filtros                   = FiltrosMisCitas(esFiltroManual = true, nombreCliente = "Ana"),
+            estados                   = emptyList(),
+            showFiltros               = false,
+            profesionales             = emptyList(),
+            modoVista                 = ModoVistaCitas.LISTA,
+            fechaCalendario           = LocalDate.now(),
+            slotsDisponibles          = emptyList(),
+            cargandoSlots             = false,
+            clientesEncontrados       = emptyList(),
+            onBack                    = {},
+            onVerHistorial            = {},
+            onVerReagendamientos      = {},
+            onCargar                  = {},
+            onLimpiarFiltros          = {},
+            onToggleFiltros           = {},
+            onAplicarFiltros          = {},
+            onToggleModoVista         = {},
+            onFechaCalendarioChange   = {},
+            onCancelarCita            = {},
+            onReagendarCitaDirecto    = { _, _, _, _ -> },
+            onFinalizarCita           = { _, _, _ -> },
+            onAsignarCitaGrupal       = { _, _, _, _ -> },
+            onCargarDisponibilidad    = { _, _, _, _ -> },
+            onBuscarClientes          = {},
+            onWhatsApp                = {},
+            onResetAccion             = {},
+            onCargarProfesionales     = {}
         )
     }
 }
@@ -1710,27 +1770,36 @@ private fun MisCitasPreviewEmptyConFiltros() {
 private fun MisCitasPreviewError() {
     AppDynamicTheme {
         MisCitasContent(
-            uiState               = MisCitasUiState.Error("No se pudo establecer conexión con el servidor. Por favor reintenta."),
-            accionState           = AccionUiState.Idle,
-            metodosPago           = emptyList(),
-            filtros               = FiltrosMisCitas(),
-            estados               = emptyList(),
-            showFiltros           = false,
-            profesionales         = emptyList(),
-            onBack                = {},
-            onVerHistorial        = {},
-            onVerReagendamientos  = {},
-            onCargar              = {},
-            onLimpiarFiltros      = {},
-            onToggleFiltros       = {},
-            onAplicarFiltros      = {},
-            onCancelarCita        = {},
-            onReagendarCita       = { _, _ -> },
-            onFinalizarCita       = { _, _, _ -> },
-            onAsignarCitaGrupal   = { _, _, _, _ -> },
-            onWhatsApp            = {},
-            onResetAccion         = {},
-            onCargarProfesionales = {}
+            uiState                   = MisCitasUiState.Error("No se pudo establecer conexión con el servidor. Por favor reintenta."),
+            accionState               = AccionUiState.Idle,
+            metodosPago               = emptyList(),
+            filtros                   = FiltrosMisCitas(),
+            estados                   = emptyList(),
+            showFiltros               = false,
+            profesionales             = emptyList(),
+            modoVista                 = ModoVistaCitas.LISTA,
+            fechaCalendario           = LocalDate.now(),
+            slotsDisponibles          = emptyList(),
+            cargandoSlots             = false,
+            clientesEncontrados       = emptyList(),
+            onBack                    = {},
+            onVerHistorial            = {},
+            onVerReagendamientos      = {},
+            onCargar                  = {},
+            onLimpiarFiltros          = {},
+            onToggleFiltros           = {},
+            onAplicarFiltros          = {},
+            onToggleModoVista         = {},
+            onFechaCalendarioChange   = {},
+            onCancelarCita            = {},
+            onReagendarCitaDirecto    = { _, _, _, _ -> },
+            onFinalizarCita           = { _, _, _ -> },
+            onAsignarCitaGrupal       = { _, _, _, _ -> },
+            onCargarDisponibilidad    = { _, _, _, _ -> },
+            onBuscarClientes          = {},
+            onWhatsApp                = {},
+            onResetAccion             = {},
+            onCargarProfesionales     = {}
         )
     }
 }
@@ -1740,27 +1809,36 @@ private fun MisCitasPreviewError() {
 private fun MisCitasPreviewSuccess() {
     AppDynamicTheme {
         MisCitasContent(
-            uiState               = MisCitasUiState.Success(MisCitasPreviewData.mockCitas),
-            accionState           = AccionUiState.Idle,
-            metodosPago           = MisCitasPreviewData.mockMetodosPago,
-            filtros               = FiltrosMisCitas(),
-            estados               = MisCitasPreviewData.mockEstados,
-            showFiltros           = false,
-            profesionales         = emptyList(),
-            onBack                = {},
-            onVerHistorial        = {},
-            onVerReagendamientos  = {},
-            onCargar              = {},
-            onLimpiarFiltros      = {},
-            onToggleFiltros       = {},
-            onAplicarFiltros      = {},
-            onCancelarCita        = {},
-            onReagendarCita       = { _, _ -> },
-            onFinalizarCita       = { _, _, _ -> },
-            onAsignarCitaGrupal   = { _, _, _, _ -> },
-            onWhatsApp            = {},
-            onResetAccion         = {},
-            onCargarProfesionales = {}
+            uiState                   = MisCitasUiState.Success(MisCitasPreviewData.mockCitas),
+            accionState               = AccionUiState.Idle,
+            metodosPago               = MisCitasPreviewData.mockMetodosPago,
+            filtros                   = FiltrosMisCitas(),
+            estados                   = MisCitasPreviewData.mockEstados,
+            showFiltros               = false,
+            profesionales             = emptyList(),
+            modoVista                 = ModoVistaCitas.LISTA,
+            fechaCalendario           = LocalDate.now(),
+            slotsDisponibles          = emptyList(),
+            cargandoSlots             = false,
+            clientesEncontrados       = emptyList(),
+            onBack                    = {},
+            onVerHistorial            = {},
+            onVerReagendamientos      = {},
+            onCargar                  = {},
+            onLimpiarFiltros          = {},
+            onToggleFiltros           = {},
+            onAplicarFiltros          = {},
+            onToggleModoVista         = {},
+            onFechaCalendarioChange   = {},
+            onCancelarCita            = {},
+            onReagendarCitaDirecto    = { _, _, _, _ -> },
+            onFinalizarCita           = { _, _, _ -> },
+            onAsignarCitaGrupal       = { _, _, _, _ -> },
+            onCargarDisponibilidad    = { _, _, _, _ -> },
+            onBuscarClientes          = {},
+            onWhatsApp                = {},
+            onResetAccion             = {},
+            onCargarProfesionales     = {}
         )
     }
 }

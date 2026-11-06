@@ -76,6 +76,12 @@ interface ApiService {
     @PUT("Citas/reagendar")
     suspend fun reagendarCita(@Body request: AccionCitaReagendarRequest): AccionCitaResponse
 
+    @PUT("Citas/{id}/reagendar-directo")
+    suspend fun reagendarCitaDirecto(
+        @Path("id") idCita: Int,
+        @Body request: ReagendarCitaDirectoRequest
+    ): AccionCitaResponse
+
     @GET("Citas/estados")
     suspend fun getEstadosCita(
         @Query("grupo") grupo: String? = null

@@ -3,16 +3,24 @@ package com.spa.appointments.ui.citas
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.spa.appointments.data.repository.CitasRepository
+import com.spa.appointments.data.repository.ClienteRepository
 import com.spa.appointments.domain.model.AsignarCitaGrupalRequest
 import com.spa.appointments.domain.model.Cita
+import com.spa.appointments.domain.model.Cliente
 import com.spa.appointments.domain.model.EstadoCita
 import com.spa.appointments.domain.model.MetodoPago
 import com.spa.appointments.domain.model.Profesional
+import com.spa.appointments.domain.model.SlotDisponible
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import java.time.LocalDate
+
+enum class ModoVistaCitas {
+    LISTA,
+    CALENDARIO_DIA
+}
 
 sealed class MisCitasUiState {
     object Loading                            : MisCitasUiState()
@@ -35,14 +43,15 @@ data class FiltrosMisCitas(
     val idProfesional : Int?    = null,
     val idEstado      : Int?    = null,
     val nombreEstado  : String? = null,
-    val esFiltroManual: Boolean = false   // ← nuevo campo
+    val esFiltroManual: Boolean = false
 ) {
     val activo: Boolean get() = esFiltroManual
 }
 
 @HiltViewModel
 class MisCitasViewModel @Inject constructor(
-    private val repo: CitasRepository
+    private val repo: CitasRepository,
+    private val clienteRepo: ClienteRepository
 ) : ViewModel() {
 
     private val _uiState      = MutableStateFlow<MisCitasUiState>(MisCitasUiState.Loading)
@@ -66,6 +75,24 @@ class MisCitasViewModel @Inject constructor(
     private val _profesionales = MutableStateFlow<List<Profesional>>(emptyList())
     val profesionales: StateFlow<List<Profesional>> = _profesionales.asStateFlow()
 
+    // ── Lote 2: Modo de Vista Calendario / Lista ─────────────────────────────
+    private val _modoVista = MutableStateFlow(ModoVistaCitas.LISTA)
+    val modoVista: StateFlow<ModoVistaCitas> = _modoVista.asStateFlow()
+
+    private val _fechaCalendario = MutableStateFlow(LocalDate.now())
+    val fechaCalendario: StateFlow<LocalDate> = _fechaCalendario.asStateFlow()
+
+    // ── Lote 2: Reagendamiento Directo y Disponibilidad ──────────────────────
+    private val _slotsDisponibles = MutableStateFlow<List<SlotDisponible>>(emptyList())
+    val slotsDisponibles: StateFlow<List<SlotDisponible>> = _slotsDisponibles.asStateFlow()
+
+    private val _cargandoSlots = MutableStateFlow(false)
+    val cargandoSlots: StateFlow<Boolean> = _cargandoSlots.asStateFlow()
+
+    // ── Lote 2: Búsqueda de Clientes Existentes para Grupal ─────────────────
+    private val _clientesEncontrados = MutableStateFlow<List<Cliente>>(emptyList())
+    val clientesEncontrados: StateFlow<List<Cliente>> = _clientesEncontrados.asStateFlow()
+
     companion object {
         fun hoyIso(): String = LocalDate.now().toString()
         fun filtroHoy() = FiltrosMisCitas(fechaDesde = hoyIso(), fechaHasta = hoyIso())
@@ -76,6 +103,22 @@ class MisCitasViewModel @Inject constructor(
         cargarMetodosPago()
         _filtros.value = filtroHoy()
         cargar()
+    }
+
+    fun toggleModoVista() {
+        _modoVista.update {
+            if (it == ModoVistaCitas.LISTA) ModoVistaCitas.CALENDARIO_DIA else ModoVistaCitas.LISTA
+        }
+    }
+
+    fun setFechaCalendario(nuevaFecha: LocalDate) {
+        _fechaCalendario.value = nuevaFecha
+        // Si no es un filtro manual estricto, sincronizar el rango para traer citas de la nueva fecha
+        if (!_filtros.value.esFiltroManual) {
+            val fechaIso = nuevaFecha.toString()
+            _filtros.value = FiltrosMisCitas(fechaDesde = fechaIso, fechaHasta = fechaIso)
+            cargar()
+        }
     }
 
     fun cargar() {
@@ -99,8 +142,6 @@ class MisCitasViewModel @Inject constructor(
             }
         }
     }
-
-    private fun hoyIso(): String = LocalDate.now().toString()
 
     private fun cargarEstados() {
         viewModelScope.launch {
@@ -126,6 +167,7 @@ class MisCitasViewModel @Inject constructor(
 
     fun limpiarFiltros() {
         _filtros.value = filtroHoy()
+        _fechaCalendario.value = LocalDate.now()
         cargar()
     }
 
@@ -144,17 +186,52 @@ class MisCitasViewModel @Inject constructor(
         }
     }
 
-    fun reagendarCita(idCita: Int, motivo: String?) {
+    // Reagendamiento Directo (Sin generar solicitud)
+    fun reagendarCitaDirecto(
+        idCita: Int,
+        idProfesional: Int,
+        fechaHoraInicio: String,
+        fechaHoraFin: String
+    ) {
         viewModelScope.launch {
             _accionState.value = AccionUiState.Loading
             try {
-                val resp = repo.reagendarCita(idCita, motivo)
-                if (resp.ok) { _accionState.value = AccionUiState.Success(resp.mensaje); cargar() }
-                else           _accionState.value = AccionUiState.Error(resp.mensaje)
+                val resp = repo.reagendarCitaDirecto(idCita, idProfesional, fechaHoraInicio, fechaHoraFin)
+                if (resp.ok) {
+                    _accionState.value = AccionUiState.Success(resp.mensaje)
+                    cargar()
+                } else {
+                    _accionState.value = AccionUiState.Error(resp.mensaje)
+                }
             } catch (e: Exception) {
                 _accionState.value = AccionUiState.Error(
-                    e.localizedMessage ?: "Error al solicitar reagendamiento"
+                    e.localizedMessage ?: "Error al reagendar la cita"
                 )
+            }
+        }
+    }
+
+    fun cargarDisponibilidad(idProfesional: Int, idSede: Int, fecha: String, duracion: Int) {
+        viewModelScope.launch {
+            _cargandoSlots.value = true
+            try {
+                val slots = repo.getDisponibilidad(idProfesional, idSede, fecha, duracion)
+                _slotsDisponibles.value = slots
+            } catch (e: Exception) {
+                _slotsDisponibles.value = emptyList()
+            } finally {
+                _cargandoSlots.value = false
+            }
+        }
+    }
+
+    fun buscarClientes(busqueda: String) {
+        viewModelScope.launch {
+            try {
+                val lista = clienteRepo.buscarClientes(busqueda)
+                _clientesEncontrados.value = lista
+            } catch (e: Exception) {
+                _clientesEncontrados.value = emptyList()
             }
         }
     }
@@ -212,7 +289,6 @@ class MisCitasViewModel @Inject constructor(
             }
         }
     }
-
 
     fun cargarProfesionales(idSede: Int) {
         viewModelScope.launch {

@@ -53,6 +53,16 @@ class CitasRepository @Inject constructor(
     suspend fun reagendarCita(idCita: Int, motivo: String?): AccionCitaResponse =
         api.reagendarCita(AccionCitaReagendarRequest(idCita, motivo))
 
+    suspend fun reagendarCitaDirecto(
+        idCita: Int,
+        idProfesional: Int,
+        fechaHoraInicio: String,
+        fechaHoraFin: String
+    ): AccionCitaResponse = api.reagendarCitaDirecto(
+        idCita,
+        ReagendarCitaDirectoRequest(idProfesional, fechaHoraInicio, fechaHoraFin)
+    )
+
     // data/repository/CitasRepository.kt  (agregar al final de la clase existente)
 
     suspend fun getMetodosPago(): List<MetodoPago> =
