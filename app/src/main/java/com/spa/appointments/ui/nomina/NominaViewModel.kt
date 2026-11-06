@@ -374,16 +374,16 @@ class NominaViewModel @Inject constructor(
             return
         }
 
-        val valor = valorStr.replace(",", ".").toDoubleOrNull()
-        if (valor == null || valor <= 0) {
-            emitirMensaje("El valor debe ser un número mayor a cero.")
-            return
-        }
-
         val requiereDias = concepto.descuentaDiasSueldo
         val dias = diasStr.replace(",", ".").toDoubleOrNull()
         if (requiereDias && (dias == null || dias <= 0)) {
             emitirMensaje("El concepto elegido exige ingresar una cantidad de días mayor a 0.")
+            return
+        }
+
+        val valor = valorStr.replace(",", ".").toDoubleOrNull()
+        if (valor == null || valor <= 0) {
+            emitirMensaje("Debe ingresar un valor numérico mayor a cero.")
             return
         }
 

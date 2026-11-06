@@ -6,6 +6,7 @@ import android.content.Intent
 import android.widget.Toast
 import androidx.core.content.FileProvider
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -669,15 +670,15 @@ fun ContratoNominaCard(
                     CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
                 }
             } else {
-                FlowRow(
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.End),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     OutlinedButton(
                         onClick = onNovedades,
                         shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
+                        modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 44.dp)
                     ) {
                         Icon(
                             Icons.AutoMirrored.Filled.List,
@@ -688,67 +689,72 @@ fun ContratoNominaCard(
                         Text("Novedades")
                     }
 
-                    when (estado) {
-                        is EstadoNominaContrato.SinPreliquidar -> {
-                            Button(
-                                onClick = onPreliquidar,
-                                shape = RoundedCornerShape(10.dp),
-                                modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
-                            ) {
-                                Text(stringResource(R.string.btn_preliquidar), fontWeight = FontWeight.Medium)
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.End),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        when (estado) {
+                            is EstadoNominaContrato.SinPreliquidar -> {
+                                Button(
+                                    onClick = onPreliquidar,
+                                    shape = RoundedCornerShape(10.dp),
+                                    modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 44.dp)
+                                ) {
+                                    Text(stringResource(R.string.btn_preliquidar), fontWeight = FontWeight.Medium)
+                                }
                             }
-                        }
-                        is EstadoNominaContrato.PreliquidadaLista -> {
-                            TextButton(
-                                onClick = onVerDetalle,
-                                modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
-                            ) {
-                                Text(stringResource(R.string.btn_ver_detalle))
+                            is EstadoNominaContrato.PreliquidadaLista -> {
+                                TextButton(
+                                    onClick = onVerDetalle,
+                                    modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 44.dp)
+                                ) {
+                                    Text(stringResource(R.string.btn_ver_detalle))
+                                }
+                                OutlinedButton(
+                                    onClick = onRecalcular,
+                                    shape = RoundedCornerShape(10.dp),
+                                    modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 44.dp)
+                                ) {
+                                    Text(stringResource(R.string.btn_recalcular))
+                                }
+                                Button(
+                                    onClick = onLiquidar,
+                                    shape = RoundedCornerShape(10.dp),
+                                    modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 44.dp)
+                                ) {
+                                    Text(stringResource(R.string.btn_liquidar), fontWeight = FontWeight.Medium)
+                                }
                             }
-                            OutlinedButton(
-                                onClick = onRecalcular,
-                                shape = RoundedCornerShape(10.dp),
-                                modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
-                            ) {
-                                Text(stringResource(R.string.btn_recalcular))
+                            is EstadoNominaContrato.PreliquidacionDesactualizada -> {
+                                Button(
+                                    onClick = onRecalcular,
+                                    shape = RoundedCornerShape(10.dp),
+                                    modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 44.dp)
+                                ) {
+                                    Text(stringResource(R.string.btn_recalcular), fontWeight = FontWeight.Medium)
+                                }
                             }
-                            Button(
-                                onClick = onLiquidar,
-                                shape = RoundedCornerShape(10.dp),
-                                modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
-                            ) {
-                                Text(stringResource(R.string.btn_liquidar), fontWeight = FontWeight.Medium)
-                            }
-                        }
-                        is EstadoNominaContrato.PreliquidacionDesactualizada -> {
-                            Button(
-                                onClick = onRecalcular,
-                                shape = RoundedCornerShape(10.dp),
-                                modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
-                            ) {
-                                Text(stringResource(R.string.btn_recalcular), fontWeight = FontWeight.Medium)
-                            }
-                        }
-                        is EstadoNominaContrato.Liquidada -> {
-                            OutlinedButton(
-                                onClick = onDesprendible,
-                                shape = RoundedCornerShape(10.dp),
-                                modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
-                            ) {
-                                Icon(
-                                    Icons.Default.Download,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(stringResource(R.string.btn_desprendible))
-                            }
-                            TextButton(
-                                onClick = onAnular,
-                                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                                modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
-                            ) {
-                                Text(stringResource(R.string.btn_anular))
+                            is EstadoNominaContrato.Liquidada -> {
+                                OutlinedButton(
+                                    onClick = onDesprendible,
+                                    shape = RoundedCornerShape(10.dp),
+                                    modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 44.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.Download,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(stringResource(R.string.btn_desprendible))
+                                }
+                                TextButton(
+                                    onClick = onAnular,
+                                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                                    modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 44.dp)
+                                ) {
+                                    Text(stringResource(R.string.btn_anular))
+                                }
                             }
                         }
                     }
@@ -1358,6 +1364,7 @@ fun NovedadFormDialog(
     onDismiss: () -> Unit,
     onGuardar: (idConcepto: Int, fecha: String, valor: String, dias: String, obs: String) -> Unit
 ) {
+    val context = LocalContext.current
     val esEdicion = dialogState.novedadEditar != null
 
     var selectedConceptoId by remember { mutableStateOf(dialogState.idConceptoSeleccionado ?: conceptos.firstOrNull()?.id ?: 0) }
@@ -1371,6 +1378,45 @@ fun NovedadFormDialog(
         conceptos.find { it.id == selectedConceptoId }
     }
     val requiereDias = selectedConcepto?.descuentaDiasSueldo == true
+
+    // Parse date limits for DatePickerDialog
+    val fechaInicioMillis = remember(periodo) {
+        try {
+            val datePart = periodo?.fechaInicio?.take(10) ?: return@remember null
+            java.time.LocalDate.parse(datePart).atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli()
+        } catch (_: Exception) { null }
+    }
+
+    val fechaFinMillis = remember(periodo) {
+        try {
+            val datePart = periodo?.fechaFin?.take(10) ?: return@remember null
+            java.time.LocalDate.parse(datePart).atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli()
+        } catch (_: Exception) { null }
+    }
+
+    fun abrirDatePicker() {
+        val fechaActual = try {
+            java.time.LocalDate.parse(fechaNovedad.take(10))
+        } catch (_: Exception) {
+            java.time.LocalDate.now()
+        }
+
+        val dialog = android.app.DatePickerDialog(
+            context,
+            { _, year, month, dayOfMonth ->
+                val fechaSel = java.time.LocalDate.of(year, month + 1, dayOfMonth)
+                fechaNovedad = fechaSel.format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE)
+            },
+            fechaActual.year,
+            fechaActual.monthValue - 1,
+            fechaActual.dayOfMonth
+        )
+
+        fechaInicioMillis?.let { dialog.datePicker.minDate = it }
+        fechaFinMillis?.let { dialog.datePicker.maxDate = it }
+
+        dialog.show()
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1386,6 +1432,7 @@ fun NovedadFormDialog(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+                // Selector de Concepto
                 ExposedDropdownMenuBox(
                     expanded = conceptoMenuExpanded,
                     onExpandedChange = { if (!esEdicion) conceptoMenuExpanded = it },
@@ -1416,15 +1463,27 @@ fun NovedadFormDialog(
                                 text = {
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
-                                        Text(concepto.nombre, fontWeight = FontWeight.Medium)
-                                        Spacer(modifier = Modifier.width(8.dp))
                                         Text(
-                                            if (concepto.tipoConcepto == 1) "Devengado" else "Deducción",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = if (concepto.tipoConcepto == 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                                            text = concepto.nombre,
+                                            fontWeight = FontWeight.Medium,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            modifier = Modifier.weight(1f, fill = false)
                                         )
+                                        Surface(
+                                            shape = RoundedCornerShape(4.dp),
+                                            color = if (concepto.tipoConcepto == 1) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.errorContainer
+                                        ) {
+                                            Text(
+                                                text = if (concepto.tipoConcepto == 1) "Devengado" else "Deducción",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = if (concepto.tipoConcepto == 1) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onErrorContainer,
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                            )
+                                        }
                                     }
                                 },
                                 onClick = {
@@ -1436,26 +1495,34 @@ fun NovedadFormDialog(
                     }
                 }
 
-                OutlinedTextField(
-                    value = fechaNovedad,
-                    onValueChange = { fechaNovedad = it },
-                    label = { Text("Fecha (yyyy-MM-dd)") },
-                    placeholder = { Text("yyyy-MM-dd") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
-                )
+                // Date Picker restricted to period date range
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { abrirDatePicker() }
+                ) {
+                    OutlinedTextField(
+                        value = fechaNovedad,
+                        onValueChange = {},
+                        readOnly = true,
+                        enabled = false,
+                        label = { Text("Fecha de la novedad") },
+                        placeholder = { Text("yyyy-MM-dd") },
+                        trailingIcon = {
+                            Icon(Icons.Default.CalendarToday, contentDescription = "Seleccionar fecha")
+                        },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                            disabledBorderColor = MaterialTheme.colorScheme.outline,
+                            disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        ),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                }
 
-                OutlinedTextField(
-                    value = valor,
-                    onValueChange = { valor = it },
-                    label = { Text("Valor ($)") },
-                    placeholder = { Text("Ej: 150000") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
-                )
-
+                // Field for Días (if concept descontarDiasSueldo == true)
                 if (requiereDias) {
                     OutlinedTextField(
                         value = dias,
@@ -1468,6 +1535,23 @@ fun NovedadFormDialog(
                     )
                 }
 
+                // Field for Valor
+                OutlinedTextField(
+                    value = valor,
+                    onValueChange = { valor = it },
+                    label = { Text("Valor ($)") },
+                    placeholder = { Text("Ej: 150000") },
+                    supportingText = {
+                        if (requiereDias) {
+                            Text("Monto a descontar por la cantidad de días indicados")
+                        }
+                    },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                )
+
+                // Observaciones
                 OutlinedTextField(
                     value = observaciones,
                     onValueChange = { observaciones = it },
