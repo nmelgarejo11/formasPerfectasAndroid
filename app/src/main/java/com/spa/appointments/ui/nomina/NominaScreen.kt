@@ -646,6 +646,42 @@ fun ContratoNominaCard(
         border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
+            // Acciones superiores de PDF (si el contrato está liquidado)
+            if (estado is EstadoNominaContrato.Liquidada) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    FilledTonalIconButton(
+                        onClick = onDesprendible,
+                        enabled = !enAccion,
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.size(34.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Download,
+                            contentDescription = "Descargar PDF",
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(6.dp))
+                    FilledTonalIconButton(
+                        onClick = onCompartirDesprendible,
+                        enabled = !enAccion,
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.size(34.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Share,
+                            contentDescription = "Compartir PDF",
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(6.dp))
+            }
+
             // Header del profesional + Avatar M3 + Badge de estado
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -696,47 +732,6 @@ fun ContratoNominaCard(
 
                 Spacer(modifier = Modifier.width(8.dp))
                 EstadoBadge(estado = estado)
-            }
-
-            if (estado is EstadoNominaContrato.Liquidada) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Desprendible PDF:",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    FilledTonalIconButton(
-                        onClick = onDesprendible,
-                        enabled = !enAccion,
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.size(34.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Download,
-                            contentDescription = "Descargar PDF",
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(6.dp))
-                    FilledTonalIconButton(
-                        onClick = onCompartirDesprendible,
-                        enabled = !enAccion,
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.size(34.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Share,
-                            contentDescription = "Compartir PDF",
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                }
             }
 
             Spacer(modifier = Modifier.height(12.dp))
