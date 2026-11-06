@@ -313,6 +313,11 @@ class NominaViewModel @Inject constructor(
             emitirMensaje(NominaMensajes.ERROR_PERIODO_NO_ABIERTO)
             return
         }
+        val contrato = _uiState.value.contratoNovedadesSeleccionado
+        if (contrato?.idLiquidacionVigente != null) {
+            emitirMensaje("El contrato ya está liquidado. Para modificar novedades debes anular primero la liquidación.")
+            return
+        }
         val fechaInicial = periodo?.fechaInicio?.take(10) ?: ""
         _uiState.update {
             it.copy(
@@ -332,6 +337,11 @@ class NominaViewModel @Inject constructor(
         val periodo = _uiState.value.periodoSeleccionado
         if (!periodo.esAbierto()) {
             emitirMensaje(NominaMensajes.ERROR_PERIODO_NO_ABIERTO)
+            return
+        }
+        val contrato = _uiState.value.contratoNovedadesSeleccionado
+        if (contrato?.idLiquidacionVigente != null) {
+            emitirMensaje("El contrato ya está liquidado. Para modificar novedades debes anular primero la liquidación.")
             return
         }
         _uiState.update {
@@ -367,6 +377,10 @@ class NominaViewModel @Inject constructor(
 
         val contrato = _uiState.value.contratoNovedadesSeleccionado
         if (contrato == null) return
+        if (contrato.idLiquidacionVigente != null) {
+            emitirMensaje("El contrato ya está liquidado. Para modificar novedades debes anular primero la liquidación.")
+            return
+        }
 
         val concepto = _uiState.value.conceptos.firstOrNull { it.id == idConcepto }
         if (concepto == null) {
@@ -455,6 +469,10 @@ class NominaViewModel @Inject constructor(
         }
 
         val contrato = _uiState.value.contratoNovedadesSeleccionado ?: return
+        if (contrato.idLiquidacionVigente != null) {
+            emitirMensaje("El contrato ya está liquidado. Para modificar novedades debes anular primero la liquidación.")
+            return
+        }
 
         viewModelScope.launch(ioDispatcher) {
             _uiState.update { it.copy(novedadEnAccion = true) }

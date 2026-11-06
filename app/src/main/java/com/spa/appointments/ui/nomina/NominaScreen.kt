@@ -1137,7 +1137,9 @@ fun NovedadesBottomSheet(
 ) {
     val contrato = uiState.contratoNovedadesSeleccionado ?: return
     val periodo = uiState.periodoSeleccionado
+    val esLiquidado = contrato.idLiquidacionVigente != null
     val esAbierto = periodo.esAbierto()
+    val esModificable = esAbierto && !esLiquidado
 
     var novedadParaAnular by remember { mutableStateOf<NovedadNominaResponse?>(null) }
 
@@ -1193,20 +1195,36 @@ fun NovedadesBottomSheet(
                     shape = RoundedCornerShape(8.dp)
                 )
 
-                Spacer(modifier = Modifier.width(12.dp))
+                if (esModificable) {
+                    Spacer(modifier = Modifier.width(12.dp))
 
-                Button(
-                    onClick = onNuevaNovedad,
-                    enabled = esAbierto && !uiState.novedadEnAccion,
-                    shape = RoundedCornerShape(10.dp)
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Nueva novedad", fontWeight = FontWeight.Medium)
+                    Button(
+                        onClick = onNuevaNovedad,
+                        enabled = !uiState.novedadEnAccion,
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Nueva novedad", fontWeight = FontWeight.Medium)
+                    }
                 }
             }
 
-            if (!esAbierto) {
+            if (esLiquidado) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "El contrato ya se encuentra liquidado. Las novedades son de solo lectura.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                    )
+                }
+            } else if (!esAbierto) {
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
                     text = "El período seleccionado no está abierto. Solo lectura.",
@@ -1253,7 +1271,7 @@ fun NovedadesBottomSheet(
                         items(listaMostrar, key = { it.id }) { novedad ->
                             NovedadItemCard(
                                 novedad = novedad,
-                                esPeriodoAbierto = esAbierto,
+                                esModificable = esModificable,
                                 enAccion = uiState.novedadEnAccion,
                                 onEditar = { onEditarNovedad(novedad) },
                                 onAnular = { novedadParaAnular = novedad }
@@ -1299,7 +1317,7 @@ fun NovedadesBottomSheet(
 @Composable
 fun NovedadItemCard(
     novedad: NovedadNominaResponse,
-    esPeriodoAbierto: Boolean,
+    esModificable: Boolean,
     enAccion: Boolean,
     onEditar: () -> Unit,
     onAnular: () -> Unit
@@ -1368,7 +1386,7 @@ fun NovedadItemCard(
                     }
                 }
 
-                if (activa && esPeriodoAbierto) {
+                if (activa && esModificable) {
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         IconButton(onClick = onEditar, enabled = !enAccion, modifier = Modifier.size(36.dp)) {
                             Icon(Icons.Default.Edit, contentDescription = "Editar", modifier = Modifier.size(18.dp))
