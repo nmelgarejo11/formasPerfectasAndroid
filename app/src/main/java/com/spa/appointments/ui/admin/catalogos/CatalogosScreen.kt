@@ -20,6 +20,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.spa.appointments.domain.model.CategoriaAdmin
@@ -282,6 +283,8 @@ private fun ServicioAdminCard(
                         text       = servicio.nombre,
                         style      = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.SemiBold,
+                        maxLines   = 1,
+                        overflow   = TextOverflow.Ellipsis,
                         modifier   = Modifier.weight(1f, fill = false)
                     )
 

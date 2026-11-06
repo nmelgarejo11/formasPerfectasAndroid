@@ -10,5 +10,7 @@ data class TemaEmpresaRequest (
     @Json(name = "colorTerciario")  val colorTerciario: String,
     @Json(name = "nombreApp")       val nombreApp: String,
     @Json(name = "slogan")          val slogan: String?,
-    @Json(name = "mensajeWhatsApp") val mensajeWhatsApp: String?
+    @Json(name = "mensajeWhatsApp") val mensajeWhatsApp: String?,
+    @Json(name = "nit")             val nit: String?,
+    @Json(name = "razonSocial")      val razonSocial: String?
 )

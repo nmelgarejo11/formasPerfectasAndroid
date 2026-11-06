@@ -24,6 +24,8 @@ data class TemaUiState(
     val colorTerciario: String = "",
     val nombreApp: String = "",
     val slogan: String = "",
+    val nit: String = "",
+    val razonSocial: String = "",
     val mensajeWhatsApp: TextFieldValue = TextFieldValue("")
 )
 
@@ -53,6 +55,8 @@ class TemaViewModel @Inject constructor(
                             colorTerciario = tema.colorTerciario,
                             nombreApp = tema.nombreApp,
                             slogan = tema.slogan ?: "",
+                            nit = tema.nit ?: "",
+                            razonSocial = tema.razonSocial ?: "",
                             mensajeWhatsApp = TextFieldValue(tema.mensajeWhatsApp ?: "")
                         )
                     }
@@ -68,6 +72,8 @@ class TemaViewModel @Inject constructor(
     fun onColorTerciarioChange(v: String)  { _uiState.update { it.copy(colorTerciario = v) } }
     fun onNombreAppChange(v: String)       { _uiState.update { it.copy(nombreApp = v) } }
     fun onSloganChange(v: String)          { _uiState.update { it.copy(slogan = v) } }
+    fun onNitChange(v: String)             { _uiState.update { it.copy(nit = v) } }
+    fun onRazonSocialChange(v: String)      { _uiState.update { it.copy(razonSocial = v) } }
 
     fun onMensajeWhatsAppChange(v: TextFieldValue) {
         _uiState.update { it.copy(mensajeWhatsApp = v) }
@@ -100,7 +106,9 @@ class TemaViewModel @Inject constructor(
                 colorTerciario  = s.colorTerciario.trim(),
                 nombreApp       = s.nombreApp.trim(),
                 slogan          = s.slogan.trim().ifEmpty { null },
-                mensajeWhatsApp = s.mensajeWhatsApp.text.trim().ifEmpty { null }
+                mensajeWhatsApp = s.mensajeWhatsApp.text.trim().ifEmpty { null },
+                nit             = s.nit.trim().ifEmpty { null },
+                razonSocial     = s.razonSocial.trim().ifEmpty { null }
             )
             repository.actualizarTema(request)
                 .onSuccess {
@@ -113,7 +121,9 @@ class TemaViewModel @Inject constructor(
                                 colorTerciario  = request.colorTerciario,
                                 nombreApp       = request.nombreApp,
                                 slogan          = request.slogan,
-                                mensajeWhatsApp = request.mensajeWhatsApp
+                                mensajeWhatsApp = request.mensajeWhatsApp,
+                                nit             = request.nit,
+                                razonSocial     = request.razonSocial
                             )
                         )
                     }

@@ -174,6 +174,28 @@ fun TemaScreen(
                             capitalization = KeyboardCapitalization.Sentences,
                             minLines = 2
                         )
+                        HorizontalDivider(
+                            thickness = 0.5.dp,
+                            color = MaterialTheme.colorScheme.outlineVariant
+                        )
+                        CampoTextoPlano(
+                            label = "NIT / Identificación Fiscal",
+                            value = state.nit,
+                            onValueChange = viewModel::onNitChange,
+                            capitalization = KeyboardCapitalization.Characters,
+                            singleLine = true
+                        )
+                        HorizontalDivider(
+                            thickness = 0.5.dp,
+                            color = MaterialTheme.colorScheme.outlineVariant
+                        )
+                        CampoTextoPlano(
+                            label = "Razón Social",
+                            value = state.razonSocial,
+                            onValueChange = viewModel::onRazonSocialChange,
+                            capitalization = KeyboardCapitalization.Words,
+                            singleLine = true
+                        )
                     }
                 }
             }
