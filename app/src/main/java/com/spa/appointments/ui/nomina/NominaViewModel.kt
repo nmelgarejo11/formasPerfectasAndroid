@@ -381,9 +381,13 @@ class NominaViewModel @Inject constructor(
             return
         }
 
-        val valor = valorStr.replace(",", ".").toDoubleOrNull()
+        var valor = valorStr.replace(",", ".").toDoubleOrNull()
+        if (requiereDias && (valor == null || valor <= 0) && contrato.salarioBase > 0 && dias != null) {
+            valor = (contrato.salarioBase / 30.0) * dias
+        }
+
         if (valor == null || valor <= 0) {
-            emitirMensaje("Debe ingresar un valor numérico mayor a cero.")
+            emitirMensaje("Debe ingresar un valor numérico mayor a cero para la novedad.")
             return
         }
 

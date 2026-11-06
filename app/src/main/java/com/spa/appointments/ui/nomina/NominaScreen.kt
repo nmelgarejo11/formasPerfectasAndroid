@@ -25,6 +25,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -993,56 +994,63 @@ fun ConceptoItemRow(item: PreliquidacionDetalleResponse) {
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.weight(1f)) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                Text(
+                    text = item.nombreConcepto ?: item.codigoConcepto ?: stringResource(R.string.lbl_concepto_default),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Text(
-                        text = item.nombreConcepto ?: item.codigoConcepto ?: stringResource(R.string.lbl_concepto_default),
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
                     if (item.idNovedadNomina != null) {
                         Surface(
-                            shape = RoundedCornerShape(6.dp),
+                            shape = RoundedCornerShape(4.dp),
                             color = MaterialTheme.colorScheme.primaryContainer
                         ) {
                             Text(
                                 text = "Novedad",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)
                             )
                         }
                     }
                     if (item.idDescuento != null) {
                         Surface(
-                            shape = RoundedCornerShape(6.dp),
+                            shape = RoundedCornerShape(4.dp),
                             color = MaterialTheme.colorScheme.tertiaryContainer
                         ) {
                             Text(
                                 text = "Préstamo",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onTertiaryContainer,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)
                             )
                         }
                     }
-                }
-                if (item.cantidad != null && item.cantidad > 0) {
-                    Text(
-                        text = stringResource(R.string.lbl_cantidad_prefix, formatearCantidad(item.cantidad)),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    if (item.cantidad != null && item.cantidad > 0) {
+                        Text(
+                            text = stringResource(R.string.lbl_cantidad_prefix, formatearCantidad(item.cantidad)),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
             Text(
                 text = formatearCop(item.valor),
                 style = MaterialTheme.typography.bodyMedium,
@@ -1137,20 +1145,17 @@ fun NovedadesBottomSheet(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Switch(
-                        checked = uiState.mostrarInactivasNovedades,
-                        onCheckedChange = onToggleInactivas
-                    )
-                    Text(
-                        text = "Mostrar inactivas",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                FilterChip(
+                    selected = uiState.mostrarInactivasNovedades,
+                    onClick = { onToggleInactivas(!uiState.mostrarInactivasNovedades) },
+                    label = { Text("Mostrar inactivas", style = MaterialTheme.typography.labelMedium) },
+                    leadingIcon = if (uiState.mostrarInactivasNovedades) {
+                        { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                    } else null,
+                    shape = RoundedCornerShape(8.dp)
+                )
+
+                Spacer(modifier = Modifier.width(12.dp))
 
                 Button(
                     onClick = onNuevaNovedad,
@@ -1379,18 +1384,34 @@ fun NovedadFormDialog(
     }
     val requiereDias = selectedConcepto?.descuentaDiasSueldo == true
 
-    // Parse date limits for DatePickerDialog
+    // Category Filter: 1 = Devengado, 2 = Deducción
+    var tipoConceptoFiltro by remember {
+        mutableStateOf(selectedConcepto?.tipoConcepto ?: 1)
+    }
+
+    val conceptosFiltrados = remember(tipoConceptoFiltro, conceptos) {
+        conceptos.filter { it.tipoConcepto == tipoConceptoFiltro }
+    }
+
+    // Parse date limits for DatePickerDialog (local timezone, inclusive of full end day)
     val fechaInicioMillis = remember(periodo) {
         try {
             val datePart = periodo?.fechaInicio?.take(10) ?: return@remember null
-            java.time.LocalDate.parse(datePart).atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli()
+            java.time.LocalDate.parse(datePart)
+                .atStartOfDay(java.time.ZoneId.systemDefault())
+                .toInstant()
+                .toEpochMilli()
         } catch (_: Exception) { null }
     }
 
     val fechaFinMillis = remember(periodo) {
         try {
             val datePart = periodo?.fechaFin?.take(10) ?: return@remember null
-            java.time.LocalDate.parse(datePart).atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli()
+            java.time.LocalDate.parse(datePart)
+                .plusDays(1)
+                .atStartOfDay(java.time.ZoneId.systemDefault())
+                .toInstant()
+                .toEpochMilli() - 1L
         } catch (_: Exception) { null }
     }
 
@@ -1432,16 +1453,42 @@ fun NovedadFormDialog(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                // Selector de Concepto
+                // Category Selector Chips (Devengados vs Deducciones)
+                if (!esEdicion) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        FilterChip(
+                            selected = tipoConceptoFiltro == 1,
+                            onClick = {
+                                tipoConceptoFiltro = 1
+                                conceptos.firstOrNull { it.tipoConcepto == 1 }?.let { selectedConceptoId = it.id }
+                            },
+                            label = { Text("Devengados", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center) },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(8.dp)
+                        )
+                        FilterChip(
+                            selected = tipoConceptoFiltro == 2,
+                            onClick = {
+                                tipoConceptoFiltro = 2
+                                conceptos.firstOrNull { it.tipoConcepto == 2 }?.let { selectedConceptoId = it.id }
+                            },
+                            label = { Text("Deducciones", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center) },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(8.dp)
+                        )
+                    }
+                }
+
+                // Selector de Concepto (shows clean full names)
                 ExposedDropdownMenuBox(
                     expanded = conceptoMenuExpanded,
                     onExpandedChange = { if (!esEdicion) conceptoMenuExpanded = it },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    val textoConcepto = selectedConcepto?.let {
-                        val tipoTag = if (it.tipoConcepto == 1) "[Devengado]" else "[Deducción]"
-                        "${it.nombre} $tipoTag"
-                    } ?: "Seleccione un concepto"
+                    val textoConcepto = selectedConcepto?.nombre ?: "Seleccione un concepto"
 
                     OutlinedTextField(
                         value = textoConcepto,
@@ -1458,33 +1505,14 @@ fun NovedadFormDialog(
                         expanded = conceptoMenuExpanded,
                         onDismissRequest = { conceptoMenuExpanded = false }
                     ) {
-                        conceptos.forEach { concepto ->
+                        conceptosFiltrados.forEach { concepto ->
                             DropdownMenuItem(
                                 text = {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        Text(
-                                            text = concepto.nombre,
-                                            fontWeight = FontWeight.Medium,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                            modifier = Modifier.weight(1f, fill = false)
-                                        )
-                                        Surface(
-                                            shape = RoundedCornerShape(4.dp),
-                                            color = if (concepto.tipoConcepto == 1) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.errorContainer
-                                        ) {
-                                            Text(
-                                                text = if (concepto.tipoConcepto == 1) "Devengado" else "Deducción",
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = if (concepto.tipoConcepto == 1) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onErrorContainer,
-                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                            )
-                                        }
-                                    }
+                                    Text(
+                                        text = concepto.nombre,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Medium
+                                    )
                                 },
                                 onClick = {
                                     selectedConceptoId = concepto.id
@@ -1540,10 +1568,10 @@ fun NovedadFormDialog(
                     value = valor,
                     onValueChange = { valor = it },
                     label = { Text("Valor ($)") },
-                    placeholder = { Text("Ej: 150000") },
+                    placeholder = { Text(if (requiereDias) "Opcional (Auto-calculado si queda vacío)" else "Ej: 150000") },
                     supportingText = {
                         if (requiereDias) {
-                            Text("Monto a descontar por la cantidad de días indicados")
+                            Text("Se calcula automáticamente según salario diario si se deja vacío")
                         }
                     },
                     singleLine = true,
