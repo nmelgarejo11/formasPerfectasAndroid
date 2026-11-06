@@ -671,15 +671,16 @@ fun ContratoNominaCard(
                     CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
                 }
             } else {
-                Row(
+                FlowRow(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     OutlinedButton(
                         onClick = onNovedades,
                         shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 44.dp)
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                        modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 40.dp)
                     ) {
                         Icon(
                             Icons.AutoMirrored.Filled.List,
@@ -687,75 +688,112 @@ fun ContratoNominaCard(
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Novedades")
+                        Text(
+                            text = "Novedades",
+                            maxLines = 1,
+                            softWrap = false
+                        )
                     }
 
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.End),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        when (estado) {
-                            is EstadoNominaContrato.SinPreliquidar -> {
-                                Button(
-                                    onClick = onPreliquidar,
-                                    shape = RoundedCornerShape(10.dp),
-                                    modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 44.dp)
-                                ) {
-                                    Text(stringResource(R.string.btn_preliquidar), fontWeight = FontWeight.Medium)
-                                }
+                    when (estado) {
+                        is EstadoNominaContrato.SinPreliquidar -> {
+                            Button(
+                                onClick = onPreliquidar,
+                                shape = RoundedCornerShape(10.dp),
+                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
+                                modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 40.dp)
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.btn_preliquidar),
+                                    fontWeight = FontWeight.Medium,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
                             }
-                            is EstadoNominaContrato.PreliquidadaLista -> {
-                                TextButton(
-                                    onClick = onVerDetalle,
-                                    modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 44.dp)
-                                ) {
-                                    Text(stringResource(R.string.btn_ver_detalle))
-                                }
-                                OutlinedButton(
-                                    onClick = onRecalcular,
-                                    shape = RoundedCornerShape(10.dp),
-                                    modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 44.dp)
-                                ) {
-                                    Text(stringResource(R.string.btn_recalcular))
-                                }
-                                Button(
-                                    onClick = onLiquidar,
-                                    shape = RoundedCornerShape(10.dp),
-                                    modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 44.dp)
-                                ) {
-                                    Text(stringResource(R.string.btn_liquidar), fontWeight = FontWeight.Medium)
-                                }
+                        }
+                        is EstadoNominaContrato.PreliquidadaLista -> {
+                            TextButton(
+                                onClick = onVerDetalle,
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
+                                modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 40.dp)
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.btn_ver_detalle),
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
                             }
-                            is EstadoNominaContrato.PreliquidacionDesactualizada -> {
-                                Button(
-                                    onClick = onRecalcular,
-                                    shape = RoundedCornerShape(10.dp),
-                                    modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 44.dp)
-                                ) {
-                                    Text(stringResource(R.string.btn_recalcular), fontWeight = FontWeight.Medium)
-                                }
+                            OutlinedButton(
+                                onClick = onRecalcular,
+                                shape = RoundedCornerShape(10.dp),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                                modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 40.dp)
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.btn_recalcular),
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
                             }
-                            is EstadoNominaContrato.Liquidada -> {
-                                OutlinedButton(
-                                    onClick = onDesprendible,
-                                    shape = RoundedCornerShape(10.dp),
-                                    modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 44.dp)
-                                ) {
-                                    Icon(
-                                        Icons.Default.Download,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(stringResource(R.string.btn_desprendible))
-                                }
-                                TextButton(
-                                    onClick = onAnular,
-                                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                                    modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 44.dp)
-                                ) {
-                                    Text(stringResource(R.string.btn_anular))
-                                }
+                            Button(
+                                onClick = onLiquidar,
+                                shape = RoundedCornerShape(10.dp),
+                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
+                                modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 40.dp)
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.btn_liquidar),
+                                    fontWeight = FontWeight.Medium,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                            }
+                        }
+                        is EstadoNominaContrato.PreliquidacionDesactualizada -> {
+                            Button(
+                                onClick = onRecalcular,
+                                shape = RoundedCornerShape(10.dp),
+                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
+                                modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 40.dp)
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.btn_recalcular),
+                                    fontWeight = FontWeight.Medium,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                            }
+                        }
+                        is EstadoNominaContrato.Liquidada -> {
+                            OutlinedButton(
+                                onClick = onDesprendible,
+                                shape = RoundedCornerShape(10.dp),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                                modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 40.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Download,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = stringResource(R.string.btn_desprendible),
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                            }
+                            TextButton(
+                                onClick = onAnular,
+                                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
+                                modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 40.dp)
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.btn_anular),
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
                             }
                         }
                     }
