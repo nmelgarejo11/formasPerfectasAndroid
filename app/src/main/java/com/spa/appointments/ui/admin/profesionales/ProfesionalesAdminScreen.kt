@@ -223,11 +223,14 @@ fun ProfesionalesAdminScreen(
 
     if (showDialog) {
         ProfesionalDialog(
-            profesional = editando,
-            cargos      = viewModel.cargos.collectAsState().value,
-            guardando   = uiState is ProfesionalesUiState.Loading,
-            onGuardar   = { req -> viewModel.guardarProfesional(editando?.id, req) },
-            onDismiss   = { showDialog = false; editando = null; viewModel.resetState() }
+            profesional    = editando,
+            cargos         = viewModel.cargos.collectAsState().value,
+            bancos         = viewModel.bancos.collectAsState().value,
+            tiposDocumento = viewModel.tiposDocumento.collectAsState().value,
+            tiposCuenta    = viewModel.tiposCuenta.collectAsState().value,
+            guardando      = uiState is ProfesionalesUiState.Loading,
+            onGuardar      = { req -> viewModel.guardarProfesional(editando?.id, req) },
+            onDismiss      = { showDialog = false; editando = null; viewModel.resetState() }
         )
     }
 }

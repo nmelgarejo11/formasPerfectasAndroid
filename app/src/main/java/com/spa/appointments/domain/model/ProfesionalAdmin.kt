@@ -5,24 +5,34 @@ import com.squareup.moshi.JsonClass
 
 @JsonClass(generateAdapter = true)
 data class ProfesionalAdmin(
-    @Json(name = "id")          val id: Int,
-    @Json(name = "idCargo")     val idCargo: Int,
-    @Json(name = "nombreCargo") val nombreCargo: String,
-    @Json(name = "nombre")      val nombre: String,
-    @Json(name = "apellido")    val apellido: String,
-    @Json(name = "foto")        val foto: String?,
-    @Json(name = "telefono")    val telefono: String?,
-    @Json(name = "email")       val email: String?,
-    @Json(name = "estado")      val estado: Boolean
+    @Json(name = "id")              val id: Int,
+    @Json(name = "idCargo")         val idCargo: Int,
+    @Json(name = "nombreCargo")     val nombreCargo: String,
+    @Json(name = "nombre")          val nombre: String,
+    @Json(name = "apellido")        val apellido: String,
+    @Json(name = "foto")            val foto: String?,
+    @Json(name = "telefono")        val telefono: String?,
+    @Json(name = "email")           val email: String?,
+    @Json(name = "estado")          val estado: Boolean,
+    @Json(name = "idTipoDocumento") val idTipoDocumento: Int? = null,
+    @Json(name = "identificacion")  val identificacion: String? = null,
+    @Json(name = "idBanco")         val idBanco: Int? = null,
+    @Json(name = "idTipoCuenta")    val idTipoCuenta: Int? = null,
+    @Json(name = "numeroCuenta")    val numeroCuenta: String? = null
 )
 
 @JsonClass(generateAdapter = true)
 data class ProfesionalRequest(
-    @Json(name = "idCargo")  val idCargo: Int,
-    @Json(name = "nombre")   val nombre: String,
-    @Json(name = "apellido") val apellido: String,
-    @Json(name = "telefono") val telefono: String?,
-    @Json(name = "email")    val email: String?
+    @Json(name = "idCargo")         val idCargo: Int,
+    @Json(name = "nombre")          val nombre: String,
+    @Json(name = "apellido")        val apellido: String,
+    @Json(name = "telefono")        val telefono: String?,
+    @Json(name = "email")           val email: String?,
+    @Json(name = "idTipoDocumento") val idTipoDocumento: Int? = null,
+    @Json(name = "identificacion")  val identificacion: String? = null,
+    @Json(name = "idBanco")         val idBanco: Int? = null,
+    @Json(name = "idTipoCuenta")    val idTipoCuenta: Int? = null,
+    @Json(name = "numeroCuenta")    val numeroCuenta: String? = null
 )
 
 @JsonClass(generateAdapter = true)

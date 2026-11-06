@@ -46,4 +46,19 @@ class ProfesionalesAdminRepository @Inject constructor(
 
     suspend fun guardarServicios(id: Int, servicios: List<ServicioProfesionalItem>) =
         api.guardarServiciosProfesional(id, GuardarServiciosRequest(servicios))
+
+    suspend fun getBancos(): List<BancoItem> {
+        val resp = api.getBancos()
+        return if (resp.isSuccessful) resp.body() ?: emptyList() else emptyList()
+    }
+
+    suspend fun getTiposDocumento(): List<TipoDocumentoItem> {
+        val resp = api.getTiposDocumento()
+        return if (resp.isSuccessful) resp.body() ?: emptyList() else emptyList()
+    }
+
+    suspend fun getTiposCuenta(): List<TipoCuentaItem> {
+        val resp = api.getTiposCuenta()
+        return if (resp.isSuccessful) resp.body() ?: emptyList() else emptyList()
+    }
 }
