@@ -32,4 +32,15 @@ class CatalogosAdminRepository @Inject constructor(
 
     suspend fun toggleEstadoServicio(id: Int): Boolean =
         api.toggleEstadoServicio(id).estado
+
+    suspend fun getPreciosRangosServicio(idServicio: Int): List<ServicioPrecioRango> =
+        api.getPreciosRangosServicio(idServicio)
+
+    suspend fun guardarPrecioRango(idServicio: Int, cantidadPersonas: Int, precio: Double) {
+        api.guardarPrecioRango(GuardarPrecioRangoRequest(idServicio, cantidadPersonas, precio))
+    }
+
+    suspend fun eliminarPrecioRango(idRango: Int) {
+        api.eliminarPrecioRango(idRango)
+    }
 }

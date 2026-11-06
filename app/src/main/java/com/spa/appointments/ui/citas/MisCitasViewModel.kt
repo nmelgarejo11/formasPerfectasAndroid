@@ -236,11 +236,17 @@ class MisCitasViewModel @Inject constructor(
         }
     }
 
-    fun finalizarCita(idCita: Int, idMetodoPago: Int, idMetodoPagoDetalle: Int? = null) {
+    fun finalizarCita(
+        idCita: Int,
+        idMetodoPago: Int,
+        idMetodoPagoDetalle: Int? = null,
+        precioFinal: Double? = null,
+        observaciones: String? = null
+    ) {
         viewModelScope.launch {
             _accionState.value = AccionUiState.Loading
             try {
-                val resp = repo.finalizarCita(idCita, idMetodoPago, idMetodoPagoDetalle)
+                val resp = repo.finalizarCita(idCita, idMetodoPago, idMetodoPagoDetalle, precioFinal, observaciones)
                 if (resp.ok) { _accionState.value = AccionUiState.Success(resp.mensaje); cargar() }
                 else           _accionState.value = AccionUiState.Error(resp.mensaje)
             } catch (e: Exception) {

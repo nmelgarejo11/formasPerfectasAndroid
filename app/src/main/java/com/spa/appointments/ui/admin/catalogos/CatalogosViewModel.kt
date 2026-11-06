@@ -28,6 +28,9 @@ class CatalogosViewModel @Inject constructor(
     private val _servicios = MutableStateFlow<List<ServicioAdmin>>(emptyList())
     val servicios: StateFlow<List<ServicioAdmin>> = _servicios
 
+    private val _preciosRangos = MutableStateFlow<List<ServicioPrecioRango>>(emptyList())
+    val preciosRangos: StateFlow<List<ServicioPrecioRango>> = _preciosRangos
+
     private val _uiState = MutableStateFlow<CatalogosUiState>(CatalogosUiState.Idle)
     val uiState: StateFlow<CatalogosUiState> = _uiState
 
@@ -109,6 +112,40 @@ class CatalogosViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 _uiState.value = CatalogosUiState.Error(e.message ?: "Error al cambiar estado")
+            }
+        }
+    }
+
+    // ─── Precios por Cantidad de Personas (Lote 3) ───────────────────
+
+    fun cargarPreciosRangos(idServicio: Int) {
+        viewModelScope.launch {
+            try {
+                _preciosRangos.value = repo.getPreciosRangosServicio(idServicio)
+            } catch (e: Exception) {
+                _preciosRangos.value = emptyList()
+            }
+        }
+    }
+
+    fun guardarPrecioRango(idServicio: Int, cantidadPersonas: Int, precio: Double) {
+        viewModelScope.launch {
+            try {
+                repo.guardarPrecioRango(idServicio, cantidadPersonas, precio)
+                cargarPreciosRangos(idServicio)
+            } catch (e: Exception) {
+                _uiState.value = CatalogosUiState.Error(e.message ?: "Error al guardar rango de precio")
+            }
+        }
+    }
+
+    fun eliminarPrecioRango(idServicio: Int, idRango: Int) {
+        viewModelScope.launch {
+            try {
+                repo.eliminarPrecioRango(idRango)
+                cargarPreciosRangos(idServicio)
+            } catch (e: Exception) {
+                _uiState.value = CatalogosUiState.Error(e.message ?: "Error al eliminar rango")
             }
         }
     }

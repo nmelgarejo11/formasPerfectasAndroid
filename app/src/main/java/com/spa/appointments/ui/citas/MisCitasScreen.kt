@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -21,8 +22,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import java.util.Locale
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
@@ -103,7 +106,7 @@ fun MisCitasScreen(
         onFechaCalendarioChange   = { vm.setFechaCalendario(it) },
         onCancelarCita            = { vm.cancelarCita(it) },
         onReagendarCitaDirecto    = { id, idProf, ini, fin -> vm.reagendarCitaDirecto(id, idProf, ini, fin) },
-        onFinalizarCita           = { idCita, idMetodo, idDetalle -> vm.finalizarCita(idCita, idMetodo, idDetalle) },
+        onFinalizarCita           = { idCita, idMetodo, idDetalle, pFinal, obs -> vm.finalizarCita(idCita, idMetodo, idDetalle, pFinal, obs) },
         onAsignarCitaGrupal       = { idCita, ids, ini, fin -> vm.asignarCitaGrupal(idCita, ids, ini, fin) },
         onCargarDisponibilidad    = { idProf, idSede, fecha, duracion -> vm.cargarDisponibilidad(idProf, idSede, fecha, duracion) },
         onBuscarClientes          = { query -> vm.buscarClientes(query) },
@@ -141,7 +144,7 @@ fun MisCitasContent(
     onFechaCalendarioChange:   (LocalDate) -> Unit,
     onCancelarCita:            (Int) -> Unit,
     onReagendarCitaDirecto:    (idCita: Int, idProfesional: Int, inicioIso: String, finIso: String) -> Unit,
-    onFinalizarCita:           (Int, Int, Int?) -> Unit,
+    onFinalizarCita:           (idCita: Int, idMetodo: Int, idDetalle: Int?, precioFinal: Double?, observaciones: String?) -> Unit,
     onAsignarCitaGrupal:       (idCita: Int, idsProfesionales: List<Int>?, fechaInicio: String?, fechaFin: String?) -> Unit,
     onCargarDisponibilidad:    (idProfesional: Int, idSede: Int, fecha: String, duracion: Int) -> Unit,
     onBuscarClientes:          (String) -> Unit,
@@ -275,12 +278,15 @@ fun MisCitasContent(
     if (mostrarFinalizar && citaAccion != null) {
         FinalizarCitaDialog(
             metodos = metodosPago,
-            onConfirm = { idMetodo, idDetalle ->
+            precioSugerido = citaAccion!!.total ?: 0.0,
+            onConfirm = { idMetodo, idDetalle, pFinal, obs ->
                 mostrarFinalizar = false
                 onFinalizarCita(
                     citaAccion!!.id,
                     idMetodo,
-                    idDetalle
+                    idDetalle,
+                    pFinal,
+                    obs
                 )
             },
             onDismiss = {
@@ -1159,12 +1165,17 @@ private fun EmptyMisCitas(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun FinalizarCitaDialog(
-    metodos:   List<MetodoPago>,
-    onConfirm: (Int, Int?) -> Unit,
-    onDismiss: () -> Unit
+    metodos:        List<MetodoPago>,
+    precioSugerido: Double,
+    onConfirm:      (idMetodo: Int, idDetalle: Int?, precioFinal: Double?, observaciones: String?) -> Unit,
+    onDismiss:      () -> Unit
 ) {
     var seleccionado by remember { mutableStateOf<MetodoPago?>(null) }
     var detalleSeleccionado by remember { mutableStateOf<MetodoPagoDetalle?>(null) }
+    var precioFinalText by remember(precioSugerido) {
+        mutableStateOf(if (precioSugerido > 0) String.format(Locale.US, "%.0f", precioSugerido) else "")
+    }
+    var observacionesText by remember { mutableStateOf("") }
     var expanded by remember { mutableStateOf(false) }
     var expandedDetalle by remember { mutableStateOf(false) }
 
@@ -1190,7 +1201,7 @@ private fun FinalizarCitaDialog(
         },
         title = {
             Text(
-                text       = "Finalizar cita",
+                text       = "Finalizar Cita",
                 fontWeight = FontWeight.Bold,
                 textAlign  = TextAlign.Center,
                 modifier   = Modifier.fillMaxWidth()
@@ -1198,9 +1209,11 @@ private fun FinalizarCitaDialog(
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                // 1. Método de Pago
                 Text(
-                    text  = "Selecciona el método de pago aplicado:",
-                    style = MaterialTheme.typography.bodyMedium
+                    text  = "Método de Pago *",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold
                 )
 
                 ExposedDropdownMenuBox(
@@ -1208,7 +1221,7 @@ private fun FinalizarCitaDialog(
                     onExpandedChange = { expanded = it }
                 ) {
                     OutlinedTextField(
-                        value      = seleccionado?.nombre ?: "Seleccionar...",
+                        value      = seleccionado?.nombre ?: "Seleccionar método...",
                         onValueChange = {},
                         readOnly   = true,
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
@@ -1234,7 +1247,7 @@ private fun FinalizarCitaDialog(
 
                 if (seleccionado?.detalles?.isNotEmpty() == true) {
                     Text(
-                        text  = "Especifique el detalle:",
+                        text  = "Detalle de pago *",
                         style = MaterialTheme.typography.labelSmall
                     )
                     ExposedDropdownMenuBox(
@@ -1265,11 +1278,53 @@ private fun FinalizarCitaDialog(
                         }
                     }
                 }
+
+                // 2. Precio Final Cobrado (Editable)
+                Text(
+                    text  = "Precio Final Cobrado ($):",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                OutlinedTextField(
+                    value = precioFinalText,
+                    onValueChange = { precioFinalText = it.filter { c -> c.isDigit() || c == '.' } },
+                    label = { Text("Valor final") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    singleLine = true
+                )
+
+                // 3. Observaciones
+                Text(
+                    text  = "Observaciones de finalización (opcional):",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                OutlinedTextField(
+                    value = observacionesText,
+                    onValueChange = { observacionesText = it },
+                    label = { Text("Notas...") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    minLines = 2,
+                    maxLines = 3
+                )
             }
         },
         confirmButton = {
             Button(
-                onClick  = { seleccionado?.let { onConfirm(it.id, detalleSeleccionado?.id) } },
+                onClick  = {
+                    val pFinal = precioFinalText.toDoubleOrNull()
+                    seleccionado?.let {
+                        onConfirm(
+                            it.id,
+                            detalleSeleccionado?.id,
+                            pFinal,
+                            observacionesText.trim().ifEmpty { null }
+                        )
+                    }
+                },
                 enabled  = seleccionado != null && (seleccionado?.detalles?.isEmpty() == true || detalleSeleccionado != null),
                 shape    = RoundedCornerShape(12.dp),
                 modifier = Modifier.fillMaxWidth(),
@@ -1277,7 +1332,7 @@ private fun FinalizarCitaDialog(
             ) {
                 Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(16.dp))
                 Spacer(Modifier.width(6.dp))
-                Text(text = "Confirmar y finalizar", fontWeight = FontWeight.SemiBold)
+                Text(text = "Confirmar y Finalizar Cita", fontWeight = FontWeight.SemiBold)
             }
         },
         dismissButton = {
@@ -1676,7 +1731,7 @@ private fun MisCitasPreviewLoading() {
             onFechaCalendarioChange   = {},
             onCancelarCita            = {},
             onReagendarCitaDirecto    = { _, _, _, _ -> },
-            onFinalizarCita           = { _, _, _ -> },
+            onFinalizarCita           = { _, _, _, _, _ -> },
             onAsignarCitaGrupal       = { _, _, _, _ -> },
             onCargarDisponibilidad    = { _, _, _, _ -> },
             onBuscarClientes          = {},
@@ -1715,7 +1770,7 @@ private fun MisCitasPreviewEmptySinFiltros() {
             onFechaCalendarioChange   = {},
             onCancelarCita            = {},
             onReagendarCitaDirecto    = { _, _, _, _ -> },
-            onFinalizarCita           = { _, _, _ -> },
+            onFinalizarCita           = { _, _, _, _, _ -> },
             onAsignarCitaGrupal       = { _, _, _, _ -> },
             onCargarDisponibilidad    = { _, _, _, _ -> },
             onBuscarClientes          = {},
@@ -1754,7 +1809,7 @@ private fun MisCitasPreviewEmptyConFiltros() {
             onFechaCalendarioChange   = {},
             onCancelarCita            = {},
             onReagendarCitaDirecto    = { _, _, _, _ -> },
-            onFinalizarCita           = { _, _, _ -> },
+            onFinalizarCita           = { _, _, _, _, _ -> },
             onAsignarCitaGrupal       = { _, _, _, _ -> },
             onCargarDisponibilidad    = { _, _, _, _ -> },
             onBuscarClientes          = {},
@@ -1793,7 +1848,7 @@ private fun MisCitasPreviewError() {
             onFechaCalendarioChange   = {},
             onCancelarCita            = {},
             onReagendarCitaDirecto    = { _, _, _, _ -> },
-            onFinalizarCita           = { _, _, _ -> },
+            onFinalizarCita           = { _, _, _, _, _ -> },
             onAsignarCitaGrupal       = { _, _, _, _ -> },
             onCargarDisponibilidad    = { _, _, _, _ -> },
             onBuscarClientes          = {},
@@ -1832,7 +1887,7 @@ private fun MisCitasPreviewSuccess() {
             onFechaCalendarioChange   = {},
             onCancelarCita            = {},
             onReagendarCitaDirecto    = { _, _, _, _ -> },
-            onFinalizarCita           = { _, _, _ -> },
+            onFinalizarCita           = { _, _, _, _, _ -> },
             onAsignarCitaGrupal       = { _, _, _, _ -> },
             onCargarDisponibilidad    = { _, _, _, _ -> },
             onBuscarClientes          = {},

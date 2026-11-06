@@ -218,6 +218,15 @@ interface ApiService {
     @PATCH("admin/servicios/{id}/estado")
     suspend fun toggleEstadoServicio(@Path("id") id: Int): EstadoResponse
 
+    @GET("admin/servicios/{id}/precios-rangos")
+    suspend fun getPreciosRangosServicio(@Path("id") idServicio: Int): List<ServicioPrecioRango>
+
+    @POST("admin/servicios/precios-rangos")
+    suspend fun guardarPrecioRango(@Body request: GuardarPrecioRangoRequest): ResponseBody
+
+    @DELETE("admin/servicios/precios-rangos/{idRango}")
+    suspend fun eliminarPrecioRango(@Path("idRango") idRango: Int): ResponseBody
+
     // ── Admin Profesionales ───────────────────────────────────
     @GET("admin/profesionales")
     suspend fun getProfesionalesAdmin(): List<ProfesionalAdmin>

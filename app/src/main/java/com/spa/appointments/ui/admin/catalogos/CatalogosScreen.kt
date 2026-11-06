@@ -43,6 +43,9 @@ fun ServiciosAdminScreen(
     var editando   by remember { mutableStateOf<ServicioAdmin?>(null) }
     var busqueda   by remember { mutableStateOf("") }
 
+    var showPreciosRangosDialog by remember { mutableStateOf(false) }
+    var servicioRangoSeleccionado by remember { mutableStateOf<ServicioAdmin?>(null) }
+
     val filtrados = remember(servicios, busqueda) {
         if (busqueda.isBlank()) servicios
         else servicios.filter {
@@ -205,7 +208,12 @@ fun ServiciosAdminScreen(
                                 ServicioAdminCard(
                                     servicio = srv,
                                     onEditar = { editando = srv; showDialog = true },
-                                    onToggle = { viewModel.toggleServicio(srv.id) }
+                                    onToggle = { viewModel.toggleServicio(srv.id) },
+                                    onVerPreciosRangos = {
+                                        servicioRangoSeleccionado = srv
+                                        viewModel.cargarPreciosRangos(srv.id)
+                                        showPreciosRangosDialog = true
+                                    }
                                 )
                             }
                         }
@@ -224,6 +232,24 @@ fun ServiciosAdminScreen(
             onDismiss  = { showDialog = false; editando = null; viewModel.resetState() }
         )
     }
+
+    if (showPreciosRangosDialog && servicioRangoSeleccionado != null) {
+        val preciosRangos by viewModel.preciosRangos.collectAsState()
+        PreciosPersonasDialog(
+            servicio = servicioRangoSeleccionado!!,
+            preciosRangos = preciosRangos,
+            onGuardarRango = { cant, prec ->
+                viewModel.guardarPrecioRango(servicioRangoSeleccionado!!.id, cant, prec)
+            },
+            onEliminarRango = { idRango ->
+                viewModel.eliminarPrecioRango(servicioRangoSeleccionado!!.id, idRango)
+            },
+            onDismiss = {
+                showPreciosRangosDialog = false
+                servicioRangoSeleccionado = null
+            }
+        )
+    }
 }
 
 // ─── Card de servicio ──────────────────────────────────────────────────────────
@@ -232,7 +258,8 @@ fun ServiciosAdminScreen(
 private fun ServicioAdminCard(
     servicio: ServicioAdmin,
     onEditar: () -> Unit,
-    onToggle: () -> Unit
+    onToggle: () -> Unit,
+    onVerPreciosRangos: () -> Unit
 ) {
     Card(
         modifier  = Modifier.fillMaxWidth(),
@@ -401,6 +428,19 @@ private fun ServicioAdminCard(
                     verticalAlignment      = Alignment.CenterVertically,
                     horizontalArrangement  = Arrangement.spacedBy(4.dp)
                 ) {
+                    if (servicio.esGrupal) {
+                        IconButton(
+                            onClick  = onVerPreciosRangos,
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Groups, "Tarifas por persona",
+                                modifier = Modifier.size(20.dp),
+                                tint     = MaterialTheme.colorScheme.tertiary
+                            )
+                        }
+                    }
+
                     IconButton(
                         onClick  = onEditar,
                         modifier = Modifier.size(32.dp)
