@@ -695,38 +695,47 @@ fun ContratoNominaCard(
                 }
 
                 Spacer(modifier = Modifier.width(8.dp))
+                EstadoBadge(estado = estado)
+            }
+
+            if (estado is EstadoNominaContrato.Liquidada) {
+                Spacer(modifier = Modifier.height(8.dp))
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    if (estado is EstadoNominaContrato.Liquidada) {
-                        IconButton(
-                            onClick = onDesprendible,
-                            enabled = !enAccion,
-                            modifier = Modifier.size(32.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.Download,
-                                contentDescription = "Descargar PDF",
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                        IconButton(
-                            onClick = onCompartirDesprendible,
-                            enabled = !enAccion,
-                            modifier = Modifier.size(32.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.Share,
-                                contentDescription = "Compartir PDF",
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(2.dp))
+                    Text(
+                        text = "Desprendible PDF:",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    FilledTonalIconButton(
+                        onClick = onDesprendible,
+                        enabled = !enAccion,
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.size(34.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Download,
+                            contentDescription = "Descargar PDF",
+                            modifier = Modifier.size(18.dp)
+                        )
                     }
-                    EstadoBadge(estado = estado)
+                    Spacer(modifier = Modifier.width(6.dp))
+                    FilledTonalIconButton(
+                        onClick = onCompartirDesprendible,
+                        enabled = !enAccion,
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.size(34.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Share,
+                            contentDescription = "Compartir PDF",
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                 }
             }
 
@@ -911,24 +920,6 @@ fun ContratoNominaCard(
                             }
                         }
                         is EstadoNominaContrato.Liquidada -> {
-                            OutlinedButton(
-                                onClick = onDesprendible,
-                                shape = RoundedCornerShape(10.dp),
-                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-                                modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 40.dp)
-                            ) {
-                                Icon(
-                                    Icons.Default.Download,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = stringResource(R.string.btn_desprendible),
-                                    maxLines = 1,
-                                    softWrap = false
-                                )
-                            }
                             TextButton(
                                 onClick = onAnular,
                                 colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
