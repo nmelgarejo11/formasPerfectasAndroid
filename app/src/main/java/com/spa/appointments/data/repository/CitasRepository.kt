@@ -18,6 +18,9 @@ class CitasRepository @Inject constructor(
     suspend fun getServiciosPorProfesional(idProfesional: Int): List<Servicio> =
         api.getServiciosPorProfesional(idProfesional)
 
+    suspend fun getPreciosRangosServicio(idServicio: Int): List<ServicioPrecioRango> =
+        api.getPreciosRangosServicio(idServicio)
+
     // Disponibilidad
     suspend fun getDisponibilidad(
         idProfesional: Int,

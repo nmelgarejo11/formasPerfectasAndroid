@@ -41,15 +41,19 @@ fun DisponibilidadScreen(
     sharedVm:     ReservaSharedViewModel, // Recibimos el SharedViewModel desde el AppNav
     vm: DisponibilidadViewModel = hiltViewModel()
 ) {
-    LaunchedEffect(Unit) {
+    LaunchedEffect(servicio, sharedVm.cantidadPersonas) {
         vm.servicio    = servicio
         vm.profesional = profesional
+        vm.cargarPrecioServicio(servicio.id, sharedVm.cantidadPersonas)
         vm.seleccionarFecha(LocalDate.now())
     }
 
     val uiState           by vm.uiState.collectAsState()
     val fechaSeleccionada by vm.fechaSeleccionada.collectAsState()
     val slotSeleccionado  by vm.slotSeleccionado.collectAsState()
+    val precioCalculado   by vm.precioCalculado.collectAsState()
+
+    val precioMostrar = if (precioCalculado > 0.0) precioCalculado else (if (sharedVm.esGrupal) servicio.precioBase * sharedVm.cantidadPersonas else servicio.precioBase)
 
     var notas          by remember { mutableStateOf("") }
     var mostrarDialogo by remember { mutableStateOf(false) }
@@ -122,11 +126,10 @@ fun DisponibilidadScreen(
                     HorizontalDivider()
 
                     // Total
-                    val precioCalculado = if (sharedVm.esGrupal) servicio.precioBase * sharedVm.cantidadPersonas else servicio.precioBase
                     ConfirmacionFila(
                         icono  = Icons.Default.AttachMoney,
                         label  = "Total",
-                        valor  = "${"$%,.0f".format(precioCalculado)}",
+                        valor  = "${"$%,.0f".format(precioMostrar)}",
                         negrita = true
                     )
                 }
@@ -268,7 +271,7 @@ fun DisponibilidadScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(bottom = 8.dp)
         ) {
-            ResumenReserva(servicio = servicio, profesional = profesional)
+            ResumenReserva(servicio = servicio, profesional = profesional, precioTotal = precioMostrar)
 
             Spacer(Modifier.height(8.dp))
 
@@ -355,7 +358,7 @@ private fun ConfirmacionFila(
 }
 
 @Composable
-private fun ResumenReserva(servicio: Servicio, profesional: Profesional?) { // <-- Ahora acepta null
+private fun ResumenReserva(servicio: Servicio, profesional: Profesional?, precioTotal: Double) { // <-- Ahora acepta null y precioTotal
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -417,7 +420,7 @@ private fun ResumenReserva(servicio: Servicio, profesional: Profesional?) { // <
                         tint     = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                     )
                     Text(
-                        text       = "${"$%,.0f".format(servicio.precioBase)}",
+                        text       = "${"$%,.0f".format(precioTotal)}",
                         style      = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onPrimaryContainer

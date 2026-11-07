@@ -44,6 +44,46 @@ class DisponibilidadViewModel @Inject constructor(
     private val _slotSeleccionado = MutableStateFlow<SlotDisponible?>(null)
     val slotSeleccionado: StateFlow<SlotDisponible?> = _slotSeleccionado
 
+    private val _precioCalculado = MutableStateFlow<Double>(0.0)
+    val precioCalculado: StateFlow<Double> = _precioCalculado
+
+    private var rangosServicio: List<ServicioPrecioRango> = emptyList()
+
+    fun cargarPrecioServicio(idServicio: Int, cantidadPersonas: Int) {
+        viewModelScope.launch {
+            val serv = servicio
+            val base = serv?.precioBase ?: 0.0
+            if (idServicio <= 0 || serv == null) {
+                _precioCalculado.value = 0.0
+                return@launch
+            }
+            try {
+                rangosServicio = repo.getPreciosRangosServicio(idServicio)
+            } catch (_: Exception) {
+                rangosServicio = emptyList()
+            }
+            _precioCalculado.value = calcularPrecio(base, rangosServicio, cantidadPersonas)
+        }
+    }
+
+    private fun calcularPrecio(precioBase: Double, rangos: List<ServicioPrecioRango>, cantidadPersonas: Int): Double {
+        if (rangos.isEmpty()) {
+            return if (cantidadPersonas > 1) precioBase * cantidadPersonas else precioBase
+        }
+
+        // 1. Coincidencia exacta
+        val exacto = rangos.firstOrNull { it.cantidadPersonas == cantidadPersonas }
+        if (exacto != null) return exacto.precio
+
+        // 2. Regla del techo máximo
+        val maxRango = rangos.maxByOrNull { it.cantidadPersonas }
+        if (maxRango != null && cantidadPersonas >= maxRango.cantidadPersonas) {
+            return maxRango.precio
+        }
+
+        return if (cantidadPersonas > 1) precioBase * cantidadPersonas else precioBase
+    }
+
     fun seleccionarFecha(fecha: LocalDate) {
         _fechaSeleccionada.value = fecha
         _slotSeleccionado.value  = null
@@ -116,6 +156,14 @@ class DisponibilidadViewModel @Inject constructor(
                     return@launch
                 })
 
+                val precioFinalServicio = if (_precioCalculado.value > 0.0) {
+                    _precioCalculado.value
+                } else {
+                    servicio?.let { item ->
+                        if (sharedVm.cantidadPersonas > 1) item.precioBase * sharedVm.cantidadPersonas else item.precioBase
+                    } ?: 0.0
+                }
+
                 // Mapeo dinámico de la lista de servicios recolectados
                 val serviciosDetalle = if (sharedVm.esMultiple) {
                     sharedVm.serviciosSeleccionados.map { item ->
@@ -130,7 +178,7 @@ class DisponibilidadViewModel @Inject constructor(
                         listOf(
                             ServicioDetalle(
                                 idServicio = item.id,
-                                precio     = item.precioBase,
+                                precio     = precioFinalServicio,
                                 duracion   = item.duracionMinutos
                             )
                         )
