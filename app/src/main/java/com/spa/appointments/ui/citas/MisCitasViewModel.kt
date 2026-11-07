@@ -263,7 +263,7 @@ class MisCitasViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val info    = repo.getWhatsAppCita(idCita)
-                val numero  = info.telefono.replace(Regex("[^\\d]"), "")
+                val numero  = formatearTelefonoWhatsApp(info.telefono)
                 val encoded = java.net.URLEncoder.encode(info.mensaje, "UTF-8")
                 val uri     = android.net.Uri.parse("https://wa.me/$numero?text=$encoded")
                 val intent  = android.content.Intent(android.content.Intent.ACTION_VIEW, uri)
@@ -273,6 +273,27 @@ class MisCitasViewModel @Inject constructor(
                     e.localizedMessage ?: "No se pudo abrir WhatsApp"
                 )
             }
+        }
+    }
+
+    private fun formatearTelefonoWhatsApp(rawPhone: String): String {
+        val digitsOnly = rawPhone.replace(Regex("[^\\d]"), "")
+        return when {
+            // Número colombiano de 10 dígitos que inicia con 3 (ej. 3204318493 -> 573204318493)
+            digitsOnly.length == 10 && digitsOnly.startsWith("3") -> "57$digitsOnly"
+
+            // Número de 10 dígitos que inicia con 0 (ej. 03204318493 -> 573204318493)
+            digitsOnly.length == 10 && digitsOnly.startsWith("0") -> "57${digitsOnly.substring(1)}"
+
+            // Número de 11 dígitos que inicia con 03 (ej. 03204318493 -> 573204318493)
+            digitsOnly.length == 11 && digitsOnly.startsWith("03") -> "57${digitsOnly.substring(1)}"
+
+            // Ya tiene código de país Colombia (12 dígitos iniciando con 57)
+            digitsOnly.length == 12 && digitsOnly.startsWith("57") -> digitsOnly
+
+            // Caso por defecto
+            digitsOnly.isNotBlank() -> digitsOnly
+            else -> ""
         }
     }
 
