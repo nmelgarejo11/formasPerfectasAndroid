@@ -76,7 +76,7 @@ class MisCitasViewModel @Inject constructor(
     val profesionales: StateFlow<List<Profesional>> = _profesionales.asStateFlow()
 
     // ── Lote 2: Modo de Vista Calendario / Lista ─────────────────────────────
-    private val _modoVista = MutableStateFlow(ModoVistaCitas.LISTA)
+    private val _modoVista = MutableStateFlow(ModoVistaCitas.CALENDARIO_DIA)
     val modoVista: StateFlow<ModoVistaCitas> = _modoVista.asStateFlow()
 
     private val _fechaCalendario = MutableStateFlow(LocalDate.now())

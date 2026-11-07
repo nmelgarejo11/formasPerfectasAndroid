@@ -24,6 +24,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.spa.appointments.domain.model.Cita
+import com.spa.appointments.domain.model.ServicioCita
+import com.squareup.moshi.Moshi
+import com.squareup.moshi.Types
+import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -208,7 +212,7 @@ fun CalendarioDiaView(
                             val duracionMinutos = ((finTime.hour - inicioTime.hour) * 60 + (finTime.minute - inicioTime.minute)).coerceAtLeast(15)
 
                             val topOffset = (minutosDesdeInicio * (72.0 / 60.0)).dp + 8.dp
-                            val bloqueAlto = (duracionMinutos * (72.0 / 60.0)).dp
+                            val bloqueAlto = (duracionMinutos * (72.0 / 60.0)).dp.coerceAtLeast(76.dp)
 
                             val colorBase = parseColorHex(cita.colorEstado) ?: MaterialTheme.colorScheme.primaryContainer
 
@@ -220,7 +224,7 @@ fun CalendarioDiaView(
                                     .padding(vertical = 1.dp)
                                     .clickable { onCitaClick(cita) },
                                 shape = RoundedCornerShape(10.dp),
-                                color = colorBase.copy(alpha = 0.88f),
+                                color = colorBase.copy(alpha = 0.92f),
                                 border = androidx.compose.foundation.BorderStroke(1.dp, colorBase)
                             ) {
                                 Row(
@@ -235,37 +239,68 @@ fun CalendarioDiaView(
                                             .width(4.dp)
                                             .fillMaxHeight()
                                             .clip(CircleShape)
-                                            .background(Color.White.copy(alpha = 0.8f))
+                                            .background(Color.White)
                                     )
 
                                     Spacer(Modifier.width(8.dp))
 
                                     Column(
-                                        verticalArrangement = Arrangement.Center,
-                                        modifier = Modifier.weight(1f)
+                                        verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .padding(vertical = 2.dp)
                                     ) {
-                                        Text(
-                                            text = "${inicioTime.format(DateTimeFormatter.ofPattern("hh:mm a"))} - ${finTime.format(DateTimeFormatter.ofPattern("hh:mm a"))}",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            fontWeight = FontWeight.Bold,
-                                            color = Color.White
-                                        )
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = "${inicioTime.format(DateTimeFormatter.ofPattern("hh:mm a"))} – ${finTime.format(DateTimeFormatter.ofPattern("hh:mm a"))}",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color.White
+                                            )
+                                            Surface(
+                                                shape = RoundedCornerShape(4.dp),
+                                                color = Color.White.copy(alpha = 0.25f)
+                                            ) {
+                                                Text(
+                                                    text = cita.estado,
+                                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = Color.White,
+                                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                                )
+                                            }
+                                        }
 
                                         val cliente = cita.nombreCliente?.ifBlank { null } ?: "Cliente General"
                                         Text(
                                             text = cliente,
                                             style = MaterialTheme.typography.bodySmall,
-                                            fontWeight = FontWeight.SemiBold,
+                                            fontWeight = FontWeight.Bold,
                                             color = Color.White,
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis
                                         )
 
-                                        if (!cita.servicios.isNullOrBlank()) {
+                                        val textoServicio = remember(cita.servicios) { obtenerTextoServicios(cita.servicios) }
+                                        if (textoServicio.isNotBlank()) {
                                             Text(
-                                                text = cita.servicios,
+                                                text = textoServicio,
                                                 style = MaterialTheme.typography.labelSmall,
-                                                color = Color.White.copy(alpha = 0.9f),
+                                                color = Color.White.copy(alpha = 0.95f),
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+
+                                        if (cita.profesional.isNotBlank()) {
+                                            Text(
+                                                text = "Prof: ${cita.profesional}",
+                                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                                                color = Color.White.copy(alpha = 0.85f),
                                                 maxLines = 1,
                                                 overflow = TextOverflow.Ellipsis
                                             )
@@ -282,6 +317,23 @@ fun CalendarioDiaView(
 }
 
 // ── Helpers Privados ──────────────────────────────────────────────────────────
+private fun obtenerTextoServicios(json: String?): String {
+    if (json.isNullOrBlank()) return ""
+    return try {
+        val moshi = Moshi.Builder().addLast(KotlinJsonAdapterFactory()).build()
+        val type = Types.newParameterizedType(List::class.java, ServicioCita::class.java)
+        val lista = moshi.adapter<List<ServicioCita>>(type).fromJson(json) ?: emptyList()
+        if (lista.isNotEmpty()) {
+            lista.joinToString(", ") { it.nombre }
+        } else if (!json.trim().startsWith("[") && !json.trim().startsWith("{")) {
+            json
+        } else {
+            ""
+        }
+    } catch (e: Exception) {
+        if (!json.trim().startsWith("[") && !json.trim().startsWith("{")) json else ""
+    }
+}
 private fun parseFechaHora(str: String?): LocalDateTime? {
     if (str.isNullOrBlank()) return null
     return runCatching {

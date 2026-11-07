@@ -91,32 +91,55 @@ fun PreciosPersonasDialog(
                     }
                 }
 
-                // Formularios para agregar nuevo nivel
+                // Formulario compacto para agregar nuevo nivel
                 Row(
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     OutlinedTextField(
                         value = cantidadText,
                         onValueChange = { cantidadText = it.filter { c -> c.isDigit() } },
-                        label = { Text("Personas") },
+                        placeholder = { Text("Personas", style = MaterialTheme.typography.bodySmall) },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Default.Groups,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(52.dp),
                         singleLine = true,
-                        shape = RoundedCornerShape(10.dp)
+                        shape = RoundedCornerShape(10.dp),
+                        textStyle = MaterialTheme.typography.bodyMedium
                     )
 
                     OutlinedTextField(
                         value = precioText,
                         onValueChange = { precioText = it.filter { c -> c.isDigit() || c == '.' } },
-                        label = { Text("Precio ($)") },
+                        placeholder = { Text("Precio ($)", style = MaterialTheme.typography.bodySmall) },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Default.AttachMoney,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.weight(1.2f),
+                        modifier = Modifier
+                            .weight(1.2f)
+                            .height(52.dp),
                         singleLine = true,
-                        shape = RoundedCornerShape(10.dp)
+                        shape = RoundedCornerShape(10.dp),
+                        textStyle = MaterialTheme.typography.bodyMedium
                     )
 
-                    IconButton(
+                    FilledTonalButton(
                         onClick = {
                             val cant = cantidadText.toIntOrNull()
                             val prec = precioText.toDoubleOrNull()
@@ -126,9 +149,16 @@ fun PreciosPersonasDialog(
                                 precioText = ""
                             }
                         },
-                        enabled = esValido
+                        enabled = esValido,
+                        modifier = Modifier.height(52.dp),
+                        shape = RoundedCornerShape(10.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp)
                     ) {
-                        Icon(Icons.Default.Add, contentDescription = "Agregar tarifa", tint = MaterialTheme.colorScheme.primary)
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = "Agregar tarifa",
+                            modifier = Modifier.size(20.dp)
+                        )
                     }
                 }
 

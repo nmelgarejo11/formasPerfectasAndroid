@@ -24,6 +24,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import java.util.Locale
 import androidx.compose.ui.unit.dp
@@ -310,51 +311,51 @@ fun MisCitasContent(
         )
     }
 
-    // ── Pop-Up Detalle Cita (Desde vista Calendario) ─────────────────────────
+    // ── Pop-Up Detalle Cita (Desde vista Calendario - Muestra CitaCard Completa) ──
     if (mostrarDetalleCita && citaAccion != null) {
         val c = citaAccion!!
         AlertDialog(
             onDismissRequest = { mostrarDetalleCita = false },
             shape = RoundedCornerShape(20.dp),
-            title = {
-                Text(
-                    text = c.servicios ?: "Detalle de Cita",
-                    fontWeight = FontWeight.Bold
-                )
-            },
+            containerColor = MaterialTheme.colorScheme.surface,
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("• Cliente: ${c.nombreCliente ?: "Cliente General"}", style = MaterialTheme.typography.bodyMedium)
-                    Text("• Profesional: ${c.profesional}", style = MaterialTheme.typography.bodyMedium)
-                    Text("• Sede: ${c.sede}", style = MaterialTheme.typography.bodyMedium)
-                    Text("• Estado: ${c.estado}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
-                    if (!c.notas.isNullOrBlank()) {
-                        Text("• Notas: ${c.notas}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp)
+                ) {
+                    CitaCard(
+                        cita = c,
+                        onCancelar = {
+                            mostrarDetalleCita = false
+                            mostrarCancelar = true
+                        },
+                        onReagendar = {
+                            mostrarDetalleCita = false
+                            onCargarProfesionales(c.idSede)
+                            mostrarReagendar = true
+                        },
+                        onFinalizar = {
+                            mostrarDetalleCita = false
+                            mostrarFinalizar = true
+                        },
+                        onAsignar = {
+                            mostrarDetalleCita = false
+                            onCargarProfesionales(c.idSede)
+                            onBuscarClientes("")
+                            mostrarAsignar = true
+                        },
+                        onWhatsApp = {
+                            onWhatsApp(c.id)
+                        },
+                        accionCargando = accionState is AccionUiState.Loading
+                    )
                 }
             },
             confirmButton = {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Button(
-                        onClick = { mostrarDetalleCita = false; onCargarProfesionales(c.idSede); mostrarReagendar = true },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Reagendar")
-                    }
-                    Button(
-                        onClick = { mostrarDetalleCita = false; mostrarFinalizar = true },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Finalizar")
-                    }
-                }
-            },
-            dismissButton = {
                 OutlinedButton(
                     onClick = { mostrarDetalleCita = false },
+                    shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("Cerrar")
@@ -399,20 +400,23 @@ fun MisCitasContent(
                         )
                     }
 
-                    if (filtros.activo) {
-                        IconButton(onClick = onLimpiarFiltros) {
-                            BadgedBox(badge = { Badge() }) {
-                                Icon(Icons.Default.FilterAltOff, "Limpiar filtros")
+                    if (modoVista == ModoVistaCitas.LISTA) {
+                        if (filtros.activo) {
+                            IconButton(onClick = onLimpiarFiltros) {
+                                BadgedBox(badge = { Badge() }) {
+                                    Icon(Icons.Default.FilterAltOff, "Limpiar filtros")
+                                }
                             }
                         }
+                        IconButton(onClick = { filtrosTemp = filtros; onToggleFiltros() }) {
+                            Icon(
+                                imageVector        = if (filtros.activo) Icons.Default.FilterAlt else Icons.Default.FilterList,
+                                contentDescription = "Filtrar",
+                                tint               = if (filtros.activo) MaterialTheme.colorScheme.primary else LocalContentColor.current
+                            )
+                        }
                     }
-                    IconButton(onClick = { filtrosTemp = filtros; onToggleFiltros() }) {
-                        Icon(
-                            imageVector        = if (filtros.activo) Icons.Default.FilterAlt else Icons.Default.FilterList,
-                            contentDescription = "Filtrar",
-                            tint               = if (filtros.activo) MaterialTheme.colorScheme.primary else LocalContentColor.current
-                        )
-                    }
+
                     var menuExpanded by remember { mutableStateOf(false) }
                     Box {
                         IconButton(onClick = { menuExpanded = true }) {
@@ -448,7 +452,7 @@ fun MisCitasContent(
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
 
-            AnimatedVisibility(visible = showFiltros, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
+            AnimatedVisibility(visible = showFiltros && modoVista == ModoVistaCitas.LISTA, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
                 FiltrosMisCitasPanel(
                     filtros   = filtrosTemp,
                     estados   = estados,
@@ -491,10 +495,22 @@ fun MisCitasContent(
                     }
 
                     is MisCitasUiState.Empty -> {
-                        EmptyMisCitas(
-                            conFiltros = filtros.activo,
-                            modifier = Modifier.align(Alignment.Center)
-                        )
+                        if (modoVista == ModoVistaCitas.CALENDARIO_DIA) {
+                            CalendarioDiaView(
+                                citas = emptyList(),
+                                fechaSeleccionada = fechaCalendario,
+                                onFechaChange = onFechaCalendarioChange,
+                                onCitaClick = { cita ->
+                                    citaAccion = cita
+                                    mostrarDetalleCita = true
+                                }
+                            )
+                        } else {
+                            EmptyMisCitas(
+                                conFiltros = filtros.activo,
+                                modifier = Modifier.align(Alignment.Center)
+                            )
+                        }
                     }
 
                     is MisCitasUiState.Error -> {
@@ -1038,26 +1054,38 @@ private fun CitaCard(
                             onClick  = onReagendar,
                             enabled  = !accionCargando,
                             modifier = Modifier.weight(1f),
+                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
                             shape    = RoundedCornerShape(10.dp)
                         ) {
-                            Icon(Icons.Default.EditCalendar, null, modifier = Modifier.size(15.dp))
-                            Spacer(Modifier.width(4.dp))
-                            Text("Reagendar", style = MaterialTheme.typography.labelMedium)
+                            Icon(Icons.Default.EditCalendar, null, modifier = Modifier.size(14.dp))
+                            Spacer(Modifier.width(3.dp))
+                            Text(
+                                "Reagendar",
+                                style = MaterialTheme.typography.labelSmall,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
                         }
                         OutlinedButton(
                             onClick  = onCancelar,
                             enabled  = !accionCargando,
                             modifier = Modifier.weight(1f),
+                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
                             shape    = RoundedCornerShape(10.dp),
                             colors   = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
                             border   = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
                         ) {
                             if (accionCargando) {
-                                CircularProgressIndicator(modifier = Modifier.size(15.dp), strokeWidth = 2.dp)
+                                CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp)
                             } else {
-                                Icon(Icons.Default.Cancel, null, modifier = Modifier.size(15.dp))
-                                Spacer(Modifier.width(4.dp))
-                                Text("Cancelar", style = MaterialTheme.typography.labelMedium)
+                                Icon(Icons.Default.Cancel, null, modifier = Modifier.size(14.dp))
+                                Spacer(Modifier.width(3.dp))
+                                Text(
+                                    "Cancelar",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
                             }
                         }
                     }
