@@ -142,7 +142,7 @@ fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
             ServiciosScreen(
                 onBack = { nav.popBackStack() },
                 onFinalizarSeleccion = { listaServicios ->
-                    sharedVm.serviciosSeleccionados.clear()
+                    sharedVm.limpiarReserva()
                     sharedVm.serviciosSeleccionados.addAll(listaServicios)
 
                     when {
@@ -223,10 +223,11 @@ fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
 
             ResponsableGrupalScreen(
                 onBack = { nav.popBackStack() },
-                onContinuar = { nombre, telefono, correo, personas ->
-                    sharedVm.responsableNombre = nombre
-                    sharedVm.responsableTelefono = telefono
-                    sharedVm.responsableCorreo = correo
+                onContinuar = { cliente, personas ->
+                    sharedVm.clienteSeleccionado = cliente
+                    sharedVm.responsableNombre = cliente.nombreCompleto
+                    sharedVm.responsableTelefono = cliente.telefono ?: ""
+                    sharedVm.responsableCorreo = cliente.email ?: ""
                     sharedVm.cantidadPersonas = personas
 
                     // Navegar a la selección de profesional

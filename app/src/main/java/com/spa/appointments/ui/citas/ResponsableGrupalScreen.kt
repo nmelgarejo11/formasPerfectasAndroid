@@ -41,7 +41,7 @@ private const val MAX_PERSONAS = 20
 @Composable
 fun ResponsableGrupalScreen(
     onBack: () -> Unit,
-    onContinuar: (nombre: String, telefono: String, correo: String, personas: Int) -> Unit,
+    onContinuar: (cliente: Cliente, personas: Int) -> Unit,
     clienteVm: SeleccionarClienteViewModel = hiltViewModel()
 ) {
     val clienteUiState by clienteVm.uiState.collectAsState()
@@ -298,7 +298,7 @@ fun ResponsableGrupalScreen(
                     onClick = {
                         val c = clienteSeleccionado
                         if (c != null) {
-                            onContinuar(c.nombreCompleto, c.telefono ?: "", c.email ?: "", cantidadPersonas)
+                            onContinuar(c, cantidadPersonas)
                         }
                     },
                     modifier = Modifier
