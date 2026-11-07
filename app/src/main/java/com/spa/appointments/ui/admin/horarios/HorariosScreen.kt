@@ -390,7 +390,7 @@ private fun DiaHorarioRow(
                     modifier       = Modifier.height(32.dp),
                     shape          = RoundedCornerShape(8.dp)
                 ) {
-                    Text(dia.horaInicio, style = MaterialTheme.typography.labelMedium)
+                    Text(formatearHora12h(dia.horaInicio), style = MaterialTheme.typography.labelMedium)
                 }
                 Text(
                     " – ",
@@ -403,7 +403,7 @@ private fun DiaHorarioRow(
                     modifier       = Modifier.height(32.dp),
                     shape          = RoundedCornerShape(8.dp)
                 ) {
-                    Text(dia.horaFin, style = MaterialTheme.typography.labelMedium)
+                    Text(formatearHora12h(dia.horaFin), style = MaterialTheme.typography.labelMedium)
                 }
             }
         }
@@ -483,5 +483,24 @@ private fun BloqueoRow(
                 tint     = MaterialTheme.colorScheme.error
             )
         }
+    }
+}
+
+private fun formatearHora12h(horaStr: String): String {
+    if (horaStr.isBlank()) return ""
+    return try {
+        val cleanStr = if (horaStr.contains("T")) horaStr.substring(11, 16) else horaStr.trim()
+        val partes = cleanStr.split(":")
+        val h = partes[0].toInt()
+        val m = partes[1]
+        val amPm = if (h >= 12) "PM" else "AM"
+        val h12 = when {
+            h == 0 -> 12
+            h > 12 -> h - 12
+            else -> h
+        }
+        String.format(java.util.Locale.US, "%02d:%s %s", h12, m, amPm)
+    } catch (_: Exception) {
+        horaStr.take(5)
     }
 }

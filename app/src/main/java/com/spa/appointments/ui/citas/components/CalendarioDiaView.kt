@@ -148,15 +148,17 @@ fun CalendarioDiaView(
                             .height(altoPorHoraDp),
                         verticalAlignment = Alignment.Top
                     ) {
+                        val amPm = if (hora >= 12) "PM" else "AM"
+                        val h12 = if (hora > 12) hora - 12 else hora
                         // Etiqueta de la hora
                         Text(
-                            text = String.format(Locale.getDefault(), "%02d:00", hora),
-                            style = MaterialTheme.typography.labelSmall,
+                            text = String.format(Locale.US, "%02d:00 %s", h12, amPm),
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontWeight = FontWeight.Medium,
                             modifier = Modifier
-                                .width(52.dp)
-                                .padding(start = 8.dp, top = 2.dp)
+                                .width(64.dp)
+                                .padding(start = 4.dp, top = 2.dp)
                         )
 
                         // Línea divisora horizontal
@@ -201,7 +203,7 @@ fun CalendarioDiaView(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(start = 56.dp, end = 12.dp)
+                        .padding(start = 68.dp, end = 12.dp)
                 ) {
                     citasDelDia.forEach { cita ->
                         val inicioTime = parseFechaHora(cita.fechaHoraInicio)

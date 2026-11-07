@@ -232,7 +232,7 @@ private fun CitaPendienteCard(
     var showAprobarDialog  by remember { mutableStateOf(false) }
     var showRechazarDialog by remember { mutableStateOf(false) }
 
-    val formatter   = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")
+    val formatter   = DateTimeFormatter.ofPattern("dd/MM/yyyy hh:mm a", java.util.Locale.US)
     val fechaActual = try {
         val raw = cita.fechaHoraInicio.substring(0, 16).replace("T", " ")
         LocalDate.parse(raw.substring(0, 10))
@@ -604,8 +604,8 @@ private fun AprobarConDisponibilidadDialog(
                                                 modifier            = Modifier.padding(vertical = 10.dp)
                                             ) {
                                                 Text(
-                                                    text       = slot.horaInicio.substring(0, 5),
-                                                    fontSize   = 13.sp,
+                                                    text       = formatearHora12h(slot.horaInicio),
+                                                    fontSize   = 12.sp,
                                                     fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal,
                                                     color      = if (sel) MaterialTheme.colorScheme.onPrimary
                                                     else MaterialTheme.colorScheme.onSurface
@@ -730,6 +730,25 @@ private fun RechazarDialog(
 }
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
+
+private fun formatearHora12h(horaStr: String): String {
+    if (horaStr.isBlank()) return ""
+    return try {
+        val cleanStr = if (horaStr.contains("T")) horaStr.substring(11, 16) else horaStr.trim()
+        val partes = cleanStr.split(":")
+        val h = partes[0].toInt()
+        val m = partes[1]
+        val amPm = if (h >= 12) "PM" else "AM"
+        val h12 = when {
+            h == 0 -> 12
+            h > 12 -> h - 12
+            else -> h
+        }
+        String.format(java.util.Locale.US, "%02d:%s %s", h12, m, amPm)
+    } catch (e: Exception) {
+        horaStr.take(5)
+    }
+}
 
 private fun calcularDuracion(inicio: String, fin: String): Int {
     return try {

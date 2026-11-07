@@ -116,7 +116,7 @@ fun DisponibilidadScreen(
                     ConfirmacionFila(
                         icono  = Icons.Default.Schedule,
                         label  = "Hora",
-                        valor  = "${slotSeleccionado?.horaInicio?.substring(0,5)} – ${slotSeleccionado?.horaFin?.substring(0,5)}"
+                        valor  = "${formatearHora12h(slotSeleccionado?.horaInicio ?: "")} – ${formatearHora12h(slotSeleccionado?.horaFin ?: "")}"
                     )
 
                     HorizontalDivider()
@@ -252,7 +252,7 @@ fun DisponibilidadScreen(
                             )
                             Spacer(Modifier.width(8.dp))
                             Text(
-                                text       = slot?.let { "Confirmar a las ${it.horaInicio.substring(0,5)}" } ?: "Selecciona un horario",
+                                text       = slot?.let { "Confirmar a las ${formatearHora12h(it.horaInicio)}" } ?: "Selecciona un horario",
                                 fontWeight = FontWeight.SemiBold
                             )
                         }
@@ -512,7 +512,8 @@ private fun SlotsGrid(slots: List<SlotDisponible>, slotSeleccionado: SlotDisponi
 private fun formatearHora12h(horaStr: String): String {
     if (horaStr.isBlank()) return ""
     return try {
-        val partes = horaStr.trim().split(":")
+        val cleanStr = if (horaStr.contains("T")) horaStr.substring(11, 16) else horaStr.trim()
+        val partes = cleanStr.split(":")
         val h = partes[0].toInt()
         val m = partes[1]
         val amPm = if (h >= 12) "PM" else "AM"

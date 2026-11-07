@@ -746,5 +746,19 @@ private fun formatearFechaHistorial(fechaIso: String): String = try {
 } catch (e: Exception) { fechaIso }
 
 private fun formatearHoraHistorial(fechaIso: String): String = try {
-    fechaIso.substring(11, 16)
+    if (fechaIso.isBlank()) {
+        ""
+    } else {
+        val horaStr = if (fechaIso.contains("T")) fechaIso.substring(11, 16) else fechaIso.take(5)
+        val partes = horaStr.trim().split(":")
+        val h = partes[0].toInt()
+        val m = partes[1]
+        val amPm = if (h >= 12) "PM" else "AM"
+        val h12 = when {
+            h == 0 -> 12
+            h > 12 -> h - 12
+            else -> h
+        }
+        String.format(java.util.Locale.US, "%02d:%s %s", h12, m, amPm)
+    }
 } catch (e: Exception) { fechaIso }
