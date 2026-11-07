@@ -42,21 +42,10 @@ private const val MAX_PERSONAS = 20
 fun ResponsableGrupalScreen(
     onBack: () -> Unit,
     onContinuar: (nombre: String, telefono: String, correo: String, personas: Int) -> Unit,
-    uiStateFlow: StateFlow<DisponibilidadUiState>,
-    onExito: () -> Unit,
     clienteVm: SeleccionarClienteViewModel = hiltViewModel()
 ) {
-    val uiState by uiStateFlow.collectAsState()
     val clienteUiState by clienteVm.uiState.collectAsState()
     val textoBusqueda by clienteVm.textoBusqueda.collectAsState()
-
-    val isLoading = uiState is DisponibilidadUiState.CreandoCita
-
-    LaunchedEffect(uiState) {
-        if (uiState is DisponibilidadUiState.CitaCreada) {
-            onExito()
-        }
-    }
 
     var clienteSeleccionado by remember { mutableStateOf<Cliente?>(null) }
     var cantidadPersonas by remember { mutableIntStateOf(MIN_PERSONAS) }
@@ -315,40 +304,14 @@ fun ResponsableGrupalScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(52.dp),
-                    enabled = clienteSeleccionado != null && !isLoading,
+                    enabled = clienteSeleccionado != null,
                     shape = RoundedCornerShape(14.dp)
                 ) {
-                    if (isLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(22.dp),
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            strokeWidth = 2.5.dp
-                        )
-                    } else {
-                        Text(
-                            text = "Confirmar reserva grupal",
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-
-                if (uiState is DisponibilidadUiState.Error) {
-                    val mensaje = (uiState as DisponibilidadUiState.Error).mensaje
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.errorContainer
-                        ),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text(
-                            text = mensaje,
-                            modifier = Modifier.padding(14.dp),
-                            color = MaterialTheme.colorScheme.onErrorContainer,
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
+                    Text(
+                        text = "Continuar a selección de profesional",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
         }

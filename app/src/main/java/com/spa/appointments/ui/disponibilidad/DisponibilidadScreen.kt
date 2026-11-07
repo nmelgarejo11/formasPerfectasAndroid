@@ -59,8 +59,8 @@ fun DisponibilidadScreen(
         if (uiState is DisponibilidadUiState.CitaCreada) mostrarExito = true
     }
 
-    // Botón habilitado si se seleccionó slot (Individual) o si es un flujo de Cita Grupal (Solo requiere fecha)
-    val botonHabilitado = (slotSeleccionado != null || sharedVm.esGrupal) && uiState !is DisponibilidadUiState.CreandoCita
+    // Botón habilitado si se seleccionó slot de horario
+    val botonHabilitado = slotSeleccionado != null && uiState !is DisponibilidadUiState.CreandoCita
 
     if (mostrarDialogo) {
         AlertDialog(
@@ -87,22 +87,23 @@ fun DisponibilidadScreen(
                         valor  = servicio.nombre
                     )
 
+                    ConfirmacionFila(
+                        icono  = Icons.Default.Person,
+                        label  = "Cliente",
+                        valor  = sharedVm.clienteSeleccionado?.nombreCompleto ?: sharedVm.responsableNombre
+                    )
+
+                    ConfirmacionFila(
+                        icono  = Icons.Default.Badge,
+                        label  = "Profesional",
+                        valor  = profesional?.nombreCompleto ?: ""
+                    )
+
                     if (sharedVm.esGrupal) {
-                        ConfirmacionFila(
-                            icono  = Icons.Default.Person,
-                            label  = "Responsable",
-                            valor  = sharedVm.responsableNombre
-                        )
                         ConfirmacionFila(
                             icono  = Icons.Default.Group,
                             label  = "Asistentes",
                             valor  = "${sharedVm.cantidadPersonas} personas"
-                        )
-                    } else {
-                        ConfirmacionFila(
-                            icono  = Icons.Default.Badge,
-                            label  = "Profesional",
-                            valor  = profesional?.nombreCompleto ?: ""
                         )
                     }
 
@@ -112,17 +113,15 @@ fun DisponibilidadScreen(
                         valor  = fechaSeleccionada.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
                     )
 
-                    if (!sharedVm.esGrupal) {
-                        ConfirmacionFila(
-                            icono  = Icons.Default.Schedule,
-                            label  = "Hora",
-                            valor  = "${slotSeleccionado?.horaInicio?.substring(0,5)} – ${slotSeleccionado?.horaFin?.substring(0,5)}"
-                        )
-                    }
+                    ConfirmacionFila(
+                        icono  = Icons.Default.Schedule,
+                        label  = "Hora",
+                        valor  = "${slotSeleccionado?.horaInicio?.substring(0,5)} – ${slotSeleccionado?.horaFin?.substring(0,5)}"
+                    )
 
                     HorizontalDivider()
 
-                    // Cálculo multiplicador del total para grupos
+                    // Total
                     val precioCalculado = if (sharedVm.esGrupal) servicio.precioBase * sharedVm.cantidadPersonas else servicio.precioBase
                     ConfirmacionFila(
                         icono  = Icons.Default.AttachMoney,
@@ -203,7 +202,7 @@ fun DisponibilidadScreen(
                 title = {
                     Column {
                         Text(
-                            text       = if (sharedVm.esGrupal) "Elige la fecha grupal" else "Elige fecha y hora",
+                            text       = "Elige fecha y hora",
                             style      = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
@@ -253,8 +252,7 @@ fun DisponibilidadScreen(
                             )
                             Spacer(Modifier.width(8.dp))
                             Text(
-                                text       = if (sharedVm.esGrupal) "Solicitar Cita Grupal"
-                                else slot?.let { "Reservar a las ${it.horaInicio.substring(0,5)}" } ?: "Selecciona un horario",
+                                text       = slot?.let { "Confirmar a las ${it.horaInicio.substring(0,5)}" } ?: "Selecciona un horario",
                                 fontWeight = FontWeight.SemiBold
                             )
                         }
@@ -270,7 +268,6 @@ fun DisponibilidadScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(bottom = 8.dp)
         ) {
-            // Reutilizamos el card superior, enviando datos dummy de profesional si es grupal
             ResumenReserva(servicio = servicio, profesional = profesional)
 
             Spacer(Modifier.height(8.dp))
@@ -282,64 +279,46 @@ fun DisponibilidadScreen(
 
             Spacer(Modifier.height(16.dp))
 
-            // ── Bloque condicional de slots: Solo renderiza si NO es una cita grupal ───────────────────
-            if (!sharedVm.esGrupal) {
-                when (val state = uiState) {
-                    is DisponibilidadUiState.LoadingSlots -> {
-                        Box(
-                            modifier         = Modifier.fillMaxWidth().height(180.dp),
-                            contentAlignment = Alignment.Center
+            // Slots de disponibilidad horaria
+            when (val state = uiState) {
+                is DisponibilidadUiState.LoadingSlots -> {
+                    Box(
+                        modifier         = Modifier.fillMaxWidth().height(180.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                CircularProgressIndicator()
-                                Text("Buscando horarios disponibles…", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
+                            CircularProgressIndicator()
+                            Text("Buscando horarios disponibles…", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
-                    is DisponibilidadUiState.SlotsLoaded -> {
-                        SlotsGrid(
-                            slots            = state.slots,
-                            slotSeleccionado = slotSeleccionado,
-                            onSlotClick      = { vm.seleccionarSlot(it) }
-                        )
-                    }
-                    is DisponibilidadUiState.Error -> {
-                        Surface(
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                            shape = RoundedCornerShape(12.dp),
-                            color = MaterialTheme.colorScheme.errorContainer
+                }
+                is DisponibilidadUiState.SlotsLoaded -> {
+                    SlotsGrid(
+                        slots            = state.slots,
+                        slotSeleccionado = slotSeleccionado,
+                        onSlotClick      = { vm.seleccionarSlot(it) }
+                    )
+                }
+                is DisponibilidadUiState.Error -> {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.errorContainer
+                    ) {
+                        Row(
+                            modifier          = Modifier.padding(14.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(
-                                modifier          = Modifier.padding(14.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(Icons.Default.CloudOff, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onErrorContainer)
-                                Spacer(Modifier.width(8.dp))
-                                Text(text = state.mensaje, color = MaterialTheme.colorScheme.onErrorContainer, style = MaterialTheme.typography.bodySmall)
-                            }
+                            Icon(Icons.Default.CloudOff, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onErrorContainer)
+                            Spacer(Modifier.width(8.dp))
+                            Text(text = state.mensaje, color = MaterialTheme.colorScheme.onErrorContainer, style = MaterialTheme.typography.bodySmall)
                         }
                     }
-                    else -> Unit
                 }
-            } else {
-                // Info para la vista grupal indicando que el día queda registrado para gestión administrativa
-                Card(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                ) {
-                    Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Info, null, tint = MaterialTheme.colorScheme.primary)
-                        Spacer(Modifier.width(12.dp))
-                        Text(
-                            text = "Las citas grupales se agendan para el día seleccionado. El equipo se contactará para coordinar la hora exacta del bloque.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
+                else -> Unit
             }
 
             // ── Notas ─────────────────────────────────────────────────────

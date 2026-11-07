@@ -89,8 +89,8 @@ class DisponibilidadViewModel @Inject constructor(
                 var fechaInicioStr: String? = null
                 var fechaFinStr: String? = null
 
-                // Flujo Abierto aplica tanto para citas grupales como para servicios múltiples
-                val esFlujoAbierto = sharedVm.esGrupal || sharedVm.esMultiple
+                // Flujo Abierto aplica solo para servicios múltiples sin horario ni profesional prefijado
+                val esFlujoAbierto = sharedVm.esMultiple
 
                 if (!esFlujoAbierto) {
                     val slot = _slotSeleccionado.value
@@ -109,8 +109,9 @@ class DisponibilidadViewModel @Inject constructor(
                     fechaFinStr = formatter.format(fechaBase)
                 }
 
-                // Si es flujo abierto (grupal/múltiple) se pasa 0 para que SQL asigne el cliente genérico 'Reserva%'
-                val idClienteFinal = if (esFlujoAbierto) 0 else (clienteSeleccionado?.id ?: run {
+                // Cliente seleccionado en flujo individual o cliente responsable en flujo grupal
+                val clienteFinal = clienteSeleccionado ?: sharedVm.clienteSeleccionado
+                val idClienteFinal = if (esFlujoAbierto) 0 else (clienteFinal?.id ?: run {
                     _uiState.value = DisponibilidadUiState.Error("Debe seleccionar un cliente")
                     return@launch
                 })

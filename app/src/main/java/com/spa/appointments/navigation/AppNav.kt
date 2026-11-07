@@ -188,7 +188,11 @@ fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
                 onBack = { nav.popBackStack() },
                 onSeleccionarProfesional = { profesional ->
                     sharedVm.profesionalSeleccionado = profesional
-                    nav.navigate(Routes.SELECCIONAR_CLIENTE) // Siguiente paso individual
+                    if (sharedVm.clienteSeleccionado != null) {
+                        nav.navigate(Routes.DISPONIBILIDAD)
+                    } else {
+                        nav.navigate(Routes.SELECCIONAR_CLIENTE)
+                    }
                 },
                 vm = profVm
             )
@@ -216,8 +220,6 @@ fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
                 catch (e: Exception) { it }
             }
             val sharedVm = hiltViewModel<ReservaSharedViewModel>(backEntry)
-            // Usamos el mismo ViewModel de disponibilidad para reutilizar la función de backend
-            val dispVm   = hiltViewModel<DisponibilidadViewModel>()
 
             ResponsableGrupalScreen(
                 onBack = { nav.popBackStack() },
@@ -227,18 +229,8 @@ fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
                     sharedVm.responsableCorreo = correo
                     sharedVm.cantidadPersonas = personas
 
-                    // Pasamos el control al ViewModel para que dispare la cita de una vez
-                    dispVm.servicio = sharedVm.servicioSeleccionado
-                    dispVm.confirmarCita(sharedVm, notas = "Solicitud en espera")
-                },
-                // Le pasamos el estado del proceso a la pantalla para mostrar un Loading o Diálogo de éxito
-                uiStateFlow = dispVm.uiState,
-                onExito = {
-                    dispVm.resetear()
-                    sharedVm.limpiarReserva()
-                    nav.navigate(Routes.MIS_CITAS) {
-                        popUpTo(Routes.SERVICIOS) { this.inclusive = true }
-                    }
+                    // Navegar a la selección de profesional
+                    nav.navigate(Routes.PROFESIONALES)
                 }
             )
         }
