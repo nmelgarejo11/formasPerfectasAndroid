@@ -3,28 +3,34 @@ package com.spa.appointments.ui.citas
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.spa.appointments.domain.model.Cliente
+import com.spa.appointments.ui.clientes.SeleccionarClienteUiState
+import com.spa.appointments.ui.clientes.SeleccionarClienteViewModel
 import com.spa.appointments.ui.disponibilidad.DisponibilidadUiState
 import kotlinx.coroutines.flow.StateFlow
 
@@ -37,9 +43,13 @@ fun ResponsableGrupalScreen(
     onBack: () -> Unit,
     onContinuar: (nombre: String, telefono: String, correo: String, personas: Int) -> Unit,
     uiStateFlow: StateFlow<DisponibilidadUiState>,
-    onExito: () -> Unit
+    onExito: () -> Unit,
+    clienteVm: SeleccionarClienteViewModel = hiltViewModel()
 ) {
     val uiState by uiStateFlow.collectAsState()
+    val clienteUiState by clienteVm.uiState.collectAsState()
+    val textoBusqueda by clienteVm.textoBusqueda.collectAsState()
+
     val isLoading = uiState is DisponibilidadUiState.CreandoCita
 
     LaunchedEffect(uiState) {
@@ -48,33 +58,19 @@ fun ResponsableGrupalScreen(
         }
     }
 
-    var nombre by remember { mutableStateOf("") }
-    var telefono by remember { mutableStateOf("") }
-    var correo by remember { mutableStateOf("") }
+    var clienteSeleccionado by remember { mutableStateOf<Cliente?>(null) }
     var cantidadPersonas by remember { mutableIntStateOf(MIN_PERSONAS) }
-
-    var errorNombre by remember { mutableStateOf<String?>(null) }
-    var errorTelefono by remember { mutableStateOf<String?>(null) }
-
-    fun validarYContinuar() {
-        errorNombre = if (nombre.isBlank()) "El nombre es obligatorio" else null
-        errorTelefono = when {
-            telefono.isBlank() -> "El teléfono es obligatorio"
-            telefono.length < 7 -> "Ingresa un teléfono válido"
-            else -> null
-        }
-        if (errorNombre == null && errorTelefono == null) {
-            onContinuar(nombre.trim(), telefono.trim(), correo.trim(), cantidadPersonas)
-        }
-    }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
-                    Text("Reserva Grupal",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold)},
+                    Text(
+                        "Reserva Grupal",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Regresar")
@@ -91,24 +87,23 @@ fun ResponsableGrupalScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .verticalScroll(rememberScrollState())
         ) {
-            // Encabezado con fondo sutil
+            // Encabezado
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f))
-                    .padding(horizontal = 20.dp, vertical = 16.dp)
+                    .padding(horizontal = 20.dp, vertical = 14.dp)
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(
-                        text = "Responsable del grupo",
+                        text = "Cliente Responsable del Grupo",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "Estos datos se usarán para confirmar la reserva.",
+                        text = "Selecciona el cliente y la cantidad de asistentes.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -117,115 +112,210 @@ fun ResponsableGrupalScreen(
 
             Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 24.dp),
+                    .fillMaxSize()
+                    .padding(horizontal = 20.dp, vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Campo Nombre
-                OutlinedTextField(
-                    value = nombre,
-                    onValueChange = {
-                        nombre = it
-                        errorNombre = null
-                    },
-                    label = { Text("Nombre completo *") },
-                    leadingIcon = {
-                        Icon(
-                            Icons.Default.Person,
-                            contentDescription = null,
-                            tint = if (errorNombre != null)
-                                MaterialTheme.colorScheme.error
-                            else
-                                MaterialTheme.colorScheme.primary
-                        )
-                    },
-                    isError = errorNombre != null,
-                    supportingText = {
-                        AnimatedVisibility(
-                            visible = errorNombre != null,
-                            enter = fadeIn(),
-                            exit = fadeOut()
+                // ── SECCIÓN 1: CLIENTE SELECCIONADO O BUSCADOR ────────────────
+                if (clienteSeleccionado != null) {
+                    val c = clienteSeleccionado!!
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        ),
+                        border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(errorNombre ?: "")
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    shape = RoundedCornerShape(12.dp)
-                )
+                            Surface(
+                                modifier = Modifier.size(48.dp).clip(CircleShape),
+                                color = MaterialTheme.colorScheme.primaryContainer
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text(
+                                        text = c.nombre.firstOrNull()?.uppercase() ?: "?",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                }
+                            }
 
-                // Campo Teléfono
-                OutlinedTextField(
-                    value = telefono,
-                    onValueChange = { input ->
-                        if (input.all { it.isDigit() || it == '+' }) {
-                            telefono = input
-                            errorTelefono = null
+                            Spacer(Modifier.width(14.dp))
+
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text(
+                                        text = c.nombreCompleto,
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Icon(
+                                        imageVector = Icons.Default.CheckCircle,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+
+                                if (!c.telefono.isNullOrBlank()) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.padding(top = 2.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Phone,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(12.dp),
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                        Spacer(Modifier.width(4.dp))
+                                        Text(
+                                            text = c.telefono,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+
+                            TextButton(onClick = { clienteSeleccionado = null; clienteVm.resetear() }) {
+                                Text("Cambiar")
+                            }
                         }
-                    },
-                    label = { Text("Teléfono *") },
-                    leadingIcon = {
-                        Icon(
-                            Icons.Default.Phone,
-                            contentDescription = null,
-                            tint = if (errorTelefono != null)
-                                MaterialTheme.colorScheme.error
-                            else
-                                MaterialTheme.colorScheme.primary
+                    }
+                } else {
+                    // Buscador de Cliente
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = "Buscar cliente *",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
-                    },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                    isError = errorTelefono != null,
-                    supportingText = {
-                        AnimatedVisibility(
-                            visible = errorTelefono != null,
-                            enter = fadeIn(),
-                            exit = fadeOut()
+
+                        OutlinedTextField(
+                            value = textoBusqueda,
+                            onValueChange = { clienteVm.buscar(it) },
+                            placeholder = { Text("Escribe nombre o teléfono...") },
+                            leadingIcon = { Icon(Icons.Default.Search, null) },
+                            trailingIcon = {
+                                if (textoBusqueda.isNotEmpty()) {
+                                    IconButton(onClick = { clienteVm.resetear() }) {
+                                        Icon(Icons.Default.Close, "Limpiar")
+                                    }
+                                }
+                            },
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        // Resultados de búsqueda
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 200.dp)
                         ) {
-                            Text(errorTelefono ?: "")
+                            when (val state = clienteUiState) {
+                                is SeleccionarClienteUiState.Buscando -> {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.align(Alignment.Center).size(28.dp),
+                                        strokeWidth = 2.dp
+                                    )
+                                }
+                                is SeleccionarClienteUiState.SinResultados -> {
+                                    Text(
+                                        text = "No se encontraron clientes con \"$textoBusqueda\"",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(vertical = 12.dp)
+                                    )
+                                }
+                                is SeleccionarClienteUiState.Resultados -> {
+                                    LazyColumn(
+                                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        items(state.clientes, key = { it.id }) { item ->
+                                            Surface(
+                                                shape = RoundedCornerShape(10.dp),
+                                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .clickable {
+                                                        clienteSeleccionado = item
+                                                        clienteVm.resetear()
+                                                    }
+                                            ) {
+                                                Row(
+                                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Icon(
+                                                        Icons.Default.Person,
+                                                        contentDescription = null,
+                                                        modifier = Modifier.size(18.dp),
+                                                        tint = MaterialTheme.colorScheme.primary
+                                                    )
+                                                    Spacer(Modifier.width(10.dp))
+                                                    Column(modifier = Modifier.weight(1f)) {
+                                                        Text(
+                                                            text = item.nombreCompleto,
+                                                            style = MaterialTheme.typography.bodyMedium,
+                                                            fontWeight = FontWeight.SemiBold
+                                                        )
+                                                        if (!item.telefono.isNullOrBlank()) {
+                                                            Text(
+                                                                text = item.telefono,
+                                                                style = MaterialTheme.typography.labelSmall,
+                                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                else -> Unit
+                            }
                         }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    shape = RoundedCornerShape(12.dp)
-                )
+                    }
+                }
 
-                // Campo Correo (Opcional)
-                OutlinedTextField(
-                    value = correo,
-                    onValueChange = { correo = it },
-                    label = { Text("Correo electrónico (opcional)") },
-                    leadingIcon = {
-                        Icon(
-                            Icons.Default.Email,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    shape = RoundedCornerShape(12.dp)
-                )
+                HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
 
-                Spacer(modifier = Modifier.height(4.dp))
-
-                // Selector de personas
+                // ── SECCIÓN 2: CANTIDAD DE ASISTENTES ─────────────────────────
                 PersonasSelectorCard(
                     cantidad = cantidadPersonas,
                     onIncrement = { if (cantidadPersonas < MAX_PERSONAS) cantidadPersonas++ },
                     onDecrement = { if (cantidadPersonas > MIN_PERSONAS) cantidadPersonas-- }
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.weight(1f))
 
-                // Botón Confirmar
+                // ── SECCIÓN 3: BOTÓN CONFIRMAR ────────────────────────────────
                 Button(
-                    onClick = { validarYContinuar() },
+                    onClick = {
+                        val c = clienteSeleccionado
+                        if (c != null) {
+                            onContinuar(c.nombreCompleto, c.telefono ?: "", c.email ?: "", cantidadPersonas)
+                        }
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(52.dp),
-                    enabled = !isLoading,
+                    enabled = clienteSeleccionado != null && !isLoading,
                     shape = RoundedCornerShape(14.dp)
                 ) {
                     if (isLoading) {
@@ -236,14 +326,13 @@ fun ResponsableGrupalScreen(
                         )
                     } else {
                         Text(
-                            text = "Confirmar reserva",
+                            text = "Confirmar reserva grupal",
                             style = MaterialTheme.typography.labelLarge,
                             fontWeight = FontWeight.Bold
                         )
                     }
                 }
 
-                // Error general de API
                 if (uiState is DisponibilidadUiState.Error) {
                     val mensaje = (uiState as DisponibilidadUiState.Error).mensaje
                     Card(
