@@ -500,11 +500,29 @@ private fun SlotsGrid(slots: List<SlotDisponible>, slotSeleccionado: SlotDisponi
                         modifier = Modifier.weight(1f).clickable { onSlotClick(slot) }
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(vertical = 12.dp)) {
-                            Text(text = slot.horaInicio.substring(0, 5), textAlign = TextAlign.Center, fontWeight = if (seleccionado) FontWeight.Bold else FontWeight.Normal, fontSize = 14.sp, color = if (seleccionado) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface)
+                            Text(text = formatearHora12h(slot.horaInicio), textAlign = TextAlign.Center, fontWeight = if (seleccionado) FontWeight.Bold else FontWeight.Normal, fontSize = 13.sp, color = if (seleccionado) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface)
                         }
                     }
                 }
             }
         }
+    }
+}
+
+private fun formatearHora12h(horaStr: String): String {
+    if (horaStr.isBlank()) return ""
+    return try {
+        val partes = horaStr.trim().split(":")
+        val h = partes[0].toInt()
+        val m = partes[1]
+        val amPm = if (h >= 12) "PM" else "AM"
+        val h12 = when {
+            h == 0 -> 12
+            h > 12 -> h - 12
+            else -> h
+        }
+        String.format(java.util.Locale.US, "%02d:%s %s", h12, m, amPm)
+    } catch (e: Exception) {
+        horaStr.take(5)
     }
 }

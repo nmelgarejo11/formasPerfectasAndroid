@@ -113,7 +113,7 @@ fun MisCitasScreen(
         onBuscarClientes          = { query -> vm.buscarClientes(query) },
         onWhatsApp                = { idCita -> vm.abrirWhatsApp(idCita, context) },
         onResetAccion             = { vm.resetAccion() },
-        onCargarProfesionales     = { sedeId -> vm.cargarProfesionales(sedeId) }
+        onCargarProfesionales     = { sedeId, servId -> vm.cargarProfesionales(sedeId, servId) }
     )
 }
 
@@ -151,7 +151,7 @@ fun MisCitasContent(
     onBuscarClientes:          (String) -> Unit,
     onWhatsApp:                (Int) -> Unit,
     onResetAccion:             () -> Unit,
-    onCargarProfesionales:     (Int) -> Unit
+    onCargarProfesionales:     (idSede: Int, idServicio: Int?) -> Unit
 ) {
     var filtrosTemp by remember { mutableStateOf(FiltrosMisCitas()) }
 
@@ -332,7 +332,8 @@ fun MisCitasContent(
                         },
                         onReagendar = {
                             mostrarDetalleCita = false
-                            onCargarProfesionales(c.idSede)
+                            val idServicioExtraido = parsearServicios(c.servicios).firstOrNull()?.id
+                            onCargarProfesionales(c.idSede, idServicioExtraido)
                             mostrarReagendar = true
                         },
                         onFinalizar = {
@@ -341,7 +342,8 @@ fun MisCitasContent(
                         },
                         onAsignar = {
                             mostrarDetalleCita = false
-                            onCargarProfesionales(c.idSede)
+                            val idServicioExtraido = parsearServicios(c.servicios).firstOrNull()?.id
+                            onCargarProfesionales(c.idSede, idServicioExtraido)
                             onBuscarClientes("")
                             mostrarAsignar = true
                         },
@@ -592,7 +594,8 @@ fun MisCitasContent(
                                         },
                                         onReagendar = {
                                             citaAccion = cita
-                                            onCargarProfesionales(cita.idSede)
+                                            val idServicioExtraido = parsearServicios(cita.servicios).firstOrNull()?.id
+                                            onCargarProfesionales(cita.idSede, idServicioExtraido)
                                             mostrarReagendar = true
                                         },
                                         onFinalizar = {
@@ -601,7 +604,8 @@ fun MisCitasContent(
                                         },
                                         onAsignar = {
                                             citaAccion = cita
-                                            onCargarProfesionales(cita.idSede)
+                                            val idServicioExtraido = parsearServicios(cita.servicios).firstOrNull()?.id
+                                            onCargarProfesionales(cita.idSede, idServicioExtraido)
                                             onBuscarClientes("")
                                             mostrarAsignar = true
                                         },
@@ -1765,7 +1769,7 @@ private fun MisCitasPreviewLoading() {
             onBuscarClientes          = {},
             onWhatsApp                = {},
             onResetAccion             = {},
-            onCargarProfesionales     = {}
+            onCargarProfesionales     = { _, _ -> }
         )
     }
 }
@@ -1804,7 +1808,7 @@ private fun MisCitasPreviewEmptySinFiltros() {
             onBuscarClientes          = {},
             onWhatsApp                = {},
             onResetAccion             = {},
-            onCargarProfesionales     = {}
+            onCargarProfesionales     = { _, _ -> }
         )
     }
 }
@@ -1843,7 +1847,7 @@ private fun MisCitasPreviewEmptyConFiltros() {
             onBuscarClientes          = {},
             onWhatsApp                = {},
             onResetAccion             = {},
-            onCargarProfesionales     = {}
+            onCargarProfesionales     = { _, _ -> }
         )
     }
 }
@@ -1882,7 +1886,7 @@ private fun MisCitasPreviewError() {
             onBuscarClientes          = {},
             onWhatsApp                = {},
             onResetAccion             = {},
-            onCargarProfesionales     = {}
+            onCargarProfesionales     = { _, _ -> }
         )
     }
 }
@@ -1921,7 +1925,7 @@ private fun MisCitasPreviewSuccess() {
             onBuscarClientes          = {},
             onWhatsApp                = {},
             onResetAccion             = {},
-            onCargarProfesionales     = {}
+            onCargarProfesionales     = { _, _ -> }
         )
     }
 }

@@ -317,9 +317,9 @@ class MisCitasViewModel @Inject constructor(
         }
     }
 
-    fun cargarProfesionales(idSede: Int) {
+    fun cargarProfesionales(idSede: Int, idServicio: Int? = null) {
         viewModelScope.launch {
-            runCatching { repo.getProfesionales(idSede = idSede) }
+            runCatching { repo.getProfesionales(idSede = idSede, idServicio = idServicio) }
                 .onSuccess { _profesionales.value = it }
         }
     }
