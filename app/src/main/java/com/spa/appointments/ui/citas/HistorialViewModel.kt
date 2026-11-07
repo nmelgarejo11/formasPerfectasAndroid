@@ -47,6 +47,12 @@ class HistorialViewModel @Inject constructor(
     private val _estados        = MutableStateFlow<List<EstadoCita>>(emptyList())
     val estados: StateFlow<List<EstadoCita>> = _estados.asStateFlow()
 
+    private val _modoVista      = MutableStateFlow(ModoVistaCitas.CALENDARIO_DIA)
+    val modoVista: StateFlow<ModoVistaCitas> = _modoVista.asStateFlow()
+
+    private val _fechaCalendario = MutableStateFlow(LocalDate.now())
+    val fechaCalendario: StateFlow<LocalDate> = _fechaCalendario.asStateFlow()
+
     companion object {
         fun hoyIso(): String = LocalDate.now().toString()
         fun filtroHoy() = FiltrosHistorial(fechaDesde = hoyIso(), fechaHasta = hoyIso())
@@ -54,6 +60,25 @@ class HistorialViewModel @Inject constructor(
 
     init {
         cargarEstados()
+        cargar()
+    }
+
+    fun toggleModoVista() {
+        _modoVista.update { actual ->
+            val nuevoModo = if (actual == ModoVistaCitas.LISTA) ModoVistaCitas.CALENDARIO_DIA else ModoVistaCitas.LISTA
+            if (nuevoModo == ModoVistaCitas.CALENDARIO_DIA) {
+                val fechaIso = _fechaCalendario.value.toString()
+                _filtros.value = FiltrosHistorial(fechaDesde = fechaIso, fechaHasta = fechaIso)
+                cargar()
+            }
+            nuevoModo
+        }
+    }
+
+    fun setFechaCalendario(nuevaFecha: LocalDate) {
+        _fechaCalendario.value = nuevaFecha
+        val fechaIso = nuevaFecha.toString()
+        _filtros.value = FiltrosHistorial(fechaDesde = fechaIso, fechaHasta = fechaIso)
         cargar()
     }
 
@@ -96,6 +121,7 @@ class HistorialViewModel @Inject constructor(
 
     fun limpiarFiltros() {
         _filtros.value = filtroHoy()   // vuelve a hoy, sin banner
+        _fechaCalendario.value = LocalDate.now()
         cargar()
     }
 }

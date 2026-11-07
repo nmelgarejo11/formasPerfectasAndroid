@@ -1,7 +1,6 @@
 // Ruta: app/src/main/java/com/spa/appointments/ui/citas/HistorialScreen.kt
 package com.spa.appointments.ui.citas
 
-import android.app.DatePickerDialog
 import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
@@ -26,6 +25,7 @@ import com.spa.appointments.domain.model.EstadoCita
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.rememberDatePickerState
+import com.spa.appointments.ui.citas.components.CalendarioDiaView
 
 // ─── Screen principal ─────────────────────────────────────────────────────────
 
@@ -35,15 +35,47 @@ fun HistorialScreen(
     onBack: () -> Unit,
     vm: HistorialViewModel = hiltViewModel()
 ) {
-    val uiState     by vm.uiState.collectAsState()
-    val filtros     by vm.filtros.collectAsState()
-    val estados     by vm.estados.collectAsState()
-    val showFiltros by vm.mostrarFiltros.collectAsState()
+    val uiState         by vm.uiState.collectAsState()
+    val filtros         by vm.filtros.collectAsState()
+    val estados         by vm.estados.collectAsState()
+    val showFiltros     by vm.mostrarFiltros.collectAsState()
+    val modoVista       by vm.modoVista.collectAsState()
+    val fechaCalendario by vm.fechaCalendario.collectAsState()
 
-    var filtrosTemp by remember { mutableStateOf(FiltrosHistorial()) }
+    var filtrosTemp     by remember { mutableStateOf(FiltrosHistorial()) }
+    var citaSeleccionada by remember { mutableStateOf<Cita?>(null) }
+    var mostrarDetalle   by remember { mutableStateOf(false) }
 
     // Conteo para subtítulo
     val totalCitas = (uiState as? HistorialUiState.Success)?.citas?.size
+
+    // ── Pop-Up Detalle Cita (Desde vista Calendario) ──────────────────────────
+    if (mostrarDetalle && citaSeleccionada != null) {
+        val c = citaSeleccionada!!
+        AlertDialog(
+            onDismissRequest = { mostrarDetalle = false },
+            shape = RoundedCornerShape(20.dp),
+            containerColor = MaterialTheme.colorScheme.surface,
+            text = {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp)
+                ) {
+                    HistorialCitaCard(cita = c)
+                }
+            },
+            confirmButton = {
+                OutlinedButton(
+                    onClick = { mostrarDetalle = false },
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Cerrar")
+                }
+            }
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -70,24 +102,33 @@ fun HistorialScreen(
                     }
                 },
                 actions = {
-                    if (filtros.activo) {
-                        IconButton(onClick = { vm.limpiarFiltros() }) {
-                            BadgedBox(badge = { Badge() }) {
-                                Icon(Icons.Default.FilterAltOff, "Limpiar filtros")
+                    IconButton(onClick = { vm.toggleModoVista() }) {
+                        Icon(
+                            imageVector = if (modoVista == ModoVistaCitas.CALENDARIO_DIA) Icons.Default.FormatListBulleted else Icons.Default.CalendarToday,
+                            contentDescription = if (modoVista == ModoVistaCitas.CALENDARIO_DIA) "Vista Lista" else "Vista Calendario"
+                        )
+                    }
+
+                    if (modoVista == ModoVistaCitas.LISTA) {
+                        if (filtros.activo) {
+                            IconButton(onClick = { vm.limpiarFiltros() }) {
+                                BadgedBox(badge = { Badge() }) {
+                                    Icon(Icons.Default.FilterAltOff, "Limpiar filtros")
+                                }
                             }
                         }
-                    }
-                    IconButton(onClick = {
-                        filtrosTemp = filtros
-                        vm.toggleFiltros()
-                    }) {
-                        Icon(
-                            imageVector = if (filtros.activo) Icons.Default.FilterAlt
-                            else Icons.Default.FilterList,
-                            contentDescription = "Filtrar",
-                            tint = if (filtros.activo) MaterialTheme.colorScheme.primary
-                            else LocalContentColor.current
-                        )
+                        IconButton(onClick = {
+                            filtrosTemp = filtros
+                            vm.toggleFiltros()
+                        }) {
+                            Icon(
+                                imageVector = if (filtros.activo) Icons.Default.FilterAlt
+                                else Icons.Default.FilterList,
+                                contentDescription = "Filtrar",
+                                tint = if (filtros.activo) MaterialTheme.colorScheme.primary
+                                else LocalContentColor.current
+                            )
+                        }
                     }
                     IconButton(onClick = { vm.cargar() }) {
                         Icon(Icons.Default.Refresh, "Recargar")
@@ -104,7 +145,7 @@ fun HistorialScreen(
         ) {
             // Panel de filtros animado
             AnimatedVisibility(
-                visible = showFiltros,
+                visible = showFiltros && modoVista == ModoVistaCitas.LISTA,
                 enter   = expandVertically() + fadeIn(),
                 exit    = shrinkVertically() + fadeOut()
             ) {
@@ -119,7 +160,7 @@ fun HistorialScreen(
 
             // Banner de filtros activos
             AnimatedVisibility(
-                visible = filtros.activo && !showFiltros,
+                visible = filtros.activo && !showFiltros && modoVista == ModoVistaCitas.LISTA,
                 enter   = expandVertically() + fadeIn(),
                 exit    = shrinkVertically() + fadeOut()
             ) {
@@ -176,10 +217,23 @@ fun HistorialScreen(
                     }
 
                     is HistorialUiState.Empty -> {
-                        EmptyHistorial(
-                            conFiltros = filtros.activo,
-                            modifier   = Modifier.align(Alignment.Center)
-                        )
+                        if (modoVista == ModoVistaCitas.CALENDARIO_DIA) {
+                            CalendarioDiaView(
+                                citas = emptyList(),
+                                fechaSeleccionada = fechaCalendario,
+                                onFechaChange = { vm.setFechaCalendario(it) },
+                                onCitaClick = { cita ->
+                                    citaSeleccionada = cita
+                                    mostrarDetalle = true
+                                },
+                                mensajeVacio = "Sin historial aún para este día"
+                            )
+                        } else {
+                            EmptyHistorial(
+                                conFiltros = filtros.activo,
+                                modifier   = Modifier.align(Alignment.Center)
+                            )
+                        }
                     }
 
                     is HistorialUiState.Error -> {
@@ -225,12 +279,25 @@ fun HistorialScreen(
                     }
 
                     is HistorialUiState.Success -> {
-                        LazyColumn(
-                            contentPadding      = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            items(state.citas, key = { it.id }) { cita ->
-                                HistorialCitaCard(cita = cita)
+                        if (modoVista == ModoVistaCitas.CALENDARIO_DIA) {
+                            CalendarioDiaView(
+                                citas = state.citas,
+                                fechaSeleccionada = fechaCalendario,
+                                onFechaChange = { vm.setFechaCalendario(it) },
+                                onCitaClick = { cita ->
+                                    citaSeleccionada = cita
+                                    mostrarDetalle = true
+                                },
+                                mensajeVacio = "Sin historial aún para este día"
+                            )
+                        } else {
+                            LazyColumn(
+                                contentPadding      = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                items(state.citas, key = { it.id }) { cita ->
+                                    HistorialCitaCard(cita = cita)
+                                }
                             }
                         }
                     }

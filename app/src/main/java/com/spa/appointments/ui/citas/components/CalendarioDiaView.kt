@@ -39,7 +39,8 @@ fun CalendarioDiaView(
     fechaSeleccionada: LocalDate,
     onFechaChange: (LocalDate) -> Unit,
     onCitaClick: (Cita) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    mensajeVacio: String = "Sin citas programadas para este día"
 ) {
     val localeEs = Locale("es", "ES")
     val formatterDisplay = DateTimeFormatter.ofPattern("EEEE, d 'de' MMMM", localeEs)
@@ -191,7 +192,7 @@ fun CalendarioDiaView(
                             tint = MaterialTheme.colorScheme.outline
                         )
                         Text(
-                            text = "Sin citas programadas para este día",
+                            text = mensajeVacio,
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontWeight = FontWeight.Medium
