@@ -3,9 +3,12 @@ package com.spa.appointments.ui.citas
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -13,21 +16,24 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.spa.appointments.domain.model.Cita
 import com.spa.appointments.domain.model.EstadoCita
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
-import androidx.compose.material3.rememberDatePickerState
 import com.spa.appointments.ui.citas.components.CalendarioDiaView
+import java.util.Calendar
+import java.util.Locale
+import java.util.TimeZone
 
-// ─── Screen principal ─────────────────────────────────────────────────────────
+// ─── Screen Principal (Stateful) ──────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,9 +48,9 @@ fun HistorialScreen(
     val modoVista       by vm.modoVista.collectAsState()
     val fechaCalendario by vm.fechaCalendario.collectAsState()
 
-    var filtrosTemp     by remember { mutableStateOf(FiltrosHistorial()) }
+    var filtrosTemp      by remember { mutableStateOf(FiltrosHistorial()) }
     var citaSeleccionada by remember { mutableStateOf<Cita?>(null) }
-    var mostrarDetalle   by remember { mutableStateOf(false) }
+    var mostrarDetalle    by remember { mutableStateOf(false) }
 
     // Conteo para subtítulo
     val totalCitas = (uiState as? HistorialUiState.Success)?.citas?.size
@@ -54,8 +60,8 @@ fun HistorialScreen(
         val c = citaSeleccionada!!
         AlertDialog(
             onDismissRequest = { mostrarDetalle = false },
-            shape = RoundedCornerShape(20.dp),
-            containerColor = MaterialTheme.colorScheme.surface,
+            shape            = RoundedCornerShape(28.dp),
+            containerColor   = MaterialTheme.colorScheme.surfaceContainerHigh,
             text = {
                 Box(
                     modifier = Modifier
@@ -67,8 +73,8 @@ fun HistorialScreen(
             },
             confirmButton = {
                 OutlinedButton(
-                    onClick = { mostrarDetalle = false },
-                    shape = RoundedCornerShape(12.dp),
+                    onClick  = { mostrarDetalle = false },
+                    shape    = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("Cerrar")
@@ -81,18 +87,27 @@ fun HistorialScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Column {
-                        Text(
-                            text       = "Historial de citas",
-                            style      = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        if (totalCitas != null) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column {
                             Text(
-                                text  = "$totalCitas ${if (totalCitas == 1) "registro" else "registros"}",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                text       = "Historial de citas",
+                                style      = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
                             )
+                            if (totalCitas != null) {
+                                Surface(
+                                    shape    = RoundedCornerShape(50),
+                                    color    = MaterialTheme.colorScheme.primaryContainer,
+                                    modifier = Modifier.padding(top = 2.dp)
+                                ) {
+                                    Text(
+                                        text     = "$totalCitas ${if (totalCitas == 1) "registro" else "registros"}",
+                                        style    = MaterialTheme.typography.labelSmall,
+                                        color    = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 1.dp)
+                                    )
+                                }
+                            }
                         }
                     }
                 },
@@ -102,10 +117,18 @@ fun HistorialScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { vm.toggleModoVista() }) {
+                    // Toggle entre Vista Lista y Vista Día (Calendario)
+                    IconButton(
+                        onClick  = { vm.toggleModoVista() },
+                        modifier = Modifier
+                            .padding(end = 4.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                    ) {
                         Icon(
                             imageVector = if (modoVista == ModoVistaCitas.CALENDARIO_DIA) Icons.Default.FormatListBulleted else Icons.Default.CalendarToday,
-                            contentDescription = if (modoVista == ModoVistaCitas.CALENDARIO_DIA) "Vista Lista" else "Vista Calendario"
+                            contentDescription = if (modoVista == ModoVistaCitas.CALENDARIO_DIA) "Vista Lista" else "Vista Calendario",
+                            tint = MaterialTheme.colorScheme.primary
                         )
                     }
 
@@ -122,18 +145,17 @@ fun HistorialScreen(
                             vm.toggleFiltros()
                         }) {
                             Icon(
-                                imageVector = if (filtros.activo) Icons.Default.FilterAlt
-                                else Icons.Default.FilterList,
+                                imageVector        = if (filtros.activo) Icons.Default.FilterAlt else Icons.Default.FilterList,
                                 contentDescription = "Filtrar",
-                                tint = if (filtros.activo) MaterialTheme.colorScheme.primary
-                                else LocalContentColor.current
+                                tint               = if (filtros.activo) MaterialTheme.colorScheme.primary else LocalContentColor.current
                             )
                         }
                     }
                     IconButton(onClick = { vm.cargar() }) {
                         Icon(Icons.Default.Refresh, "Recargar")
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
             )
         }
     ) { padding ->
@@ -143,6 +165,25 @@ fun HistorialScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
+            // 🎨 Canvas: Acento sutil en barra decorativa superior
+            val primaryColor   = MaterialTheme.colorScheme.primary
+            val secondaryColor = MaterialTheme.colorScheme.secondary
+            Canvas(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(3.dp)
+            ) {
+                drawRect(
+                    brush = Brush.horizontalGradient(
+                        colors = listOf(
+                            primaryColor.copy(alpha = 0.4f),
+                            secondaryColor.copy(alpha = 0.2f),
+                            primaryColor.copy(alpha = 0.05f)
+                        )
+                    )
+                )
+            }
+
             // Panel de filtros animado
             AnimatedVisibility(
                 visible = showFiltros && modoVista == ModoVistaCitas.LISTA,
@@ -165,11 +206,11 @@ fun HistorialScreen(
                 exit    = shrinkVertically() + fadeOut()
             ) {
                 Surface(
-                    color    = MaterialTheme.colorScheme.secondaryContainer,
+                    color    = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.8f),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
-                        modifier          = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        modifier          = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
@@ -186,7 +227,7 @@ fun HistorialScreen(
                             modifier = Modifier.weight(1f)
                         )
                         TextButton(
-                            onClick      = { vm.limpiarFiltros() },
+                            onClick        = { vm.limpiarFiltros() },
                             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
                         ) {
                             Text(
@@ -203,14 +244,19 @@ fun HistorialScreen(
                 when (val state = uiState) {
                     is HistorialUiState.Loading -> {
                         Column(
-                            modifier            = Modifier.align(Alignment.Center),
+                            modifier            = Modifier
+                                .align(Alignment.Center)
+                                .padding(24.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            CircularProgressIndicator()
+                            CircularProgressIndicator(
+                                color      = MaterialTheme.colorScheme.primary,
+                                trackColor = MaterialTheme.colorScheme.primaryContainer
+                            )
                             Text(
                                 text  = "Cargando historial…",
-                                style = MaterialTheme.typography.bodySmall,
+                                style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
@@ -219,14 +265,14 @@ fun HistorialScreen(
                     is HistorialUiState.Empty -> {
                         if (modoVista == ModoVistaCitas.CALENDARIO_DIA) {
                             CalendarioDiaView(
-                                citas = emptyList(),
+                                citas             = emptyList(),
                                 fechaSeleccionada = fechaCalendario,
-                                onFechaChange = { vm.setFechaCalendario(it) },
-                                onCitaClick = { cita ->
+                                onFechaChange     = { vm.setFechaCalendario(it) },
+                                onCitaClick       = { cita ->
                                     citaSeleccionada = cita
-                                    mostrarDetalle = true
+                                    mostrarDetalle   = true
                                 },
-                                mensajeVacio = "Sin historial aún para este día"
+                                mensajeVacio      = "Sin historial aún para este día"
                             )
                         } else {
                             EmptyHistorial(
@@ -237,43 +283,59 @@ fun HistorialScreen(
                     }
 
                     is HistorialUiState.Error -> {
-                        Column(
-                            modifier            = Modifier
+                        OutlinedCard(
+                            modifier = Modifier
                                 .align(Alignment.Center)
-                                .padding(32.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Surface(
-                                shape = RoundedCornerShape(50),
-                                color = MaterialTheme.colorScheme.errorContainer
-                            ) {
-                                Icon(
-                                    imageVector        = Icons.Default.CloudOff,
-                                    contentDescription = null,
-                                    modifier           = Modifier
-                                        .padding(16.dp)
-                                        .size(32.dp),
-                                    tint               = MaterialTheme.colorScheme.onErrorContainer
-                                )
-                            }
-                            Text(
-                                text      = state.mensaje,
-                                color     = MaterialTheme.colorScheme.error,
-                                textAlign = TextAlign.Center,
-                                style     = MaterialTheme.typography.bodyMedium
+                                .padding(24.dp)
+                                .fillMaxWidth(),
+                            shape  = RoundedCornerShape(24.dp),
+                            colors = CardDefaults.outlinedCardColors(
+                                containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
                             )
-                            Button(
-                                onClick = { vm.cargar() },
-                                shape   = RoundedCornerShape(10.dp)
+                        ) {
+                            Column(
+                                modifier            = Modifier
+                                    .padding(32.dp)
+                                    .fillMaxWidth(),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(14.dp)
                             ) {
-                                Icon(
-                                    imageVector        = Icons.Default.Refresh,
-                                    contentDescription = null,
-                                    modifier           = Modifier.size(16.dp)
+                                Surface(
+                                    shape = CircleShape,
+                                    color = MaterialTheme.colorScheme.errorContainer
+                                ) {
+                                    Icon(
+                                        imageVector        = Icons.Default.CloudOff,
+                                        contentDescription = null,
+                                        modifier           = Modifier
+                                            .padding(16.dp)
+                                            .size(36.dp),
+                                        tint               = MaterialTheme.colorScheme.onErrorContainer
+                                    )
+                                }
+                                Text(
+                                    text       = "Error al cargar",
+                                    style      = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
                                 )
-                                Spacer(Modifier.width(6.dp))
-                                Text("Reintentar")
+                                Text(
+                                    text      = state.mensaje,
+                                    color     = MaterialTheme.colorScheme.error,
+                                    textAlign = TextAlign.Center,
+                                    style     = MaterialTheme.typography.bodySmall
+                                )
+                                Button(
+                                    onClick = { vm.cargar() },
+                                    shape   = RoundedCornerShape(12.dp)
+                                ) {
+                                    Icon(
+                                        imageVector        = Icons.Default.Refresh,
+                                        contentDescription = null,
+                                        modifier           = Modifier.size(16.dp)
+                                    )
+                                    Spacer(Modifier.width(6.dp))
+                                    Text("Reintentar")
+                                }
                             }
                         }
                     }
@@ -281,19 +343,19 @@ fun HistorialScreen(
                     is HistorialUiState.Success -> {
                         if (modoVista == ModoVistaCitas.CALENDARIO_DIA) {
                             CalendarioDiaView(
-                                citas = state.citas,
+                                citas             = state.citas,
                                 fechaSeleccionada = fechaCalendario,
-                                onFechaChange = { vm.setFechaCalendario(it) },
-                                onCitaClick = { cita ->
+                                onFechaChange     = { vm.setFechaCalendario(it) },
+                                onCitaClick       = { cita ->
                                     citaSeleccionada = cita
-                                    mostrarDetalle = true
+                                    mostrarDetalle   = true
                                 },
-                                mensajeVacio = "Sin historial aún para este día"
+                                mensajeVacio      = "Sin historial aún para este día"
                             )
                         } else {
                             LazyColumn(
-                                contentPadding      = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                                contentPadding      = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
+                                verticalArrangement = Arrangement.spacedBy(14.dp)
                             ) {
                                 items(state.citas, key = { it.id }) { cita ->
                                     HistorialCitaCard(cita = cita)
@@ -307,7 +369,7 @@ fun HistorialScreen(
     }
 }
 
-// ─── Panel de filtros ─────────────────────────────────────────────────────────
+// ─── Panel de Filtros ─────────────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -318,14 +380,14 @@ private fun FiltrosPanel(
     onAplicar: () -> Unit,
     onCerrar:  () -> Unit
 ) {
-    val context = LocalContext.current
-
     Surface(
-        tonalElevation  = 4.dp,
-        shadowElevation = 2.dp
+        color    = MaterialTheme.colorScheme.surfaceContainerLow,
+        modifier = Modifier.fillMaxWidth()
     ) {
-        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
-
+        Column(
+            modifier            = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
             Row(
                 verticalAlignment     = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -336,18 +398,16 @@ private fun FiltrosPanel(
                     style      = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold
                 )
-                IconButton(onClick = onCerrar, modifier = Modifier.size(28.dp)) {
+                IconButton(onClick = onCerrar, modifier = Modifier.size(24.dp)) {
                     Icon(Icons.Default.Close, contentDescription = "Cerrar", modifier = Modifier.size(18.dp))
                 }
             }
-
-            Spacer(Modifier.height(12.dp))
 
             OutlinedTextField(
                 value         = filtros.nombreCliente ?: "",
                 onValueChange = { onChange(filtros.copy(nombreCliente = it.ifBlank { null })) },
                 label         = { Text("Buscar cliente") },
-                leadingIcon   = { Icon(Icons.Default.Search, null) },
+                leadingIcon   = { Icon(Icons.Default.Search, null, modifier = Modifier.size(18.dp)) },
                 trailingIcon  = {
                     if (!filtros.nombreCliente.isNullOrBlank()) {
                         IconButton(onClick = { onChange(filtros.copy(nombreCliente = null)) }) {
@@ -360,9 +420,7 @@ private fun FiltrosPanel(
                 modifier   = Modifier.fillMaxWidth()
             )
 
-            Spacer(Modifier.height(10.dp))
-
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                 FiltroDatePicker(
                     label    = "Desde",
                     value    = filtros.fechaDesde,
@@ -377,8 +435,6 @@ private fun FiltrosPanel(
                 )
             }
 
-            Spacer(Modifier.height(10.dp))
-
             EstadoDropdown(
                 estados            = estados,
                 seleccionadoId     = filtros.idEstado,
@@ -388,33 +444,33 @@ private fun FiltrosPanel(
                 }
             )
 
-            Spacer(Modifier.height(14.dp))
-
             Row(
                 modifier              = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment     = Alignment.CenterVertically
             ) {
                 OutlinedButton(
-                    onClick = onCerrar,
-                    shape   = RoundedCornerShape(10.dp)
-                ) { Text("Cancelar") }
+                    onClick  = { onChange(FiltrosHistorial()); onAplicar() },
+                    modifier = Modifier.weight(1f),
+                    shape    = RoundedCornerShape(10.dp)
+                ) { Text("Limpiar") }
                 Button(
-                    onClick = onAplicar,
-                    shape   = RoundedCornerShape(10.dp)
+                    onClick  = onAplicar,
+                    modifier = Modifier.weight(1f),
+                    shape    = RoundedCornerShape(10.dp)
                 ) { Text("Aplicar filtros") }
             }
         }
     }
 }
 
-// ─── DatePicker ───────────────────────────────────────────────────────────────
+// ─── Selector de Fecha para Filtros ──────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun FiltroDatePicker(
     label:    String,
-    value:    String?,          // "yyyy-MM-dd" o null
+    value:    String?,
     modifier: Modifier = Modifier,
     onDate:   (String?) -> Unit
 ) {
@@ -424,7 +480,7 @@ private fun FiltroDatePicker(
         value?.let { iso ->
             runCatching {
                 val (y, m, d) = iso.split("-").map { it.toInt() }
-                java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC")).apply {
+                Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply {
                     clear()
                     set(y, m - 1, d)
                 }.timeInMillis
@@ -468,13 +524,11 @@ private fun FiltroDatePicker(
             confirmButton = {
                 TextButton(onClick = {
                     datePickerState.selectedDateMillis?.let { millis ->
-                        val cal = java.util.Calendar.getInstance(
-                            java.util.TimeZone.getTimeZone("UTC")
-                        ).apply { timeInMillis = millis }
+                        val cal = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply { timeInMillis = millis }
                         val iso = "%04d-%02d-%02d".format(
-                            cal.get(java.util.Calendar.YEAR),
-                            cal.get(java.util.Calendar.MONTH) + 1,
-                            cal.get(java.util.Calendar.DAY_OF_MONTH)
+                            cal.get(Calendar.YEAR),
+                            cal.get(Calendar.MONTH) + 1,
+                            cal.get(Calendar.DAY_OF_MONTH)
                         )
                         onDate(iso)
                     }
@@ -490,7 +544,7 @@ private fun FiltroDatePicker(
     }
 }
 
-// ─── Dropdown de estados ──────────────────────────────────────────────────────
+// ─── Dropdown de Estados ──────────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -534,17 +588,18 @@ private fun EstadoDropdown(
             )
             if (estados.isNotEmpty()) HorizontalDivider()
             estados.forEach { estado ->
-                val colorEstado = remember(estado.color) {
+                val defaultColor = MaterialTheme.colorScheme.primary
+                val colorEstado  = remember(estado.color, defaultColor) {
                     runCatching {
                         Color(android.graphics.Color.parseColor(estado.color))
-                    }.getOrDefault(Color.Gray)
+                    }.getOrDefault(defaultColor)
                 }
                 DropdownMenuItem(
                     text = {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Surface(
                                 modifier = Modifier.size(8.dp),
-                                shape    = MaterialTheme.shapes.extraSmall,
+                                shape    = CircleShape,
                                 color    = colorEstado
                             ) {}
                             Spacer(Modifier.width(8.dp))
@@ -565,39 +620,39 @@ private fun EstadoDropdown(
     }
 }
 
-// ─── Tarjeta de cita ──────────────────────────────────────────────────────────
+// ─── Tarjeta de Cita M3 ────────────────────────────────────────────────────────
 
 @Composable
 private fun HistorialCitaCard(cita: Cita) {
-    val colorEstado = remember(cita.colorEstado) {
+    val defaultPrimary = MaterialTheme.colorScheme.primary
+    val colorEstado    = remember(cita.colorEstado, defaultPrimary) {
         runCatching {
             Color(android.graphics.Color.parseColor(cita.colorEstado ?: "#888888"))
-        }.getOrDefault(Color.Gray)
+        }.getOrDefault(defaultPrimary)
     }
 
     val esReagendada = cita.idCitaOriginal != null
 
-    Card(
-        modifier  = Modifier.fillMaxWidth(),
-        shape     = RoundedCornerShape(14.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors    = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+    OutlinedCard(
+        modifier = Modifier.fillMaxWidth(),
+        shape    = RoundedCornerShape(18.dp),
+        colors   = CardDefaults.outlinedCardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
         border = BorderStroke(
             width = 1.dp,
-            color = MaterialTheme.colorScheme.outlineVariant
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)
         )
     ) {
-        // Barra de color del estado en el borde izquierdo
-        Row(modifier = Modifier.fillMaxWidth()) {
+        Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+
             // Acento de color lateral
-            Surface(
+            Box(
                 modifier = Modifier
-                    .width(4.dp)
-                    .fillMaxHeight(),
-                color    = colorEstado
-            ) {}
+                    .width(6.dp)
+                    .fillMaxHeight()
+                    .background(colorEstado)
+            )
 
             Column(
                 modifier = Modifier
@@ -605,90 +660,92 @@ private fun HistorialCitaCard(cita: Cita) {
                     .padding(horizontal = 14.dp, vertical = 12.dp)
             ) {
 
-                // ── Fila superior: chip de estado + fecha ─────────────────
+                // ── Fila Superior: Chip de Estado + Fecha ───────────────────
                 Row(
                     modifier              = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment     = Alignment.CenterVertically
                 ) {
                     Surface(
-                        shape = RoundedCornerShape(6.dp),
-                        color = colorEstado.copy(alpha = 0.12f)
+                        shape = RoundedCornerShape(8.dp),
+                        color = colorEstado.copy(alpha = 0.15f)
                     ) {
                         Text(
                             text       = cita.estado,
                             color      = colorEstado,
                             style      = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
-                            modifier   = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                            modifier   = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                         )
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             imageVector        = Icons.Default.CalendarToday,
                             contentDescription = null,
-                            modifier           = Modifier.size(11.dp),
+                            modifier           = Modifier.size(13.dp),
                             tint               = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        Spacer(Modifier.width(3.dp))
+                        Spacer(Modifier.width(4.dp))
                         Text(
-                            text  = formatearFechaHistorial(cita.fechaHoraInicio),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            text       = formatearFechaHistorial(cita.fechaHoraInicio),
+                            style      = MaterialTheme.typography.labelSmall,
+                            color      = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.Medium
                         )
                     }
                 }
 
-                // ── Banner de reagendamiento ───────────────────────────────
+                // ── Banner de Reagendamiento ───────────────────────────────
                 if (esReagendada && cita.fechaHoraInicioOriginal != null) {
                     Spacer(Modifier.height(8.dp))
                     Surface(
-                        shape = RoundedCornerShape(6.dp),
-                        color = MaterialTheme.colorScheme.tertiaryContainer
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.7f)
                     ) {
                         Row(
                             modifier          = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 8.dp, vertical = 4.dp),
+                                .padding(horizontal = 8.dp, vertical = 5.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
                                 imageVector        = Icons.Default.Update,
                                 contentDescription = null,
-                                modifier           = Modifier.size(12.dp),
+                                modifier           = Modifier.size(14.dp),
                                 tint               = MaterialTheme.colorScheme.onTertiaryContainer
                             )
-                            Spacer(Modifier.width(4.dp))
+                            Spacer(Modifier.width(6.dp))
                             Text(
-                                text  = "Reagendada · original: ${formatearFechaHistorial(cita.fechaHoraInicioOriginal)}",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onTertiaryContainer
+                                text       = "Reagendada · original: ${formatearFechaHistorial(cita.fechaHoraInicioOriginal)}",
+                                style      = MaterialTheme.typography.labelSmall,
+                                color      = MaterialTheme.colorScheme.onTertiaryContainer,
+                                fontWeight = FontWeight.Bold
                             )
                         }
                     }
                 }
 
-                Spacer(Modifier.height(10.dp))
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(8.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                Spacer(Modifier.height(8.dp))
 
                 // ── Cliente ───────────────────────────────────────────────
                 if (!cita.nombreCliente.isNullOrBlank()) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier          = Modifier.padding(bottom = 6.dp)
+                        modifier          = Modifier.padding(bottom = 4.dp)
                     ) {
                         Icon(
                             imageVector        = Icons.Default.Person,
                             contentDescription = null,
-                            modifier           = Modifier.size(14.dp),
+                            modifier           = Modifier.size(15.dp),
                             tint               = MaterialTheme.colorScheme.primary
                         )
-                        Spacer(Modifier.width(5.dp))
+                        Spacer(Modifier.width(6.dp))
                         Text(
                             text       = cita.nombreCliente,
-                            style      = MaterialTheme.typography.bodySmall,
-                            fontWeight = FontWeight.Medium,
+                            style      = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
                             color      = MaterialTheme.colorScheme.onSurface
                         )
                     }
@@ -702,10 +759,10 @@ private fun HistorialCitaCard(cita: Cita) {
                     Icon(
                         imageVector        = Icons.Default.Badge,
                         contentDescription = null,
-                        modifier           = Modifier.size(14.dp),
+                        modifier           = Modifier.size(15.dp),
                         tint               = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Spacer(Modifier.width(5.dp))
+                    Spacer(Modifier.width(6.dp))
                     Text(
                         text       = cita.profesional,
                         style      = MaterialTheme.typography.bodySmall,
@@ -714,7 +771,7 @@ private fun HistorialCitaCard(cita: Cita) {
                     )
                 }
 
-                // ── Hora y sede ───────────────────────────────────────────
+                // ── Hora y Sede ───────────────────────────────────────────
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier          = Modifier.padding(bottom = 8.dp)
@@ -722,10 +779,10 @@ private fun HistorialCitaCard(cita: Cita) {
                     Icon(
                         imageVector        = Icons.Default.AccessTime,
                         contentDescription = null,
-                        modifier           = Modifier.size(14.dp),
+                        modifier           = Modifier.size(15.dp),
                         tint               = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Spacer(Modifier.width(5.dp))
+                    Spacer(Modifier.width(6.dp))
                     Text(
                         text  = "${formatearHoraHistorial(cita.fechaHoraInicio)} · ${cita.sede}",
                         style = MaterialTheme.typography.bodySmall,
@@ -733,7 +790,7 @@ private fun HistorialCitaCard(cita: Cita) {
                     )
                 }
 
-                // ── Total con fondo destacado ─────────────────────────────
+                // ── Total con Fondo Destacado ─────────────────────────────
                 Surface(
                     shape = RoundedCornerShape(8.dp),
                     color = MaterialTheme.colorScheme.primaryContainer
@@ -746,7 +803,7 @@ private fun HistorialCitaCard(cita: Cita) {
                         verticalAlignment     = Alignment.CenterVertically
                     ) {
                         Text(
-                            text  = "Total",
+                            text  = "Total Cobrado",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
@@ -764,48 +821,68 @@ private fun HistorialCitaCard(cita: Cita) {
     }
 }
 
-// ─── Empty state ──────────────────────────────────────────────────────────────
+// ─── Empty State con Acento Canvas ────────────────────────────────────────────
 
 @Composable
 private fun EmptyHistorial(
     conFiltros: Boolean,
     modifier:   Modifier = Modifier
 ) {
-    Column(
-        modifier            = modifier.padding(40.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+    val primaryColor = MaterialTheme.colorScheme.primary
+
+    OutlinedCard(
+        modifier = modifier
+            .padding(24.dp)
+            .fillMaxWidth(),
+        shape  = RoundedCornerShape(24.dp),
+        colors = CardDefaults.outlinedCardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        )
     ) {
-        Surface(
-            shape = RoundedCornerShape(24.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant
+        Column(
+            modifier            = Modifier
+                .padding(32.dp)
+                .fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Icon(
-                imageVector        = if (conFiltros) Icons.Default.SearchOff
-                else Icons.Default.History,
-                contentDescription = null,
-                modifier           = Modifier
-                    .padding(20.dp)
-                    .size(48.dp),
-                tint               = MaterialTheme.colorScheme.onSurfaceVariant
+            Box(
+                modifier         = Modifier.size(80.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    drawCircle(color = primaryColor.copy(alpha = 0.15f))
+                }
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh
+                ) {
+                    Icon(
+                        imageVector        = if (conFiltros) Icons.Default.SearchOff else Icons.Default.History,
+                        contentDescription = null,
+                        modifier           = Modifier
+                            .padding(18.dp)
+                            .size(36.dp),
+                        tint               = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            Text(
+                text       = if (conFiltros) "Sin resultados" else "Sin historial aún",
+                style      = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text      = if (conFiltros) "Ninguna cita coincide con los filtros aplicados." else "Aquí aparecerán los registros pasados.",
+                style     = MaterialTheme.typography.bodyMedium,
+                color     = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
             )
         }
-        Text(
-            text       = if (conFiltros) "Sin resultados" else "Sin historial aún",
-            style      = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
-        )
-        Text(
-            text      = if (conFiltros) "Ninguna cita coincide con los filtros aplicados."
-            else "Aquí aparecerán las citas pasadas.",
-            style     = MaterialTheme.typography.bodyMedium,
-            color     = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
-        )
     }
 }
 
-// ─── Helpers de formato ───────────────────────────────────────────────────────
+// ─── Helpers de Formato ───────────────────────────────────────────────────────
 
 private fun formatearFechaHistorial(fechaIso: String): String = try {
     val p = fechaIso.substring(0, 10).split("-")
@@ -817,15 +894,15 @@ private fun formatearHoraHistorial(fechaIso: String): String = try {
         ""
     } else {
         val horaStr = if (fechaIso.contains("T")) fechaIso.substring(11, 16) else fechaIso.take(5)
-        val partes = horaStr.trim().split(":")
-        val h = partes[0].toInt()
-        val m = partes[1]
-        val amPm = if (h >= 12) "PM" else "AM"
-        val h12 = when {
+        val partes  = horaStr.trim().split(":")
+        val h       = partes[0].toInt()
+        val m       = partes[1]
+        val amPm    = if (h >= 12) "PM" else "AM"
+        val h12     = when {
             h == 0 -> 12
             h > 12 -> h - 12
             else -> h
         }
-        String.format(java.util.Locale.US, "%02d:%s %s", h12, m, amPm)
+        String.format(Locale.US, "%02d:%s %s", h12, m, amPm)
     }
 } catch (e: Exception) { fechaIso }
