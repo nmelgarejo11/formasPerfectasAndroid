@@ -1,11 +1,13 @@
-// ui/admin/usuario/GestionUsuariosScreen.kt
+// Ruta: app/src/main/java/com/spa/appointments/ui/admin/usuario/GestionUsuariosScreen.kt
 package com.spa.appointments.ui.admin.usuario
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -15,6 +17,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -47,30 +50,67 @@ fun GestionUsuariosScreen(
     }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text       = "Gestión de Perfiles",
-                            style      = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        if (state.usuarios.isNotEmpty()) {
+            Column {
+                TopAppBar(
+                    title = {
+                        Column {
                             Text(
-                                text  = "${state.usuarios.size} ${if (state.usuarios.size == 1) "usuario" else "usuarios"}",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                text       = "Gestión de Usuarios",
+                                style      = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
                             )
+                            if (state.usuarios.isNotEmpty()) {
+                                Surface(
+                                    shape    = RoundedCornerShape(50),
+                                    color    = MaterialTheme.colorScheme.primaryContainer,
+                                    modifier = Modifier.padding(top = 2.dp)
+                                ) {
+                                    Text(
+                                        text     = "${state.usuarios.size} ${if (state.usuarios.size == 1) "usuario" else "usuarios"}",
+                                        style    = MaterialTheme.typography.labelSmall,
+                                        color    = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 1.dp)
+                                    )
+                                }
+                            }
                         }
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onVolver) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Volver")
-                    }
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onVolver) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Volver")
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.background
+                    )
+                )
+
+                // 🎨 Canvas: Acento decorativo debajo de la TopAppBar
+                val primaryColor   = MaterialTheme.colorScheme.primary
+                val secondaryColor = MaterialTheme.colorScheme.secondary
+                Canvas(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(3.dp)
+                ) {
+                    drawRect(
+                        brush = Brush.horizontalGradient(
+                            colors = listOf(
+                                primaryColor.copy(alpha = 0.4f),
+                                secondaryColor.copy(alpha = 0.2f),
+                                primaryColor.copy(alpha = 0.05f)
+                            )
+                        )
+                    )
                 }
-            )
+
+                HorizontalDivider(
+                    thickness = 0.5.dp,
+                    color     = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                )
+            }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
@@ -85,58 +125,81 @@ fun GestionUsuariosScreen(
                     Column(
                         modifier            = Modifier.align(Alignment.Center),
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        CircularProgressIndicator()
+                        CircularProgressIndicator(
+                            color       = MaterialTheme.colorScheme.primary,
+                            trackColor  = MaterialTheme.colorScheme.primaryContainer,
+                            strokeWidth = 3.dp,
+                            modifier    = Modifier.size(36.dp)
+                        )
                         Text(
                             text  = "Cargando credenciales…",
-                            style = MaterialTheme.typography.bodySmall,
+                            style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
 
-                // 2. Estado vacío (No hay cuentas registradas)
+                // 2. Estado vacío
                 state.usuarios.isEmpty() -> {
-                    Column(
-                        modifier            = Modifier
-                            .align(Alignment.Center)
-                            .padding(40.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    val primaryColor = MaterialTheme.colorScheme.primary
+
+                    OutlinedCard(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp)
+                            .align(Alignment.Center),
+                        shape  = RoundedCornerShape(24.dp),
+                        colors = CardDefaults.outlinedCardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                        )
                     ) {
-                        Surface(
-                            shape = RoundedCornerShape(24.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant
+                        Column(
+                            modifier            = Modifier.padding(32.dp).fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(14.dp)
                         ) {
-                            Icon(
-                                imageVector        = Icons.Default.GroupOff,
-                                contentDescription = null,
-                                modifier           = Modifier
-                                    .padding(20.dp)
-                                    .size(48.dp),
-                                tint               = MaterialTheme.colorScheme.onSurfaceVariant
+                            Box(
+                                modifier         = Modifier.size(80.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Canvas(modifier = Modifier.fillMaxSize()) {
+                                    drawCircle(color = primaryColor.copy(alpha = 0.15f))
+                                }
+                                Surface(
+                                    shape = CircleShape,
+                                    color = MaterialTheme.colorScheme.surfaceContainerHigh
+                                ) {
+                                    Icon(
+                                        imageVector        = Icons.Default.GroupOff,
+                                        contentDescription = null,
+                                        modifier           = Modifier.padding(18.dp).size(36.dp),
+                                        tint               = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                            Text(
+                                text       = "Sin usuarios activos",
+                                style      = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color      = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text      = "Los usuarios creados en el módulo de seguridad aparecerán listados aquí de forma automática.",
+                                style     = MaterialTheme.typography.bodyMedium,
+                                color     = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center
                             )
                         }
-                        Text(
-                            text       = "Sin usuarios activos",
-                            style      = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text      = "Los usuarios creados en el módulo de seguridad aparecerán listados aquí de forma automática.",
-                            style     = MaterialTheme.typography.bodyMedium,
-                            color     = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center
-                        )
                     }
                 }
 
                 // 3. Renderizado de lista interactiva
                 else -> {
                     LazyColumn(
-                        contentPadding      = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        contentPadding      = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
                         modifier            = Modifier.fillMaxSize()
                     ) {
                         items(state.usuarios, key = { it.id }) { usuario ->
@@ -154,32 +217,34 @@ fun GestionUsuariosScreen(
         }
     }
 
-    // ── Dialog de Cambio de Perfil ────────────────────────────────────
+    // ── Dialog de Cambio de Perfil M3 ──────────────────────────────────
     if (mostrarDialog && usuarioSeleccionado != null) {
         var perfilSel by remember { mutableIntStateOf(usuarioSeleccionado!!.idPerfil) }
 
         AlertDialog(
             onDismissRequest = { if (!state.cargando) mostrarDialog = false },
-            shape = RoundedCornerShape(16.dp),
-            icon  = {
+            shape            = RoundedCornerShape(28.dp),
+            containerColor   = MaterialTheme.colorScheme.surfaceContainerHigh,
+            icon = {
                 Surface(
-                    shape = RoundedCornerShape(50),
+                    shape = CircleShape,
                     color = MaterialTheme.colorScheme.primaryContainer
                 ) {
                     Icon(
                         imageVector        = Icons.Default.ManageAccounts,
                         contentDescription = null,
                         tint               = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier           = Modifier
-                            .padding(10.dp)
-                            .size(22.dp)
+                        modifier           = Modifier.padding(12.dp).size(26.dp)
                     )
                 }
             },
             title = {
                 Text(
                     text       = "Modificar Perfil",
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    style      = MaterialTheme.typography.titleMedium,
+                    textAlign  = TextAlign.Center,
+                    modifier   = Modifier.fillMaxWidth()
                 )
             },
             text = {
@@ -188,16 +253,18 @@ fun GestionUsuariosScreen(
                     modifier            = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text  = "Asigna un rol de accesos diferente para la cuenta del usuario: ${usuarioSeleccionado!!.usuario}",
+                        text  = "Asigna un rol de accesos diferente para el usuario: ${usuarioSeleccionado!!.usuario}",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
-                    Card(
+                    OutlinedCard(
                         modifier = Modifier.fillMaxWidth(),
-                        shape    = RoundedCornerShape(12.dp),
-                        border   = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                        colors   = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                        shape    = RoundedCornerShape(18.dp),
+                        colors   = CardDefaults.outlinedCardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                        ),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
                     ) {
                         Column {
                             state.perfiles.forEachIndexed { index, perfil ->
@@ -206,23 +273,25 @@ fun GestionUsuariosScreen(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clickable(enabled = !state.cargando) { perfilSel = perfil.id }
-                                        .padding(horizontal = 14.dp, vertical = 12.dp)
+                                        .padding(horizontal = 16.dp, vertical = 14.dp)
                                 ) {
                                     RadioButton(
                                         selected = perfilSel == perfil.id,
                                         onClick  = { perfilSel = perfil.id },
                                         enabled  = !state.cargando
                                     )
-                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Spacer(modifier = Modifier.width(10.dp))
                                     Text(
-                                        text  = perfil.nombre,
-                                        style = MaterialTheme.typography.bodyMedium
+                                        text       = perfil.nombre,
+                                        style      = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color      = MaterialTheme.colorScheme.onSurface
                                     )
                                 }
                                 if (index < state.perfiles.lastIndex) {
                                     HorizontalDivider(
-                                        modifier = Modifier.padding(horizontal = 14.dp),
-                                        color    = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                                        modifier = Modifier.padding(horizontal = 16.dp),
+                                        color    = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
                                     )
                                 }
                             }
@@ -236,19 +305,20 @@ fun GestionUsuariosScreen(
                         viewModel.cambiarPerfilUsuario(usuarioSeleccionado!!.id, perfilSel)
                         mostrarDialog = false
                     },
-                    enabled = !state.cargando,
-                    shape   = RoundedCornerShape(10.dp)
+                    enabled  = !state.cargando,
+                    shape    = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     if (state.cargando) {
                         CircularProgressIndicator(
-                            modifier    = Modifier.size(16.dp),
+                            modifier    = Modifier.size(18.dp),
                             strokeWidth = 2.dp,
                             color       = MaterialTheme.colorScheme.onPrimary
                         )
                     } else {
-                        Icon(Icons.Default.Save, null, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Default.Save, null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("Guardar")
+                        Text("Guardar cambios", fontWeight = FontWeight.Bold)
                     }
                 }
             },
@@ -256,43 +326,40 @@ fun GestionUsuariosScreen(
                 OutlinedButton(
                     onClick  = { mostrarDialog = false },
                     enabled  = !state.cargando,
-                    shape    = RoundedCornerShape(10.dp)
+                    shape    = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
                 ) { Text("Cancelar") }
             }
         )
     }
 }
 
-// ─── Card de Usuario Cliqueable ───────────────────────────────────────────────
+// ─── Card de Usuario M3 ────────────────────────────────────────────────────────
 
 @Composable
 private fun UsuarioAdminCard(
     usuario: Usuario,
     onEditar: () -> Unit
 ) {
-    Card(
-        modifier  = Modifier
-            .fillMaxWidth()
-            // 1. Delimitamos el efecto de onda a las esquinas redondeadas
-            .clip(RoundedCornerShape(14.dp))
-            // 2. Volvemos toda la superficie reactiva al toque del administrador
-            .clickable { onEditar() },
-        shape     = RoundedCornerShape(14.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors    = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border    = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+    OutlinedCard(
+        modifier = Modifier.fillMaxWidth(),
+        shape    = RoundedCornerShape(18.dp),
+        colors   = CardDefaults.outlinedCardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        ),
+        border  = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
+        onClick = onEditar
     ) {
         Row(
             modifier          = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 14.dp), // Aumentamos padding vertical para mejor touch target
+                .padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Contenedor del Avatar/Ícono de Cuenta
             Surface(
-                shape    = RoundedCornerShape(10.dp),
-                color    = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f),
-                modifier = Modifier.size(44.dp)
+                shape    = CircleShape,
+                color    = MaterialTheme.colorScheme.primaryContainer,
+                modifier = Modifier.size(46.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
@@ -304,25 +371,25 @@ private fun UsuarioAdminCard(
                 }
             }
 
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(14.dp))
 
-            // Datos informativos principales de la cuenta
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text       = usuario.usuario,
-                    style      = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold
+                    style      = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color      = MaterialTheme.colorScheme.onSurface
                 )
 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier          = Modifier.padding(top = 4.dp)
+                    modifier          = Modifier.padding(top = 2.dp)
                 ) {
                     Icon(
                         imageVector        = Icons.Default.Badge,
                         contentDescription = null,
-                        modifier           = Modifier.size(12.dp),
-                        tint               = MaterialTheme.colorScheme.onSurfaceVariant
+                        modifier           = Modifier.size(13.dp),
+                        tint               = MaterialTheme.colorScheme.primary
                     )
                     Spacer(Modifier.width(4.dp))
                     Text(
@@ -335,21 +402,27 @@ private fun UsuarioAdminCard(
 
             Spacer(Modifier.width(8.dp))
 
-            // Estado Lateral derecho limpio sin ícono de lápiz de por medio
-            Row(
-                verticalAlignment     = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            Surface(
+                shape = RoundedCornerShape(6.dp),
+                color = MaterialTheme.colorScheme.primaryContainer
             ) {
-                Surface(
-                    shape    = RoundedCornerShape(50),
-                    color    = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(6.dp)
-                ) {}
-                Text(
-                    text  = "Activo",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary
-                )
+                Row(
+                    verticalAlignment     = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier              = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(6.dp)
+                            .clip(CircleShape)
+                    )
+                    Text(
+                        text       = "Activo",
+                        style      = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color      = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
             }
         }
     }
