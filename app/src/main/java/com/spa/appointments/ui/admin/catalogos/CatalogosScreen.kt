@@ -7,7 +7,6 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -166,22 +165,22 @@ fun ServiciosAdminScreen(
         ) {
             Spacer(Modifier.height(8.dp))
 
-            // ── Buscador M3 ───────────────────────────────────────────────
+            // ── Buscador Compacto Sin Etiqueta Flotante M3 ─────────────────
             OutlinedTextField(
                 value         = busqueda,
                 onValueChange = { busqueda = it },
-                label         = { Text("Buscar servicio o categoría") },
-                leadingIcon   = { Icon(Icons.Default.Search, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                placeholder   = { Text("Buscar servicio o categoría…", style = MaterialTheme.typography.bodyMedium) },
+                leadingIcon   = { Icon(Icons.Default.Search, null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant) },
                 trailingIcon  = {
                     if (busqueda.isNotBlank()) {
                         IconButton(onClick = { busqueda = "" }) {
-                            Icon(Icons.Default.Clear, null)
+                            Icon(Icons.Default.Clear, null, modifier = Modifier.size(18.dp))
                         }
                     }
                 },
                 modifier   = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 6.dp),
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
                 shape      = RoundedCornerShape(14.dp),
                 colors     = OutlinedTextFieldDefaults.colors(
                     focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
@@ -277,7 +276,7 @@ fun ServiciosAdminScreen(
                                 top    = 8.dp,
                                 bottom = 88.dp
                             ),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             items(filtrados, key = { it.id }) { srv ->
                                 ServicioAdminCard(
@@ -327,7 +326,7 @@ fun ServiciosAdminScreen(
     }
 }
 
-// ─── Card de Servicio M3 ───────────────────────────────────────────────────────
+// ─── Card de Servicio Simplificada (2 Filas) M3 ───────────────────────────────
 
 @Composable
 private fun ServicioAdminCard(
@@ -338,19 +337,19 @@ private fun ServicioAdminCard(
 ) {
     OutlinedCard(
         modifier = Modifier.fillMaxWidth(),
-        shape    = RoundedCornerShape(18.dp),
+        shape    = RoundedCornerShape(16.dp),
         colors   = CardDefaults.outlinedCardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // ── Fila superior: Ícono, Título, Categoría y Switch de estado ──
+            // ── Fila 1: Icono, Nombre, Categoría, Precio Base y Switch ──────────
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -360,18 +359,18 @@ private fun ServicioAdminCard(
                     color = if (servicio.esGrupal)
                         MaterialTheme.colorScheme.tertiaryContainer
                     else
-                        MaterialTheme.colorScheme.secondaryContainer,
-                    modifier = Modifier.size(46.dp)
+                        MaterialTheme.colorScheme.primaryContainer,
+                    modifier = Modifier.size(42.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
                             imageVector = if (servicio.esGrupal) Icons.Default.Groups else Icons.Default.Spa,
                             contentDescription = null,
-                            modifier = Modifier.size(22.dp),
+                            modifier = Modifier.size(20.dp),
                             tint = if (servicio.esGrupal)
                                 MaterialTheme.colorScheme.onTertiaryContainer
                             else
-                                MaterialTheme.colorScheme.onSecondaryContainer
+                                MaterialTheme.colorScheme.onPrimaryContainer
                         )
                     }
                 }
@@ -387,42 +386,40 @@ private fun ServicioAdminCard(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(top = 2.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Category,
-                            contentDescription = null,
-                            modifier = Modifier.size(12.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Spacer(Modifier.width(4.dp))
-                        Text(
-                            text = servicio.nombreCategoria,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
+                    Text(
+                        text = servicio.nombreCategoria,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
 
                 Spacer(Modifier.width(8.dp))
 
+                // Precio Base destacado
+                Text(
+                    text = "$ ${"%,.0f".format(servicio.precioBase)}",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+
+                Spacer(Modifier.width(6.dp))
+
                 Switch(
                     checked = servicio.estado,
                     onCheckedChange = { onToggle() },
-                    modifier = Modifier.scale(0.85f)
+                    modifier = Modifier.scale(0.8f)
                 )
             }
 
             HorizontalDivider(
                 thickness = 0.5.dp,
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
             )
 
-            // ── Fila media: Badges de Duración, Precio, Grupal y Estado Activo/Inactivo ──
+            // ── Fila 2: Badges compactas + Botones de Acción M3 ───────────────
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -438,46 +435,21 @@ private fun ServicioAdminCard(
                         color = MaterialTheme.colorScheme.surfaceContainerHigh
                     ) {
                         Row(
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Timer,
                                 contentDescription = null,
-                                modifier = Modifier.size(13.dp),
+                                modifier = Modifier.size(12.dp),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
                                 text = "${servicio.duracionMinutos} min",
                                 style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
+                                fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-
-                    // Precio Base
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = MaterialTheme.colorScheme.primaryContainer
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(2.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.AttachMoney,
-                                contentDescription = null,
-                                modifier = Modifier.size(13.dp),
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                            Text(
-                                text = "%.0f".format(servicio.precioBase),
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
                             )
                         }
                     }
@@ -489,14 +461,14 @@ private fun ServicioAdminCard(
                             color = MaterialTheme.colorScheme.tertiaryContainer
                         ) {
                             Row(
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Groups,
                                     contentDescription = null,
-                                    modifier = Modifier.size(13.dp),
+                                    modifier = Modifier.size(12.dp),
                                     tint = MaterialTheme.colorScheme.onTertiaryContainer
                                 )
                                 Text(
@@ -510,96 +482,55 @@ private fun ServicioAdminCard(
                     }
                 }
 
-                // Estado (Pill Activo / Inactivo)
-                Surface(
-                    shape = RoundedCornerShape(50),
-                    color = if (servicio.estado)
-                        MaterialTheme.colorScheme.primaryContainer
-                    else
-                        MaterialTheme.colorScheme.surfaceContainerHigh
+                // Botones de acción compactos
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    if (servicio.esGrupal) {
+                        FilledTonalButton(
+                            onClick = onVerPreciosRangos,
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                            colors = ButtonDefaults.filledTonalButtonColors(
+                                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                            ),
+                            modifier = Modifier.height(32.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.FormatListNumbered,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                text = "Tarifas",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+
+                    IconButton(
+                        onClick = onEditar,
+                        modifier = Modifier.size(36.dp)
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(6.dp)
-                                .background(
-                                    color = if (servicio.estado)
-                                        MaterialTheme.colorScheme.primary
-                                    else
-                                        MaterialTheme.colorScheme.outline,
-                                    shape = RoundedCornerShape(50)
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = "Editar",
+                                    modifier = Modifier.size(16.dp),
+                                    tint = MaterialTheme.colorScheme.onSecondaryContainer
                                 )
-                        )
-                        Text(
-                            text = if (servicio.estado) "Activo" else "Inactivo",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = if (servicio.estado)
-                                MaterialTheme.colorScheme.onPrimaryContainer
-                            else
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                            }
+                        }
                     }
-                }
-            }
-
-            // ── Fila inferior: Botones de Acción Claras M3 ────────────────────
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                if (servicio.esGrupal) {
-                    FilledTonalButton(
-                        onClick = onVerPreciosRangos,
-                        shape = RoundedCornerShape(10.dp),
-                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                        colors = ButtonDefaults.filledTonalButtonColors(
-                            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onTertiaryContainer
-                        ),
-                        modifier = Modifier.height(34.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.FormatListNumbered,
-                            contentDescription = null,
-                            modifier = Modifier.size(15.dp)
-                        )
-                        Spacer(Modifier.width(6.dp))
-                        Text(
-                            text = "Tarifas por persona",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                    Spacer(Modifier.width(8.dp))
-                }
-
-                FilledTonalButton(
-                    onClick = onEditar,
-                    shape = RoundedCornerShape(10.dp),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                    colors = ButtonDefaults.filledTonalButtonColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                    ),
-                    modifier = Modifier.height(34.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = null,
-                        modifier = Modifier.size(15.dp)
-                    )
-                    Spacer(Modifier.width(6.dp))
-                    Text(
-                        text = "Editar",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold
-                    )
                 }
             }
         }
