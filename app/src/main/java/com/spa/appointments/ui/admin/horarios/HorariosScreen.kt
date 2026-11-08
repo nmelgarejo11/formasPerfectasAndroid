@@ -1,8 +1,11 @@
+// Ruta: app/src/main/java/com/spa/appointments/ui/admin/horarios/HorariosScreen.kt
 package com.spa.appointments.ui.admin.horarios
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -12,14 +15,16 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.spa.appointments.domain.model.BloqueoResponse
 import com.spa.appointments.domain.model.ProfesionalAdmin
 import com.spa.appointments.ui.admin.profesionales.ProfesionalesAdminViewModel
 
-// ─── Screen principal ─────────────────────────────────────────────────────────
+// ─── Screen Principal ─────────────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -63,35 +68,65 @@ fun HorariosScreen(
     }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text       = "Horarios",
-                            style      = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        if (profesional != null) {
+            Column {
+                TopAppBar(
+                    title = {
+                        Column {
                             Text(
-                                text  = "${profesional.nombre} ${profesional.apellido}",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                text       = "Horarios",
+                                style      = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
                             )
+                            if (profesional != null) {
+                                Text(
+                                    text  = "${profesional.nombre} ${profesional.apellido}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Volver")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { showCopiarDialog = true }) {
-                        Icon(Icons.Default.CopyAll, "Copiar horario")
-                    }
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Volver")
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = { showCopiarDialog = true }) {
+                            Icon(Icons.Default.CopyAll, "Copiar horario", tint = MaterialTheme.colorScheme.primary)
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.background
+                    )
+                )
+
+                // 🎨 Canvas: Acento decorativo debajo de la TopAppBar
+                val primaryColor   = MaterialTheme.colorScheme.primary
+                val secondaryColor = MaterialTheme.colorScheme.secondary
+                Canvas(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(3.dp)
+                ) {
+                    drawRect(
+                        brush = Brush.horizontalGradient(
+                            colors = listOf(
+                                primaryColor.copy(alpha = 0.4f),
+                                secondaryColor.copy(alpha = 0.2f),
+                                primaryColor.copy(alpha = 0.05f)
+                            )
+                        )
+                    )
                 }
-            )
+
+                HorizontalDivider(
+                    thickness = 0.5.dp,
+                    color     = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                )
+            }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
@@ -104,12 +139,17 @@ fun HorariosScreen(
                 ) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        CircularProgressIndicator()
+                        CircularProgressIndicator(
+                            color       = MaterialTheme.colorScheme.primary,
+                            trackColor  = MaterialTheme.colorScheme.primaryContainer,
+                            strokeWidth = 3.dp,
+                            modifier    = Modifier.size(36.dp)
+                        )
                         Text(
                             "Cargando horarios…",
-                            style = MaterialTheme.typography.bodySmall,
+                            style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -123,36 +163,43 @@ fun HorariosScreen(
                         .padding(padding)
                         .verticalScroll(rememberScrollState())
                         .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
 
-                    // ── Card: Horario semanal ─────────────────────────────
-                    Card(
-                        modifier  = Modifier.fillMaxWidth(),
-                        shape     = RoundedCornerShape(14.dp),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                        border    = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                    // ── Card: Horario semanal M3 ─────────────────────────────
+                    OutlinedCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape    = RoundedCornerShape(18.dp),
+                        colors   = CardDefaults.outlinedCardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                        ),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier          = Modifier.padding(bottom = 12.dp)
                             ) {
-                                Icon(
-                                    Icons.Default.CalendarMonth, null,
-                                    modifier = Modifier.size(18.dp),
-                                    tint     = MaterialTheme.colorScheme.primary
-                                )
-                                Spacer(Modifier.width(8.dp))
+                                Surface(
+                                    shape = CircleShape,
+                                    color = MaterialTheme.colorScheme.primaryContainer
+                                ) {
+                                    Icon(
+                                        Icons.Default.CalendarMonth, null,
+                                        modifier = Modifier.padding(8.dp).size(20.dp),
+                                        tint     = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                }
+                                Spacer(Modifier.width(10.dp))
                                 Text(
                                     text       = "Horario semanal",
-                                    style      = MaterialTheme.typography.titleSmall,
+                                    style      = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
 
                             HorizontalDivider(
-                                color    = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                                color    = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
                                 modifier = Modifier.padding(bottom = 8.dp)
                             )
 
@@ -167,57 +214,66 @@ fun HorariosScreen(
                                 if (dia != diasHorario.last()) {
                                     HorizontalDivider(
                                         color    = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
-                                        modifier = Modifier.padding(vertical = 2.dp)
+                                        modifier = Modifier.padding(vertical = 4.dp)
                                     )
                                 }
                             }
 
-                            Spacer(Modifier.height(12.dp))
+                            Spacer(Modifier.height(16.dp))
 
                             Button(
                                 onClick  = {
                                     viewModel.guardarHorario(idProfesional, idSedeSeleccionada)
                                 },
                                 enabled  = uiState !is HorariosUiState.Loading,
-                                modifier = Modifier.align(Alignment.End).height(40.dp),
-                                shape    = RoundedCornerShape(10.dp)
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(48.dp),
+                                shape    = RoundedCornerShape(12.dp)
                             ) {
                                 if (uiState is HorariosUiState.Loading) {
                                     CircularProgressIndicator(
-                                        modifier    = Modifier.size(16.dp),
+                                        modifier    = Modifier.size(18.dp),
                                         strokeWidth = 2.dp,
                                         color       = MaterialTheme.colorScheme.onPrimary
                                     )
                                 } else {
-                                    Icon(Icons.Default.Save, null, modifier = Modifier.size(16.dp))
-                                    Spacer(Modifier.width(4.dp))
-                                    Text("Guardar horario")
+                                    Icon(Icons.Default.Save, null, modifier = Modifier.size(18.dp))
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Guardar horario", fontWeight = FontWeight.Bold)
                                 }
                             }
                         }
                     }
 
-                    // ── Card: Bloqueos ────────────────────────────────────
-                    Card(
-                        modifier  = Modifier.fillMaxWidth(),
-                        shape     = RoundedCornerShape(14.dp),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                        border    = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                    // ── Card: Bloqueos M3 ────────────────────────────────────
+                    OutlinedCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape    = RoundedCornerShape(18.dp),
+                        colors   = CardDefaults.outlinedCardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                        ),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Row(
                                 modifier          = Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(
-                                    Icons.Default.EventBusy, null,
-                                    modifier = Modifier.size(18.dp),
-                                    tint     = MaterialTheme.colorScheme.primary
-                                )
-                                Spacer(Modifier.width(8.dp))
+                                Surface(
+                                    shape = CircleShape,
+                                    color = MaterialTheme.colorScheme.errorContainer
+                                ) {
+                                    Icon(
+                                        Icons.Default.EventBusy, null,
+                                        modifier = Modifier.padding(8.dp).size(20.dp),
+                                        tint     = MaterialTheme.colorScheme.onErrorContainer
+                                    )
+                                }
+                                Spacer(Modifier.width(10.dp))
                                 Text(
-                                    text       = "Bloqueos",
-                                    style      = MaterialTheme.typography.titleSmall,
+                                    text       = "Bloqueos y ausencias",
+                                    style      = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
                                     modifier   = Modifier.weight(1f)
                                 )
@@ -225,43 +281,43 @@ fun HorariosScreen(
                                     onClick = { showBloqueoDialog = true },
                                     shape   = RoundedCornerShape(10.dp)
                                 ) {
-                                    Icon(Icons.Default.Add, null, modifier = Modifier.size(15.dp))
+                                    Icon(Icons.Default.Add, null, modifier = Modifier.size(16.dp))
                                     Spacer(Modifier.width(4.dp))
-                                    Text("Agregar", style = MaterialTheme.typography.labelMedium)
+                                    Text("Agregar", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                                 }
                             }
 
                             HorizontalDivider(
-                                color    = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                                modifier = Modifier.padding(vertical = 10.dp)
+                                color    = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                                modifier = Modifier.padding(vertical = 12.dp)
                             )
 
                             if (bloqueos.isEmpty()) {
                                 Surface(
-                                    shape = RoundedCornerShape(10.dp),
-                                    color = MaterialTheme.colorScheme.surfaceVariant
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = MaterialTheme.colorScheme.surfaceContainerHigh
                                 ) {
                                     Row(
                                         modifier          = Modifier
                                             .fillMaxWidth()
-                                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                                            .padding(horizontal = 14.dp, vertical = 12.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Icon(
                                             Icons.Default.CheckCircleOutline, null,
-                                            modifier = Modifier.size(16.dp),
-                                            tint     = MaterialTheme.colorScheme.onSurfaceVariant
+                                            modifier = Modifier.size(18.dp),
+                                            tint     = MaterialTheme.colorScheme.primary
                                         )
-                                        Spacer(Modifier.width(8.dp))
+                                        Spacer(Modifier.width(10.dp))
                                         Text(
-                                            text  = "Sin bloqueos activos",
+                                            text  = "Sin bloqueos activos para este profesional",
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
                                 }
                             } else {
-                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                     bloqueos.forEachIndexed { index, bloqueo ->
                                         BloqueoRow(
                                             bloqueo    = bloqueo,
@@ -311,25 +367,27 @@ fun HorariosScreen(
     showEliminarBloqueo?.let { bloqueo ->
         AlertDialog(
             onDismissRequest = { showEliminarBloqueo = null },
-            shape = RoundedCornerShape(16.dp),
+            shape            = RoundedCornerShape(28.dp),
+            containerColor   = MaterialTheme.colorScheme.surfaceContainerHigh,
             icon  = {
                 Surface(
-                    shape = RoundedCornerShape(50),
+                    shape = CircleShape,
                     color = MaterialTheme.colorScheme.errorContainer
                 ) {
                     Icon(
                         Icons.Default.DeleteForever, null,
                         tint     = MaterialTheme.colorScheme.onErrorContainer,
-                        modifier = Modifier.padding(10.dp).size(22.dp)
+                        modifier = Modifier.padding(12.dp).size(26.dp)
                     )
                 }
             },
-            title = { Text("Eliminar bloqueo", fontWeight = FontWeight.Bold) },
+            title = { Text("Eliminar bloqueo", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
             text  = {
                 Text(
-                    text  = "¿Eliminar el bloqueo \"${bloqueo.motivo}\"? Esta acción no se puede deshacer.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    text      = "¿Eliminar el bloqueo \"${bloqueo.motivo}\"? Esta acción no se puede deshacer.",
+                    style     = MaterialTheme.typography.bodyMedium,
+                    color     = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center
                 )
             },
             confirmButton = {
@@ -338,16 +396,18 @@ fun HorariosScreen(
                         viewModel.eliminarBloqueo(idProfesional, bloqueo.id)
                         showEliminarBloqueo = null
                     },
-                    shape  = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(
+                    shape    = RoundedCornerShape(12.dp),
+                    colors   = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.error
-                    )
-                ) { Text("Eliminar") }
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("Eliminar bloqueo", fontWeight = FontWeight.Bold) }
             },
             dismissButton = {
                 OutlinedButton(
-                    onClick = { showEliminarBloqueo = null },
-                    shape   = RoundedCornerShape(10.dp)
+                    onClick  = { showEliminarBloqueo = null },
+                    shape    = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
                 ) { Text("Cancelar") }
             }
         )
@@ -379,31 +439,33 @@ private fun DiaHorarioRow(
             )
             Text(
                 text       = dia.nombreDia,
-                style      = MaterialTheme.typography.bodyMedium,
-                fontWeight = if (dia.activo) FontWeight.SemiBold else FontWeight.Normal,
+                style      = MaterialTheme.typography.titleMedium,
+                fontWeight = if (dia.activo) FontWeight.Bold else FontWeight.Normal,
+                color      = if (dia.activo) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier   = Modifier.weight(1f)
             )
             if (dia.activo) {
                 FilledTonalButton(
                     onClick        = { showTimePicker = "inicio" },
                     contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                    modifier       = Modifier.height(32.dp),
-                    shape          = RoundedCornerShape(8.dp)
+                    modifier       = Modifier.height(34.dp),
+                    shape          = RoundedCornerShape(10.dp)
                 ) {
-                    Text(formatearHora12h(dia.horaInicio), style = MaterialTheme.typography.labelMedium)
+                    Text(formatearHora12h(dia.horaInicio), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                 }
                 Text(
                     " – ",
-                    style    = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(horizontal = 2.dp)
+                    style    = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 4.dp)
                 )
                 FilledTonalButton(
                     onClick        = { showTimePicker = "fin" },
                     contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                    modifier       = Modifier.height(32.dp),
-                    shape          = RoundedCornerShape(8.dp)
+                    modifier       = Modifier.height(34.dp),
+                    shape          = RoundedCornerShape(10.dp)
                 ) {
-                    Text(formatearHora12h(dia.horaFin), style = MaterialTheme.typography.labelMedium)
+                    Text(formatearHora12h(dia.horaFin), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -433,38 +495,39 @@ private fun BloqueoRow(
     Row(
         modifier          = Modifier
             .fillMaxWidth()
-            .padding(vertical = 6.dp),
+            .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Surface(
-            shape = RoundedCornerShape(8.dp),
-            color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f),
-            modifier = Modifier.size(36.dp)
+            shape = RoundedCornerShape(10.dp),
+            color = MaterialTheme.colorScheme.errorContainer,
+            modifier = Modifier.size(38.dp)
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
                     Icons.Default.Block, null,
-                    modifier = Modifier.size(16.dp),
-                    tint     = MaterialTheme.colorScheme.error
+                    modifier = Modifier.size(18.dp),
+                    tint     = MaterialTheme.colorScheme.onErrorContainer
                 )
             }
         }
 
-        Spacer(Modifier.width(10.dp))
+        Spacer(Modifier.width(12.dp))
 
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text       = bloqueo.motivo,
-                style      = MaterialTheme.typography.bodySmall,
-                fontWeight = FontWeight.SemiBold
+                style      = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                color      = MaterialTheme.colorScheme.onSurface
             )
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     Icons.Default.DateRange, null,
-                    modifier = Modifier.size(11.dp),
-                    tint     = MaterialTheme.colorScheme.onSurfaceVariant
+                    modifier = Modifier.size(12.dp),
+                    tint     = MaterialTheme.colorScheme.primary
                 )
-                Spacer(Modifier.width(3.dp))
+                Spacer(Modifier.width(4.dp))
                 Text(
                     text  = "${bloqueo.fechaInicio.take(10)} → ${bloqueo.fechaFin.take(10)}",
                     style = MaterialTheme.typography.labelSmall,
