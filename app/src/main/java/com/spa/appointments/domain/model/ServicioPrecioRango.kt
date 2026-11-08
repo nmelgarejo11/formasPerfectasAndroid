@@ -9,6 +9,7 @@ data class ServicioPrecioRango(
     @Json(name = "idServicio")       val idServicio: Int,
     @Json(name = "cantidadPersonas") val cantidadPersonas: Int,
     @Json(name = "precio")           val precio: Double,
+    @Json(name = "esPorPersona")     val esPorPersona: Boolean = false,
     @Json(name = "estado")           val estado: Boolean
 )
 
@@ -16,5 +17,6 @@ data class ServicioPrecioRango(
 data class GuardarPrecioRangoRequest(
     @Json(name = "idServicio")       val idServicio: Int,
     @Json(name = "cantidadPersonas") val cantidadPersonas: Int,
-    @Json(name = "precio")           val precio: Double
+    @Json(name = "precio")           val precio: Double,
+    @Json(name = "esPorPersona")     val esPorPersona: Boolean = false
 )

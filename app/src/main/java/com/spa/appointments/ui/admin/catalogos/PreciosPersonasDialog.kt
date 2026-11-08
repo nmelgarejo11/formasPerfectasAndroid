@@ -26,14 +26,25 @@ import com.spa.appointments.domain.model.ServicioPrecioRango
 fun PreciosPersonasDialog(
     servicio: ServicioAdmin,
     preciosRangos: List<ServicioPrecioRango>,
-    onGuardarRango: (cantidadPersonas: Int, precio: Double) -> Unit,
+    onGuardarRango: (cantidadPersonas: Int, precio: Double, esPorPersona: Boolean) -> Unit,
     onEliminarRango: (idRango: Int) -> Unit,
     onDismiss: () -> Unit
 ) {
     var cantidadText by remember { mutableStateOf("") }
     var precioText by remember { mutableStateOf("") }
+    var esPorPersona by remember { mutableStateOf(false) }
 
-    val esValido = (cantidadText.toIntOrNull() ?: 0) >= 1 && (precioText.toDoubleOrNull() ?: 0.0) > 0.0
+    // Determina el siguiente número de personas automático cuando es multiplicable
+    val maxPersonasExistente = remember(preciosRangos) {
+        preciosRangos.maxOfOrNull { it.cantidadPersonas } ?: 0
+    }
+    val siguienteCantMultiplicable = maxPersonasExistente + 1
+
+    val esValido = if (esPorPersona) {
+        (precioText.toDoubleOrNull() ?: 0.0) > 0.0
+    } else {
+        (cantidadText.toIntOrNull() ?: 0) >= 1 && (precioText.toDoubleOrNull() ?: 0.0) > 0.0
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -63,10 +74,10 @@ fun PreciosPersonasDialog(
         },
         text = {
             Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                // Banner informativo de la regla del tope máximo
+                // Banner informativo
                 Surface(
                     shape = RoundedCornerShape(10.dp),
                     color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
@@ -84,44 +95,88 @@ fun PreciosPersonasDialog(
                             tint = MaterialTheme.colorScheme.onSecondaryContainer
                         )
                         Text(
-                            text = "Si la cantidad de asistentes supera el nivel máximo configurado, se aplicará el valor del último nivel.",
+                            text = if (esPorPersona)
+                                "Modo Multiplicador (Aplica para $siguienteCantMultiplicable+ personas): El precio ingresado se multiplicará por el número de asistentes."
+                            else
+                                "Modo Tarifa Fija: Se cobrará un precio fijo total para el número exacto de personas especificado.",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSecondaryContainer
                         )
                     }
                 }
 
-                // Formulario compacto para agregar nuevo nivel
+                // Selector de modo de tarifa
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Checkbox(
+                        checked = esPorPersona,
+                        onCheckedChange = { esPorPersona = it }
+                    )
+                    Text(
+                        text = "Tarifa Multiplicable (x N° de asistentes)",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+
+                // Formulario para agregar nuevo nivel
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    OutlinedTextField(
-                        value = cantidadText,
-                        onValueChange = { cantidadText = it.filter { c -> c.isDigit() } },
-                        placeholder = { Text("Personas", style = MaterialTheme.typography.bodySmall) },
-                        leadingIcon = {
-                            Icon(
-                                Icons.Default.Groups,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(52.dp),
-                        singleLine = true,
-                        shape = RoundedCornerShape(10.dp),
-                        textStyle = MaterialTheme.typography.bodyMedium
-                    )
+                    if (!esPorPersona) {
+                        OutlinedTextField(
+                            value = cantidadText,
+                            onValueChange = { cantidadText = it.filter { c -> c.isDigit() } },
+                            placeholder = { Text("Personas", style = MaterialTheme.typography.bodySmall) },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Default.Groups,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(52.dp),
+                            singleLine = true,
+                            shape = RoundedCornerShape(10.dp),
+                            textStyle = MaterialTheme.typography.bodyMedium
+                        )
+                    } else {
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.6f),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(52.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 8.dp)) {
+                                Text(
+                                    text = "$siguienteCantMultiplicable+ Asistentes",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                                )
+                            }
+                        }
+                    }
 
                     OutlinedTextField(
                         value = precioText,
                         onValueChange = { precioText = it.filter { c -> c.isDigit() || c == '.' } },
-                        placeholder = { Text("Precio ($)", style = MaterialTheme.typography.bodySmall) },
+                        placeholder = {
+                            Text(
+                                if (esPorPersona) "Precio / Asistente ($)" else "Precio Total ($)",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        },
                         leadingIcon = {
                             Icon(
                                 Icons.Default.AttachMoney,
@@ -132,7 +187,7 @@ fun PreciosPersonasDialog(
                         },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier
-                            .weight(1.2f)
+                            .weight(1.3f)
                             .height(52.dp),
                         singleLine = true,
                         shape = RoundedCornerShape(10.dp),
@@ -141,12 +196,13 @@ fun PreciosPersonasDialog(
 
                     FilledTonalButton(
                         onClick = {
-                            val cant = cantidadText.toIntOrNull()
                             val prec = precioText.toDoubleOrNull()
-                            if (cant != null && prec != null) {
-                                onGuardarRango(cant, prec)
+                            if (prec != null) {
+                                val cant = if (esPorPersona) siguienteCantMultiplicable else (cantidadText.toIntOrNull() ?: 1)
+                                onGuardarRango(cant, prec, esPorPersona)
                                 cantidadText = ""
                                 precioText = ""
+                                esPorPersona = false
                             }
                         },
                         enabled = esValido,
@@ -199,15 +255,25 @@ fun PreciosPersonasDialog(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                    Text(
-                                        text = "${rango.cantidadPersonas} ${if (rango.cantidadPersonas == 1) "persona" else "personas"}",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.Bold
-                                    )
+                                    Column {
+                                        Text(
+                                            text = if (rango.esPorPersona)
+                                                "${rango.cantidadPersonas}+ personas"
+                                            else
+                                                "${rango.cantidadPersonas} ${if (rango.cantidadPersonas == 1) "persona" else "personas"}",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            text = if (rango.esPorPersona) "Multiplicable x asistente" else "Monto fijo paquete",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
 
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Text(
-                                            text = "$${String.format(java.util.Locale.US, "%,.0f", rango.precio)}",
+                                            text = "$${String.format(java.util.Locale.US, "%,.0f", rango.precio)}${if (rango.esPorPersona) " /p" else ""}",
                                             style = MaterialTheme.typography.bodyMedium,
                                             fontWeight = FontWeight.SemiBold,
                                             color = MaterialTheme.colorScheme.primary

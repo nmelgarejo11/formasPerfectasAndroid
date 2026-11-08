@@ -128,10 +128,10 @@ class CatalogosViewModel @Inject constructor(
         }
     }
 
-    fun guardarPrecioRango(idServicio: Int, cantidadPersonas: Int, precio: Double) {
+    fun guardarPrecioRango(idServicio: Int, cantidadPersonas: Int, precio: Double, esPorPersona: Boolean = false) {
         viewModelScope.launch {
             try {
-                repo.guardarPrecioRango(idServicio, cantidadPersonas, precio)
+                repo.guardarPrecioRango(idServicio, cantidadPersonas, precio, esPorPersona)
                 cargarPreciosRangos(idServicio)
             } catch (e: Exception) {
                 _uiState.value = CatalogosUiState.Error(e.message ?: "Error al guardar rango de precio")

@@ -71,14 +71,16 @@ class DisponibilidadViewModel @Inject constructor(
             return if (cantidadPersonas > 1) precioBase * cantidadPersonas else precioBase
         }
 
-        // 1. Coincidencia exacta
+        // 1. Coincidencia exacta de nivel
         val exacto = rangos.firstOrNull { it.cantidadPersonas == cantidadPersonas }
-        if (exacto != null) return exacto.precio
+        if (exacto != null) {
+            return if (exacto.esPorPersona) exacto.precio * cantidadPersonas else exacto.precio
+        }
 
-        // 2. Regla del techo máximo
+        // 2. Si la cantidad de personas supera el nivel máximo configurado
         val maxRango = rangos.maxByOrNull { it.cantidadPersonas }
         if (maxRango != null && cantidadPersonas >= maxRango.cantidadPersonas) {
-            return maxRango.precio
+            return if (maxRango.esPorPersona) maxRango.precio * cantidadPersonas else maxRango.precio
         }
 
         return if (cantidadPersonas > 1) precioBase * cantidadPersonas else precioBase

@@ -276,8 +276,8 @@ fun ServiciosAdminScreen(
         PreciosPersonasDialog(
             servicio = servicioRangoSeleccionado!!,
             preciosRangos = preciosRangos,
-            onGuardarRango = { cant, prec ->
-                viewModel.guardarPrecioRango(servicioRangoSeleccionado!!.id, cant, prec)
+            onGuardarRango = { cant, prec, esPorPersona ->
+                viewModel.guardarPrecioRango(servicioRangoSeleccionado!!.id, cant, prec, esPorPersona)
             },
             onEliminarRango = { idRango ->
                 viewModel.eliminarPrecioRango(servicioRangoSeleccionado!!.id, idRango)
