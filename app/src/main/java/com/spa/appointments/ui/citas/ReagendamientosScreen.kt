@@ -2,12 +2,15 @@
 package com.spa.appointments.ui.citas
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -17,6 +20,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -29,8 +34,9 @@ import com.spa.appointments.domain.model.CitaPendiente
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 
-// ─── Screen principal ─────────────────────────────────────────────────────────
+// ─── Screen Principal (Stateful) ──────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -67,150 +73,225 @@ fun ReagendamientosScreen(
     }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text       = "Reagendamientos",
-                            style      = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        if (totalPendientes != null) {
+            Column {
+                TopAppBar(
+                    title = {
+                        Column {
                             Text(
-                                text  = "$totalPendientes ${if (totalPendientes == 1) "pendiente" else "pendientes"}",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                text       = "Reagendamientos",
+                                style      = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
                             )
+                            if (totalPendientes != null) {
+                                Surface(
+                                    shape    = RoundedCornerShape(50),
+                                    color    = MaterialTheme.colorScheme.primaryContainer,
+                                    modifier = Modifier.padding(top = 2.dp)
+                                ) {
+                                    Text(
+                                        text     = "$totalPendientes ${if (totalPendientes == 1) "pendiente" else "pendientes"}",
+                                        style    = MaterialTheme.typography.labelSmall,
+                                        color    = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 1.dp)
+                                    )
+                                }
+                            }
                         }
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Volver")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { viewModel.cargar() }) {
-                        Icon(Icons.Default.Refresh, "Recargar")
-                    }
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Volver")
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = { viewModel.cargar() }) {
+                            Icon(Icons.Default.Refresh, "Recargar")
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.background
+                    )
+                )
+
+                // 🎨 Canvas: Acento decorativo debajo de la TopAppBar
+                val primaryColor   = MaterialTheme.colorScheme.primary
+                val secondaryColor = MaterialTheme.colorScheme.secondary
+                Canvas(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(3.dp)
+                ) {
+                    drawRect(
+                        brush = Brush.horizontalGradient(
+                            colors = listOf(
+                                primaryColor.copy(alpha = 0.4f),
+                                secondaryColor.copy(alpha = 0.2f),
+                                primaryColor.copy(alpha = 0.05f)
+                            )
+                        )
+                    )
                 }
-            )
+
+                HorizontalDivider(
+                    thickness = 0.5.dp,
+                    color     = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                )
+            }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
 
-        when (val state = uiState) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
+            when (val state = uiState) {
 
-            is ReagendamientoUiState.Loading -> {
-                Box(
-                    modifier         = Modifier.fillMaxSize().padding(padding),
-                    contentAlignment = Alignment.Center
-                ) {
+                is ReagendamientoUiState.Loading -> {
                     Column(
+                        modifier            = Modifier.align(Alignment.Center),
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        CircularProgressIndicator()
+                        CircularProgressIndicator(
+                            color       = MaterialTheme.colorScheme.primary,
+                            trackColor  = MaterialTheme.colorScheme.primaryContainer,
+                            strokeWidth = 3.dp,
+                            modifier    = Modifier.size(36.dp)
+                        )
                         Text(
                             "Cargando solicitudes…",
-                            style = MaterialTheme.typography.bodySmall,
+                            style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
-            }
 
-            is ReagendamientoUiState.Error -> {
-                Box(
-                    modifier         = Modifier.fillMaxSize().padding(padding),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        modifier            = Modifier.padding(32.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Surface(
-                            shape = RoundedCornerShape(50),
-                            color = MaterialTheme.colorScheme.errorContainer
-                        ) {
-                            Icon(
-                                Icons.Default.CloudOff, null,
-                                modifier = Modifier.padding(16.dp).size(32.dp),
-                                tint     = MaterialTheme.colorScheme.onErrorContainer
-                            )
-                        }
-                        Text(
-                            text      = state.mensaje,
-                            color     = MaterialTheme.colorScheme.error,
-                            textAlign = TextAlign.Center,
-                            style     = MaterialTheme.typography.bodyMedium
+                is ReagendamientoUiState.Error -> {
+                    OutlinedCard(
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .padding(24.dp)
+                            .fillMaxWidth(),
+                        shape  = RoundedCornerShape(24.dp),
+                        colors = CardDefaults.outlinedCardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
                         )
-                        Button(
-                            onClick = { viewModel.cargar() },
-                            shape   = RoundedCornerShape(10.dp)
-                        ) {
-                            Icon(Icons.Default.Refresh, null, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text("Reintentar")
-                        }
-                    }
-                }
-            }
-
-            is ReagendamientoUiState.Success -> {
-                if (state.pendientes.isEmpty()) {
-                    Box(
-                        modifier         = Modifier.fillMaxSize().padding(padding),
-                        contentAlignment = Alignment.Center
                     ) {
                         Column(
-                            modifier            = Modifier.padding(40.dp),
+                            modifier            = Modifier
+                                .padding(32.dp)
+                                .fillMaxWidth(),
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                            verticalArrangement = Arrangement.spacedBy(14.dp)
                         ) {
                             Surface(
-                                shape = RoundedCornerShape(24.dp),
-                                color = MaterialTheme.colorScheme.surfaceVariant
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.errorContainer
                             ) {
                                 Icon(
-                                    Icons.Default.EditCalendar, null,
-                                    modifier = Modifier.padding(20.dp).size(48.dp),
-                                    tint     = MaterialTheme.colorScheme.onSurfaceVariant
+                                    Icons.Default.CloudOff, null,
+                                    modifier = Modifier.padding(16.dp).size(36.dp),
+                                    tint     = MaterialTheme.colorScheme.onErrorContainer
                                 )
                             }
                             Text(
-                                text       = "Sin solicitudes pendientes",
+                                text       = "Error al cargar",
                                 style      = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text      = "Cuando los clientes soliciten un cambio de fecha, aparecerán aquí.",
-                                style     = MaterialTheme.typography.bodyMedium,
-                                color     = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = TextAlign.Center
+                                text      = state.mensaje,
+                                color     = MaterialTheme.colorScheme.error,
+                                textAlign = TextAlign.Center,
+                                style     = MaterialTheme.typography.bodyMedium
                             )
+                            Button(
+                                onClick = { viewModel.cargar() },
+                                shape   = RoundedCornerShape(12.dp)
+                            ) {
+                                Icon(Icons.Default.Refresh, null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text("Reintentar")
+                            }
                         }
                     }
-                } else {
-                    LazyColumn(
-                        modifier            = Modifier.fillMaxSize().padding(padding),
-                        contentPadding      = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        items(state.pendientes) { cita ->
-                            CitaPendienteCard(
-                                cita       = cita,
-                                viewModel  = viewModel,            // ← NUEVO
-                                isLoading  = actionState is ReagendamientoActionState.Loading,
-                                onAprobar  = { nuevaInicio, nuevaFin ->
-                                    viewModel.aprobar(cita.id, nuevaInicio, nuevaFin)
-                                },
-                                onRechazar = { motivo ->
-                                    viewModel.rechazar(cita.id, motivo)
-                                }
+                }
+
+                is ReagendamientoUiState.Success -> {
+                    if (state.pendientes.isEmpty()) {
+                        val primaryColor = MaterialTheme.colorScheme.primary
+
+                        OutlinedCard(
+                            modifier = Modifier
+                                .align(Alignment.Center)
+                                .padding(24.dp)
+                                .fillMaxWidth(),
+                            shape  = RoundedCornerShape(24.dp),
+                            colors = CardDefaults.outlinedCardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerLow
                             )
+                        ) {
+                            Column(
+                                modifier            = Modifier
+                                    .padding(32.dp)
+                                    .fillMaxWidth(),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(14.dp)
+                            ) {
+                                Box(
+                                    modifier         = Modifier.size(80.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Canvas(modifier = Modifier.fillMaxSize()) {
+                                        drawCircle(color = primaryColor.copy(alpha = 0.15f))
+                                    }
+                                    Surface(
+                                        shape = CircleShape,
+                                        color = MaterialTheme.colorScheme.surfaceContainerHigh
+                                    ) {
+                                        Icon(
+                                            Icons.Default.EditCalendar, null,
+                                            modifier = Modifier.padding(18.dp).size(36.dp),
+                                            tint     = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                                Text(
+                                    text       = "Sin solicitudes pendientes",
+                                    style      = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text      = "Cuando los clientes soliciten un cambio de fecha, aparecerán aquí.",
+                                    style     = MaterialTheme.typography.bodyMedium,
+                                    color     = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
+                    } else {
+                        LazyColumn(
+                            modifier            = Modifier.fillMaxSize(),
+                            contentPadding      = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
+                            verticalArrangement = Arrangement.spacedBy(14.dp)
+                        ) {
+                            items(state.pendientes) { cita ->
+                                CitaPendienteCard(
+                                    cita       = cita,
+                                    viewModel  = viewModel,
+                                    isLoading  = actionState is ReagendamientoActionState.Loading,
+                                    onAprobar  = { nuevaInicio, nuevaFin ->
+                                        viewModel.aprobar(cita.id, nuevaInicio, nuevaFin)
+                                    },
+                                    onRechazar = { motivo ->
+                                        viewModel.rechazar(cita.id, motivo)
+                                    }
+                                )
+                            }
                         }
                     }
                 }
@@ -219,12 +300,12 @@ fun ReagendamientosScreen(
     }
 }
 
-// ─── Card de cita pendiente ───────────────────────────────────────────────────
+// ─── Card de Cita Pendiente M3 ────────────────────────────────────────────────
 
 @Composable
 private fun CitaPendienteCard(
     cita:      CitaPendiente,
-    viewModel:  ReagendamientoViewModel,
+    viewModel: ReagendamientoViewModel,
     isLoading: Boolean,
     onAprobar: (String, String) -> Unit,
     onRechazar: (String) -> Unit
@@ -232,7 +313,7 @@ private fun CitaPendienteCard(
     var showAprobarDialog  by remember { mutableStateOf(false) }
     var showRechazarDialog by remember { mutableStateOf(false) }
 
-    val formatter   = DateTimeFormatter.ofPattern("dd/MM/yyyy hh:mm a", java.util.Locale.US)
+    val formatter   = DateTimeFormatter.ofPattern("dd/MM/yyyy hh:mm a", Locale.US)
     val fechaActual = try {
         val raw = cita.fechaHoraInicio.substring(0, 16).replace("T", " ")
         LocalDate.parse(raw.substring(0, 10))
@@ -240,50 +321,51 @@ private fun CitaPendienteCard(
             .format(formatter)
     } catch (e: Exception) { cita.fechaHoraInicio }
 
-    Card(
-        modifier  = Modifier.fillMaxWidth(),
-        shape     = RoundedCornerShape(14.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors    = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+    OutlinedCard(
+        modifier = Modifier.fillMaxWidth(),
+        shape    = RoundedCornerShape(18.dp),
+        colors   = CardDefaults.outlinedCardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
     ) {
-        Column(modifier = Modifier.padding(14.dp)) {
+        Column(modifier = Modifier.padding(16.dp)) {
 
-            // ── Encabezado: cliente + profesional ─────────────────────────
+            // ── Encabezado: Cliente + Profesional ─────────────────────────
             Row(
                 modifier          = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Surface(
-                    shape = RoundedCornerShape(50),
-                    color = MaterialTheme.colorScheme.secondaryContainer,
-                    modifier = Modifier.size(40.dp)
+                    shape    = CircleShape,
+                    color    = MaterialTheme.colorScheme.primaryContainer,
+                    modifier = Modifier.size(44.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Text(
                             text       = cita.cliente.firstOrNull()?.uppercase() ?: "?",
                             fontWeight = FontWeight.Bold,
-                            style      = MaterialTheme.typography.titleSmall,
-                            color      = MaterialTheme.colorScheme.onSecondaryContainer
+                            style      = MaterialTheme.typography.titleMedium,
+                            color      = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                     }
                 }
-                Spacer(Modifier.width(10.dp))
-                Column {
+                Spacer(Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text       = cita.cliente,
                         fontWeight = FontWeight.Bold,
-                        style      = MaterialTheme.typography.bodyMedium
+                        style      = MaterialTheme.typography.bodyLarge,
+                        color      = MaterialTheme.colorScheme.onSurface
                     )
+                    Spacer(Modifier.height(2.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             Icons.Default.Badge, null,
-                            modifier = Modifier.size(11.dp),
-                            tint     = MaterialTheme.colorScheme.onSurfaceVariant
+                            modifier = Modifier.size(13.dp),
+                            tint     = MaterialTheme.colorScheme.primary
                         )
-                        Spacer(Modifier.width(3.dp))
+                        Spacer(Modifier.width(4.dp))
                         Text(
                             text  = cita.profesional,
                             style = MaterialTheme.typography.bodySmall,
@@ -294,10 +376,10 @@ private fun CitaPendienteCard(
             }
 
             Spacer(Modifier.height(10.dp))
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
             Spacer(Modifier.height(10.dp))
 
-            // ── Fecha actual ──────────────────────────────────────────────
+            // ── Fecha Actual ──────────────────────────────────────────────
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     Icons.Default.CalendarToday, null,
@@ -308,7 +390,8 @@ private fun CitaPendienteCard(
                 Text(
                     text  = "Fecha actual: $fechaActual",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.Medium
                 )
             }
 
@@ -319,7 +402,7 @@ private fun CitaPendienteCard(
                     Icon(
                         Icons.Default.Spa, null,
                         modifier = Modifier.size(14.dp),
-                        tint     = MaterialTheme.colorScheme.onSurfaceVariant
+                        tint     = MaterialTheme.colorScheme.primary
                     )
                     Spacer(Modifier.width(6.dp))
                     Text(
@@ -330,45 +413,46 @@ private fun CitaPendienteCard(
                 }
             }
 
-            // ── Motivo solicitud ──────────────────────────────────────────
+            // ── Motivo Solicitud ──────────────────────────────────────────
             cita.motivoSolicitud?.let { motivo ->
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(10.dp))
                 Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = MaterialTheme.colorScheme.primaryContainer
+                    shape = RoundedCornerShape(10.dp),
+                    color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.6f)
                 ) {
                     Row(
                         modifier          = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 10.dp, vertical = 7.dp),
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.Top
                     ) {
                         Icon(
                             Icons.Default.ChatBubbleOutline, null,
-                            modifier = Modifier.size(13.dp).padding(top = 1.dp),
-                            tint     = MaterialTheme.colorScheme.onPrimaryContainer
+                            modifier = Modifier.size(14.dp).padding(top = 2.dp),
+                            tint     = MaterialTheme.colorScheme.onTertiaryContainer
                         )
-                        Spacer(Modifier.width(6.dp))
+                        Spacer(Modifier.width(8.dp))
                         Text(
                             text  = motivo,
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                            color = MaterialTheme.colorScheme.onTertiaryContainer,
+                            fontWeight = FontWeight.Medium
                         )
                     }
                 }
             }
 
+            Spacer(Modifier.height(14.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
             Spacer(Modifier.height(12.dp))
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-            Spacer(Modifier.height(10.dp))
 
-            // ── Botones de acción ─────────────────────────────────────────
+            // ── Botones de Acción M3 ──────────────────────────────────────
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(
                     onClick  = { showRechazarDialog = true },
                     modifier = Modifier.weight(1f),
                     enabled  = !isLoading,
-                    shape    = RoundedCornerShape(10.dp),
+                    shape    = RoundedCornerShape(12.dp),
                     colors   = ButtonDefaults.outlinedButtonColors(
                         contentColor = MaterialTheme.colorScheme.error
                     ),
@@ -377,27 +461,27 @@ private fun CitaPendienteCard(
                         MaterialTheme.colorScheme.error.copy(alpha = 0.5f)
                     )
                 ) {
-                    Icon(Icons.Default.Close, null, modifier = Modifier.size(15.dp))
+                    Icon(Icons.Default.Close, null, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(4.dp))
-                    Text("Rechazar", style = MaterialTheme.typography.labelMedium)
+                    Text("Rechazar", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                 }
 
                 Button(
                     onClick  = { showAprobarDialog = true },
                     modifier = Modifier.weight(1f),
                     enabled  = !isLoading,
-                    shape    = RoundedCornerShape(10.dp)
+                    shape    = RoundedCornerShape(12.dp)
                 ) {
                     if (isLoading) {
                         CircularProgressIndicator(
-                            modifier    = Modifier.size(15.dp),
+                            modifier    = Modifier.size(16.dp),
                             strokeWidth = 2.dp,
                             color       = MaterialTheme.colorScheme.onPrimary
                         )
                     } else {
-                        Icon(Icons.Default.Check, null, modifier = Modifier.size(15.dp))
+                        Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(4.dp))
-                        Text("Aprobar", style = MaterialTheme.typography.labelMedium)
+                        Text("Aprobar", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -430,7 +514,7 @@ private fun CitaPendienteCard(
     }
 }
 
-// ─── Diálogo: Aprobar (2 pasos) ───────────────────────────────────────────────
+// ─── Diálogo: Aprobar (2 Pasos) M3 ───────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -445,8 +529,6 @@ private fun AprobarConDisponibilidadDialog(
     val slotSeleccionado  by viewModel.slotDialog.collectAsState()
     val duracionMin = calcularDuracion(cita.fechaHoraInicio, cita.fechaHoraFin)
 
-    // Extraer idProfesional e idSede de CitaPendiente
-    // (asegúrate de que CitaPendiente tenga estos campos; ver nota abajo)
     LaunchedEffect(Unit) {
         viewModel.cargarSlotsParaReagendar(
             idProfesional = cita.idProfesional,
@@ -457,22 +539,23 @@ private fun AprobarConDisponibilidadDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(16.dp),
+        shape            = RoundedCornerShape(28.dp),
+        containerColor   = MaterialTheme.colorScheme.surfaceContainerHigh,
         icon = {
             Surface(
-                shape = RoundedCornerShape(50),
+                shape = CircleShape,
                 color = MaterialTheme.colorScheme.primaryContainer
             ) {
                 Icon(
                     Icons.Default.EditCalendar, null,
                     tint     = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.padding(10.dp).size(22.dp)
+                    modifier = Modifier.padding(12.dp).size(26.dp)
                 )
             }
         },
         title = {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("Aprobar reagendamiento", fontWeight = FontWeight.Bold)
+                Text("Aprobar Reagendamiento", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
                 Text(
                     text  = cita.cliente,
                     style = MaterialTheme.typography.labelSmall,
@@ -487,25 +570,25 @@ private fun AprobarConDisponibilidadDialog(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // ── Selector de fecha (30 días) ────────────────────────────
+                // ── Selector de Fecha (30 Días) ────────────────────────────
                 Text(
                     text       = "Selecciona una fecha",
                     style      = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.SemiBold
+                    fontWeight = FontWeight.Bold
                 )
 
                 val dias = (0..29).map { LocalDate.now().plusDays(it.toLong()) }
 
                 LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                     contentPadding        = PaddingValues(vertical = 4.dp)
                 ) {
                     items(dias) { dia ->
                         val seleccionado = dia == fechaSeleccionada
                         Surface(
-                            shape    = RoundedCornerShape(10.dp),
-                            color    = if (seleccionado) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.surfaceVariant,
+                            shape  = RoundedCornerShape(12.dp),
+                            color  = if (seleccionado) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerLow,
+                            border = if (seleccionado) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
                             modifier = Modifier.clickable {
                                 viewModel.cargarSlotsParaReagendar(
                                     idProfesional = cita.idProfesional,
@@ -517,28 +600,25 @@ private fun AprobarConDisponibilidadDialog(
                         ) {
                             Column(
                                 horizontalAlignment = Alignment.CenterHorizontally,
-                                modifier            = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                                modifier            = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
                             ) {
                                 Text(
-                                    text     = dia.dayOfWeek
-                                        .getDisplayName(java.time.format.TextStyle.SHORT, java.util.Locale("es")),
-                                    fontSize = 9.sp,
-                                    color    = if (seleccionado) MaterialTheme.colorScheme.onPrimary
-                                    else MaterialTheme.colorScheme.onSurfaceVariant
+                                    text     = dia.dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT, Locale("es")),
+                                    fontSize = 10.sp,
+                                    color    = if (seleccionado) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Text(
                                     text       = dia.dayOfMonth.toString(),
                                     fontWeight = FontWeight.Bold,
                                     fontSize   = 16.sp,
-                                    color      = if (seleccionado) MaterialTheme.colorScheme.onPrimary
-                                    else MaterialTheme.colorScheme.onSurface
+                                    color      = if (seleccionado) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
                                 )
                             }
                         }
                     }
                 }
 
-                HorizontalDivider()
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
 
                 // ── Slots ──────────────────────────────────────────────────
                 when (val state = dispState) {
@@ -547,7 +627,11 @@ private fun AprobarConDisponibilidadDialog(
                             modifier         = Modifier.fillMaxWidth().height(80.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                            CircularProgressIndicator(
+                                color = MaterialTheme.colorScheme.primary,
+                                trackColor = MaterialTheme.colorScheme.primaryContainer,
+                                modifier = Modifier.size(28.dp)
+                            )
                         }
                     }
 
@@ -556,18 +640,18 @@ private fun AprobarConDisponibilidadDialog(
 
                         if (disponibles.isEmpty()) {
                             Surface(
-                                shape = RoundedCornerShape(10.dp),
-                                color = MaterialTheme.colorScheme.surfaceVariant
+                                shape = RoundedCornerShape(12.dp),
+                                color = MaterialTheme.colorScheme.surfaceContainerLow
                             ) {
                                 Row(
                                     modifier          = Modifier
                                         .fillMaxWidth()
-                                        .padding(12.dp),
+                                        .padding(14.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Icon(
                                         Icons.Default.EventBusy, null,
-                                        modifier = Modifier.size(16.dp),
+                                        modifier = Modifier.size(18.dp),
                                         tint     = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                     Spacer(Modifier.width(8.dp))
@@ -579,22 +663,30 @@ private fun AprobarConDisponibilidadDialog(
                                 }
                             }
                         } else {
-                            Text(
-                                text  = "${disponibles.size} horarios disponibles",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                            Surface(
+                                shape = RoundedCornerShape(50),
+                                color = MaterialTheme.colorScheme.primaryContainer
+                            ) {
+                                Text(
+                                    text     = "${disponibles.size} horarios disponibles",
+                                    style    = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color    = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                                )
+                            }
+
                             disponibles.chunked(3).forEach { fila ->
                                 Row(
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                                     modifier              = Modifier.fillMaxWidth()
                                 ) {
                                     fila.forEach { slot ->
                                         val sel = slot == slotSeleccionado
                                         Surface(
-                                            shape    = RoundedCornerShape(8.dp),
-                                            color    = if (sel) MaterialTheme.colorScheme.primary
-                                            else MaterialTheme.colorScheme.surfaceVariant,
+                                            shape  = RoundedCornerShape(10.dp),
+                                            color  = if (sel) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerLow,
+                                            border = if (sel) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
                                             modifier = Modifier
                                                 .weight(1f)
                                                 .clickable { viewModel.seleccionarSlotDialog(slot) }
@@ -606,13 +698,12 @@ private fun AprobarConDisponibilidadDialog(
                                                 Text(
                                                     text       = formatearHora12h(slot.horaInicio),
                                                     fontSize   = 12.sp,
-                                                    fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal,
-                                                    color      = if (sel) MaterialTheme.colorScheme.onPrimary
-                                                    else MaterialTheme.colorScheme.onSurface
+                                                    fontWeight = if (sel) FontWeight.Bold else FontWeight.Medium,
+                                                    color      = if (sel) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
                                                 )
                                                 if (sel) Icon(
                                                     Icons.Default.Check, null,
-                                                    modifier = Modifier.size(11.dp),
+                                                    modifier = Modifier.size(12.dp),
                                                     tint     = MaterialTheme.colorScheme.onPrimary
                                                 )
                                             }
@@ -626,7 +717,7 @@ private fun AprobarConDisponibilidadDialog(
 
                     is DisponibilidadDialogState.Error -> {
                         Surface(
-                            shape = RoundedCornerShape(10.dp),
+                            shape = RoundedCornerShape(12.dp),
                             color = MaterialTheme.colorScheme.errorContainer
                         ) {
                             Text(
@@ -656,18 +747,23 @@ private fun AprobarConDisponibilidadDialog(
                     onConfirm(inicio.format(fmt), fin.format(fmt))
                 },
                 enabled  = slotSeleccionado != null,
-                shape    = RoundedCornerShape(10.dp)
-            ) { Text("Confirmar") }
+                shape    = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) { Text("Confirmar Aprobar Cita", fontWeight = FontWeight.SemiBold) }
         },
         dismissButton = {
-            OutlinedButton(onClick = onDismiss, shape = RoundedCornerShape(10.dp)) {
+            OutlinedButton(
+                onClick  = onDismiss,
+                shape    = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Text("Cancelar")
             }
         }
     )
 }
 
-// ─── Diálogo: Rechazar ────────────────────────────────────────────────────────
+// ─── Diálogo: Rechazar M3 ─────────────────────────────────────────────────────
 
 @Composable
 private fun RechazarDialog(
@@ -678,22 +774,26 @@ private fun RechazarDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(16.dp),
-        icon  = {
-            Surface(
-                shape = RoundedCornerShape(50),
-                color = MaterialTheme.colorScheme.errorContainer
+        shape            = RoundedCornerShape(28.dp),
+        containerColor   = MaterialTheme.colorScheme.surfaceContainerHigh,
+        icon = {
+            Box(
+                modifier         = Modifier
+                    .size(56.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.errorContainer),
+                contentAlignment = Alignment.Center
             ) {
                 Icon(
                     Icons.Default.Cancel, null,
                     tint     = MaterialTheme.colorScheme.onErrorContainer,
-                    modifier = Modifier.padding(10.dp).size(22.dp)
+                    modifier = Modifier.size(28.dp)
                 )
             }
         },
-        title = { Text("Rechazar solicitud", fontWeight = FontWeight.Bold) },
+        title = { Text("Rechazar Solicitud", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium) },
         text  = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
                     text  = "Indica el motivo del rechazo. El cliente será notificado.",
                     style = MaterialTheme.typography.bodySmall,
@@ -704,9 +804,13 @@ private fun RechazarDialog(
                     onValueChange = { motivo = it },
                     label         = { Text("Motivo del rechazo") },
                     modifier      = Modifier.fillMaxWidth(),
-                    shape         = RoundedCornerShape(12.dp),
+                    shape         = RoundedCornerShape(14.dp),
                     minLines      = 2,
-                    isError       = motivo.isBlank()
+                    isError       = motivo.isBlank(),
+                    colors        = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                    )
                 )
             }
         },
@@ -714,37 +818,39 @@ private fun RechazarDialog(
             Button(
                 onClick  = { if (motivo.isNotBlank()) onConfirm(motivo) },
                 enabled  = motivo.isNotBlank(),
-                shape    = RoundedCornerShape(10.dp),
+                shape    = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth(),
                 colors   = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.error
                 )
-            ) { Text("Rechazar") }
+            ) { Text("Rechazar Solicitud", fontWeight = FontWeight.SemiBold) }
         },
         dismissButton = {
             OutlinedButton(
-                onClick = onDismiss,
-                shape   = RoundedCornerShape(10.dp)
+                onClick  = onDismiss,
+                shape    = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth()
             ) { Text("Cancelar") }
         }
     )
 }
 
-// ─── Helper ───────────────────────────────────────────────────────────────────
+// ─── Helpers de Formato ───────────────────────────────────────────────────────
 
 private fun formatearHora12h(horaStr: String): String {
     if (horaStr.isBlank()) return ""
     return try {
         val cleanStr = if (horaStr.contains("T")) horaStr.substring(11, 16) else horaStr.trim()
-        val partes = cleanStr.split(":")
-        val h = partes[0].toInt()
-        val m = partes[1]
-        val amPm = if (h >= 12) "PM" else "AM"
-        val h12 = when {
+        val partes   = cleanStr.split(":")
+        val h        = partes[0].toInt()
+        val m        = partes[1]
+        val amPm     = if (h >= 12) "PM" else "AM"
+        val h12      = when {
             h == 0 -> 12
             h > 12 -> h - 12
             else -> h
         }
-        String.format(java.util.Locale.US, "%02d:%s %s", h12, m, amPm)
+        String.format(Locale.US, "%02d:%s %s", h12, m, amPm)
     } catch (e: Exception) {
         horaStr.take(5)
     }
