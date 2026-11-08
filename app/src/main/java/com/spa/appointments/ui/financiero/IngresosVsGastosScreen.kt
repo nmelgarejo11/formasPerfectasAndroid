@@ -1,21 +1,25 @@
+// Ruta: app/src/main/java/com/spa/appointments/ui/financiero/IngresosVsGastosScreen.kt
 package com.spa.appointments.ui.financiero
 
 import android.app.DatePickerDialog
 import android.content.Intent
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.FileDownload
-import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.automirrored.filled.TrendingDown
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -39,9 +43,9 @@ fun IngresosVsGastosScreen(
     val sedeSeleccionada by vm.sedeSeleccionada.collectAsState()
     val fechaInicio      by vm.fechaInicio.collectAsState()
     val fechaFin         by vm.fechaFin.collectAsState()
-    val context       = LocalContext.current
-    val descargaState by vm.descargaState.collectAsState()
-    var mostrarError  by remember { mutableStateOf<String?>(null) }
+    val context          = LocalContext.current
+    val descargaState    by vm.descargaState.collectAsState()
+    var mostrarError     by remember { mutableStateOf<String?>(null) }
     var mostrarOpcionesExcel by remember { mutableStateOf(false) }
 
     LaunchedEffect(descargaState) {
@@ -68,17 +72,31 @@ fun IngresosVsGastosScreen(
     if (mostrarOpcionesExcel) {
         AlertDialog(
             onDismissRequest = { mostrarOpcionesExcel = false },
-            title = { Text("Exportar reporte") },
+            shape            = RoundedCornerShape(28.dp),
+            containerColor   = MaterialTheme.colorScheme.surfaceContainerHigh,
+            icon = {
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primaryContainer
+                ) {
+                    Icon(
+                        Icons.Default.FileDownload, null,
+                        tint     = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.padding(12.dp).size(26.dp)
+                    )
+                }
+            },
+            title = { Text("Exportar Reporte Excel", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
             text  = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
 
-                    // Opción 1 — Guardar en dispositivo
                     OutlinedButton(
                         onClick  = {
                             mostrarOpcionesExcel = false
                             vm.guardarExcel(context)
                         },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        shape    = RoundedCornerShape(12.dp)
                     ) {
                         Icon(
                             imageVector        = Icons.Default.FileDownload,
@@ -86,16 +104,16 @@ fun IngresosVsGastosScreen(
                             modifier           = Modifier.size(18.dp)
                         )
                         Spacer(Modifier.width(8.dp))
-                        Text("Guardar en dispositivo")
+                        Text("Guardar en dispositivo", fontWeight = FontWeight.SemiBold)
                     }
 
-                    // Opción 2 — Compartir (WhatsApp, correo, Drive…)
                     OutlinedButton(
                         onClick  = {
                             mostrarOpcionesExcel = false
                             vm.compartirExcel(context)
                         },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        shape    = RoundedCornerShape(12.dp)
                     ) {
                         Icon(
                             imageVector        = Icons.Default.Share,
@@ -103,13 +121,17 @@ fun IngresosVsGastosScreen(
                             modifier           = Modifier.size(18.dp)
                         )
                         Spacer(Modifier.width(8.dp))
-                        Text("Compartir…")
+                        Text("Compartir reporte", fontWeight = FontWeight.SemiBold)
                     }
                 }
             },
             confirmButton = {},
             dismissButton = {
-                TextButton(onClick = { mostrarOpcionesExcel = false }) {
+                OutlinedButton(
+                    onClick  = { mostrarOpcionesExcel = false },
+                    shape    = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
                     Text("Cancelar")
                 }
             }
@@ -117,37 +139,73 @@ fun IngresosVsGastosScreen(
     }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            TopAppBar(
-                title = { Text("Ingresos vs gastos",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Medium) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
-                    }
-                },
-                actions = {
-                    val tienedatos = uiState is IngresosVsGastosUiState.Success
-
-                    if (descargaState is DescargaState.Cargando) {
-                        CircularProgressIndicator(
-                            modifier  = Modifier.size(24.dp).padding(end = 12.dp),
-                            strokeWidth = 2.dp
+            Column {
+                TopAppBar(
+                    title = {
+                        Text(
+                            text       = "Ingresos vs gastos",
+                            style      = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
                         )
-                    } else {
-                        IconButton(
-                            onClick = { if (tienedatos) mostrarOpcionesExcel = true },
-                            enabled = tienedatos
-                        ) {
-                            Icon(
-                                imageVector        = Icons.Default.FileDownload,
-                                contentDescription = "Exportar Excel"
-                            )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
                         }
-                    }
+                    },
+                    actions = {
+                        val tienedatos = uiState is IngresosVsGastosUiState.Success
+
+                        if (descargaState is DescargaState.Cargando) {
+                            CircularProgressIndicator(
+                                modifier    = Modifier.size(24.dp).padding(end = 12.dp),
+                                color       = MaterialTheme.colorScheme.primary,
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            IconButton(
+                                onClick = { if (tienedatos) mostrarOpcionesExcel = true },
+                                enabled = tienedatos
+                            ) {
+                                Icon(
+                                    imageVector        = Icons.Default.FileDownload,
+                                    contentDescription = "Exportar Excel",
+                                    tint               = if (tienedatos) MaterialTheme.colorScheme.primary else LocalContentColor.current
+                                )
+                            }
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.background
+                    )
+                )
+
+                // 🎨 Canvas: Acento decorativo debajo de la TopAppBar
+                val primaryColor   = MaterialTheme.colorScheme.primary
+                val secondaryColor = MaterialTheme.colorScheme.secondary
+                Canvas(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(3.dp)
+                ) {
+                    drawRect(
+                        brush = Brush.horizontalGradient(
+                            colors = listOf(
+                                primaryColor.copy(alpha = 0.4f),
+                                secondaryColor.copy(alpha = 0.2f),
+                                primaryColor.copy(alpha = 0.05f)
+                            )
+                        )
+                    )
                 }
-            )
+
+                HorizontalDivider(
+                    thickness = 0.5.dp,
+                    color     = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                )
+            }
         }
     ) { padding ->
         Column(
@@ -156,7 +214,7 @@ fun IngresosVsGastosScreen(
                 .padding(padding)
                 .padding(horizontal = 16.dp)
         ) {
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(12.dp))
 
             SelectorSede(
                 sedes              = sedes,
@@ -164,7 +222,7 @@ fun IngresosVsGastosScreen(
                 onSedeSeleccionada = { vm.seleccionarSede(it) }
             )
 
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(10.dp))
 
             SelectorRango(
                 fechaInicio    = fechaInicio,
@@ -177,15 +235,63 @@ fun IngresosVsGastosScreen(
             when (val state = uiState) {
                 is IngresosVsGastosUiState.Loading -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            CircularProgressIndicator(
+                                color       = MaterialTheme.colorScheme.primary,
+                                trackColor  = MaterialTheme.colorScheme.primaryContainer,
+                                strokeWidth = 3.dp,
+                                modifier    = Modifier.size(36.dp)
+                            )
+                            Text(
+                                "Cargando balance del período…",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
                 is IngresosVsGastosUiState.Error -> {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(state.mensaje, color = MaterialTheme.colorScheme.error)
-                            Spacer(Modifier.height(12.dp))
-                            Button(onClick = { vm.cargar() }) { Text("Reintentar") }
+                    OutlinedCard(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 24.dp),
+                        shape  = RoundedCornerShape(24.dp),
+                        colors = CardDefaults.outlinedCardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
+                        )
+                    ) {
+                        Column(
+                            modifier            = Modifier.padding(32.dp).fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(14.dp)
+                        ) {
+                            Surface(
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.errorContainer
+                            ) {
+                                Icon(
+                                    Icons.Default.CloudOff, null,
+                                    modifier = Modifier.padding(16.dp).size(36.dp),
+                                    tint     = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                            }
+                            Text(
+                                text       = "Error al cargar",
+                                style      = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text  = state.mensaje,
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            Button(
+                                onClick = { vm.cargar() },
+                                shape   = RoundedCornerShape(12.dp)
+                            ) { Text("Reintentar") }
                         }
                     }
                 }
@@ -203,16 +309,23 @@ fun IngresosVsGastosScreen(
     mostrarError?.let { msg ->
         AlertDialog(
             onDismissRequest = { mostrarError = null },
-            title   = { Text("Error al exportar") },
-            text    = { Text(msg) },
+            shape            = RoundedCornerShape(28.dp),
+            containerColor   = MaterialTheme.colorScheme.surfaceContainerHigh,
+            icon             = {
+                Surface(shape = CircleShape, color = MaterialTheme.colorScheme.errorContainer) {
+                    Icon(Icons.Default.CloudOff, null, modifier = Modifier.padding(12.dp).size(26.dp), tint = MaterialTheme.colorScheme.onErrorContainer)
+                }
+            },
+            title   = { Text("Error al exportar", fontWeight = FontWeight.Bold) },
+            text    = { Text(msg, style = MaterialTheme.typography.bodyMedium) },
             confirmButton = {
-                TextButton(onClick = { mostrarError = null }) { Text("Aceptar") }
+                Button(onClick = { mostrarError = null }, shape = RoundedCornerShape(12.dp)) { Text("Aceptar") }
             }
         )
     }
 }
 
-// ─── Selector sede ────────────────────────────────────────────────────────────
+// ─── Selector Sede M3 ─────────────────────────────────────────────────────────
 
 @Composable
 private fun SelectorSede(
@@ -224,7 +337,12 @@ private fun SelectorSede(
 
     OutlinedCard(
         onClick  = { expandido = true },
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
+        shape    = RoundedCornerShape(14.dp),
+        colors   = CardDefaults.outlinedCardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        ),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
     ) {
         Row(
             modifier          = Modifier
@@ -232,33 +350,44 @@ private fun SelectorSede(
                 .padding(horizontal = 14.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            Icon(
+                Icons.Default.Storefront, null,
+                modifier = Modifier.size(20.dp),
+                tint     = MaterialTheme.colorScheme.primary
+            )
+            Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text("Sede", fontSize = 11.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    "Sede",
+                    fontSize = 11.sp,
+                    color    = MaterialTheme.colorScheme.onSurfaceVariant
+                )
                 Text(
                     sedeSeleccionada?.nombre ?: "Seleccionar sede",
-                    fontWeight = FontWeight.Medium, fontSize = 14.sp
+                    fontWeight = FontWeight.Bold,
+                    fontSize   = 14.sp,
+                    color      = MaterialTheme.colorScheme.onSurface
                 )
             }
-            Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+            Icon(Icons.Default.ArrowDropDown, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 
     DropdownMenu(
         expanded         = expandido,
         onDismissRequest = { expandido = false },
-        modifier         = Modifier.fillMaxWidth(0.9f)
+        modifier         = Modifier.fillMaxWidth(0.85f)
     ) {
         sedes.forEach { sede ->
             DropdownMenuItem(
-                text    = { Text(sede.nombre, fontWeight = FontWeight.Medium, fontSize = 14.sp) },
+                text    = { Text(sede.nombre, fontWeight = FontWeight.SemiBold, fontSize = 14.sp) },
                 onClick = { onSedeSeleccionada(sede); expandido = false }
             )
         }
     }
 }
 
-// ─── Selector rango con dos DatePicker ────────────────────────────────────────
+// ─── Selector Rango de Fechas M3 ──────────────────────────────────────────────
 
 @Composable
 private fun SelectorRango(
@@ -271,7 +400,6 @@ private fun SelectorRango(
 
     OutlinedCard(
         onClick = {
-            // Picker de fin — se crea con la fecha de inicio ya elegida
             fun abrirPickerFin(inicioElegido: LocalDate) {
                 DatePickerDialog(
                     context,
@@ -291,7 +419,6 @@ private fun SelectorRango(
                 }.show()
             }
 
-            // Picker de inicio
             DatePickerDialog(
                 context,
                 { _, y, m, d ->
@@ -305,7 +432,12 @@ private fun SelectorRango(
                 datePicker.maxDate = System.currentTimeMillis()
             }.show()
         },
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
+        shape    = RoundedCornerShape(14.dp),
+        colors   = CardDefaults.outlinedCardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        ),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
     ) {
         Row(
             modifier          = Modifier
@@ -316,28 +448,29 @@ private fun SelectorRango(
             Icon(
                 Icons.Default.CalendarMonth,
                 contentDescription = null,
-                modifier = Modifier.size(18.dp),
-                tint     = MaterialTheme.colorScheme.onSurfaceVariant
+                modifier = Modifier.size(20.dp),
+                tint     = MaterialTheme.colorScheme.primary
             )
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    "Período",
+                    "Período del reporte",
                     fontSize = 11.sp,
                     color    = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
                     "${fechaInicio.format(formatter)}  →  ${fechaFin.format(formatter)}",
-                    fontWeight = FontWeight.Medium,
-                    fontSize   = 14.sp
+                    fontWeight = FontWeight.Bold,
+                    fontSize   = 14.sp,
+                    color      = MaterialTheme.colorScheme.onSurface
                 )
             }
-            Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+            Icon(Icons.Default.ArrowDropDown, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
 
-// ─── Contenido ────────────────────────────────────────────────────────────────
+// ─── Contenido M3 ─────────────────────────────────────────────────────────────
 
 @Composable
 private fun IngresosVsGastosContent(
@@ -349,29 +482,31 @@ private fun IngresosVsGastosContent(
         verticalArrangement = Arrangement.spacedBy(16.dp),
         contentPadding      = PaddingValues(bottom = 24.dp)
     ) {
-        // Tarjetas resumen del período
         item { TarjetasResumenPeriodo(resumen) }
         item { TarjetaUtilidadPeriodo(resumen.utilidadNeta) }
 
-        // Cabecera tabla detalle
         item {
-            Text("Detalle por día",
-                fontWeight = FontWeight.SemiBold,
-                fontSize   = 15.sp,
-                modifier   = Modifier.padding(bottom = 4.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.TableChart, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    text       = "Detalle por día",
+                    fontWeight = FontWeight.Bold,
+                    fontSize   = 15.sp,
+                    color      = MaterialTheme.colorScheme.onBackground
+                )
+            }
         }
 
-        // Cabecera columnas
         item { CabeceraTabla() }
 
-        // Filas
         itemsIndexed(detalle) { _, dia ->
             FilaDia(dia)
         }
     }
 }
 
-// ─── Tarjetas resumen período ─────────────────────────────────────────────────
+// ─── Tarjetas Resumen Período M3 ──────────────────────────────────────────────
 
 @Composable
 private fun TarjetasResumenPeriodo(resumen: IngresosVsGastosResumen) {
@@ -382,33 +517,45 @@ private fun TarjetasResumenPeriodo(resumen: IngresosVsGastosResumen) {
         Card(
             modifier = Modifier.weight(1f),
             colors   = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer),
-            shape    = RoundedCornerShape(12.dp)
+                containerColor = MaterialTheme.colorScheme.primaryContainer
+            ),
+            shape    = RoundedCornerShape(18.dp)
         ) {
-            Column(modifier = Modifier.padding(14.dp)) {
-                Text("Ingresos", fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(Modifier.height(4.dp))
-                Text("$${"%,.0f".format(resumen.totalIngresos)}",
-                    fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                Text("${resumen.totalCitas} citas", fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    modifier              = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment     = Alignment.CenterVertically
+                ) {
+                    Text("Ingresos", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f))
+                    Icon(Icons.AutoMirrored.Filled.TrendingUp, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                }
+                Spacer(Modifier.height(8.dp))
+                Text("$${"%,.0f".format(resumen.totalIngresos)}", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                Spacer(Modifier.height(2.dp))
+                Text("${resumen.totalCitas} citas", fontSize = 12.sp, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f))
             }
         }
         Card(
             modifier = Modifier.weight(1f),
             colors   = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.errorContainer),
-            shape    = RoundedCornerShape(12.dp)
+                containerColor = MaterialTheme.colorScheme.errorContainer
+            ),
+            shape    = RoundedCornerShape(18.dp)
         ) {
-            Column(modifier = Modifier.padding(14.dp)) {
-                Text("Gastos", fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(Modifier.height(4.dp))
-                Text("$${"%,.0f".format(resumen.totalGastos)}",
-                    fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                Text("del período", fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    modifier              = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment     = Alignment.CenterVertically
+                ) {
+                    Text("Gastos", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f))
+                    Icon(Icons.AutoMirrored.Filled.TrendingDown, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onErrorContainer)
+                }
+                Spacer(Modifier.height(8.dp))
+                Text("$${"%,.0f".format(resumen.totalGastos)}", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onErrorContainer)
+                Spacer(Modifier.height(2.dp))
+                Text("del período", fontSize = 12.sp, color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f))
             }
         }
     }
@@ -416,96 +563,98 @@ private fun TarjetasResumenPeriodo(resumen: IngresosVsGastosResumen) {
 
 @Composable
 private fun TarjetaUtilidadPeriodo(utilidad: Double) {
-    val esPositiva = utilidad >= 0
+    val esPositiva     = utilidad >= 0
+    val containerColor = if (esPositiva)
+        MaterialTheme.colorScheme.primaryContainer
+    else
+        MaterialTheme.colorScheme.errorContainer
+
+    val textColor = if (esPositiva)
+        MaterialTheme.colorScheme.onPrimaryContainer
+    else
+        MaterialTheme.colorScheme.onErrorContainer
+
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors   = CardDefaults.cardColors(
-            containerColor = if (esPositiva)
-                MaterialTheme.colorScheme.primaryContainer
-            else
-                MaterialTheme.colorScheme.errorContainer
-        ),
-        shape = RoundedCornerShape(12.dp)
+        colors   = CardDefaults.cardColors(containerColor = containerColor),
+        shape    = RoundedCornerShape(18.dp)
     ) {
         Row(
-            modifier              = Modifier.fillMaxWidth().padding(16.dp),
+            modifier              = Modifier.fillMaxWidth().padding(18.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment     = Alignment.CenterVertically
         ) {
-            Text("Utilidad del período", fontWeight = FontWeight.Medium, fontSize = 14.sp)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector        = if (esPositiva) Icons.Default.AccountBalanceWallet else Icons.Default.Warning,
+                    contentDescription = null,
+                    modifier           = Modifier.size(22.dp),
+                    tint               = textColor
+                )
+                Spacer(Modifier.width(10.dp))
+                Text("Utilidad del período", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = textColor)
+            }
+
             Text(
                 "$${"%,.0f".format(utilidad)}",
                 fontSize   = 20.sp,
                 fontWeight = FontWeight.Bold,
-                color      = if (esPositiva) MaterialTheme.colorScheme.primary
-                else MaterialTheme.colorScheme.error
+                color      = textColor
             )
         }
     }
 }
 
-// ─── Tabla detalle ────────────────────────────────────────────────────────────
+// ─── Tabla Detalle M3 ─────────────────────────────────────────────────────────
 
 @Composable
 private fun CabeceraTabla() {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
+    Surface(
+        shape = RoundedCornerShape(10.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        modifier = Modifier.fillMaxWidth()
     ) {
-        Text("Fecha",     fontSize = 12.sp, fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.weight(1.2f))
-        Text("Ingresos",  fontSize = 12.sp, fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.weight(1f), textAlign = TextAlign.End)
-        Text("Gastos",    fontSize = 12.sp, fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.weight(1f), textAlign = TextAlign.End)
-        Text("Utilidad",  fontSize = 12.sp, fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.weight(1f), textAlign = TextAlign.End)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text("Fecha",     fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1.2f))
+            Text("Ingresos",  fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
+            Text("Gastos",    fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
+            Text("Utilidad",  fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
+        }
     }
-    HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
 }
 
 @Composable
 private fun FilaDia(dia: IngresosVsGastosDia) {
-    val formatter    = DateTimeFormatter.ofPattern("dd/MM")
-    val esPositiva   = dia.utilidadNeta >= 0
-    val colorUtilidad = if (esPositiva) MaterialTheme.colorScheme.primary
-    else MaterialTheme.colorScheme.error
+    val formatter     = DateTimeFormatter.ofPattern("dd/MM")
+    val esPositiva    = dia.utilidadNeta >= 0
+    val colorUtilidad = if (esPositiva) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
 
     val fechaDisplay = runCatching {
         LocalDate.parse(dia.fecha).format(formatter)
     }.getOrElse { dia.fecha }
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment     = Alignment.CenterVertically
+    OutlinedCard(
+        modifier = Modifier.fillMaxWidth(),
+        shape    = RoundedCornerShape(12.dp),
+        colors   = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        border   = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
     ) {
-        Text(fechaDisplay,
-            fontSize = 13.sp,
-            modifier = Modifier.weight(1.2f))
-        Text("$${"%,.0f".format(dia.totalIngresos)}",
-            fontSize = 13.sp,
-            modifier = Modifier.weight(1f),
-            textAlign = TextAlign.End)
-        Text("$${"%,.0f".format(dia.totalGastos)}",
-            fontSize = 13.sp,
-            color    = MaterialTheme.colorScheme.error,
-            modifier = Modifier.weight(1f),
-            textAlign = TextAlign.End)
-        Text("$${"%,.0f".format(dia.utilidadNeta)}",
-            fontSize   = 13.sp,
-            fontWeight = FontWeight.Medium,
-            color      = colorUtilidad,
-            modifier   = Modifier.weight(1f),
-            textAlign  = TextAlign.End)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment     = Alignment.CenterVertically
+        ) {
+            Text(fechaDisplay, fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.2f))
+            Text("$${"%,.0f".format(dia.totalIngresos)}", fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
+            Text("$${"%,.0f".format(dia.totalGastos)}", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.error, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
+            Text("$${"%,.0f".format(dia.utilidadNeta)}", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = colorUtilidad, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
+        }
     }
-    HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
 }
