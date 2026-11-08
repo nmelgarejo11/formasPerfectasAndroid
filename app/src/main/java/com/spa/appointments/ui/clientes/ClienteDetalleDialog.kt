@@ -1,14 +1,18 @@
+// Ruta: app/src/main/java/com/spa/appointments/ui/clientes/ClienteDetalleDialog.kt
 package com.spa.appointments.ui.clientes
 
 import android.Manifest
 import android.app.Activity
 import android.content.Intent
+import android.speech.RecognizerIntent
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -24,13 +28,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import android.speech.RecognizerIntent
-import android.util.Log
 import com.spa.appointments.domain.model.ActualizarClienteRequest
 import com.spa.appointments.domain.model.CrearClienteRequest
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ClienteDetalleDialog(
     idCliente : Int,
@@ -42,10 +46,10 @@ fun ClienteDetalleDialog(
     val detalleState by viewModel.detalleState.collectAsState()
     val actionState  by viewModel.actionState.collectAsState()
 
-    var nombre    by remember { mutableStateOf("") }
-    var apellido  by remember { mutableStateOf("") }
-    var telefono  by remember { mutableStateOf("") }
-    var email     by remember { mutableStateOf("") }
+    var nombre      by remember { mutableStateOf("") }
+    var apellido    by remember { mutableStateOf("") }
+    var telefono    by remember { mutableStateOf("") }
+    var email       by remember { mutableStateOf("") }
     var initialized by remember { mutableStateOf(false) }
 
     var nombreError   by remember { mutableStateOf<String?>(null) }
@@ -56,12 +60,10 @@ fun ClienteDetalleDialog(
     var showConfirmDesactivar by remember { mutableStateOf(false) }
     val guardando = actionState is ClienteActionState.Loading
 
-    // ── Enfoque por Intent (Seguro y compatible con variantes es-CO, es-US) ──
-    // ── Enfoque por Intent (Seguro y compatible con variantes es-CO, es-US) ──
     val voiceLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        viewModel.estaEscuchandoVoz = false // Apagamos el switch visual al volver
+        viewModel.estaEscuchandoVoz = false
 
         if (result.resultCode == Activity.RESULT_OK) {
             val data: Intent? = result.data
@@ -71,10 +73,7 @@ fun ClienteDetalleDialog(
 
             if (textoDetectado.isNotBlank()) {
                 viewModel.procesarRafagaVoz(textoDetectado) { rNombre, rApellido, rTelefono, rEmail ->
-                    Log.d("IA_VOZ_DEBUG", "Inyectando mapeo de la IA en los campos.")
-
                     if (!rNombre.isNullOrBlank()) {
-
                         nombre = rNombre.trim().split(" ").joinToString(" ") { palabra ->
                             palabra.lowercase().replaceFirstChar { it.uppercase() }
                         }
@@ -82,7 +81,6 @@ fun ClienteDetalleDialog(
                     }
 
                     if (!rApellido.isNullOrBlank()) {
-
                         apellido = rApellido.trim().split(" ").joinToString(" ") { palabra ->
                             palabra.lowercase().replaceFirstChar { it.uppercase() }
                         }
@@ -92,12 +90,11 @@ fun ClienteDetalleDialog(
                     if (!rTelefono.isNullOrBlank()) telefono = rTelefono
 
                     if (!rEmail.isNullOrBlank()) {
-                        // Sanitización estricta de Email para la respuesta de la IA
                         email = rEmail
                             .trim()
-                            .lowercase()                 // Pasa todo a minúsculas (Nicolás -> nicolás)
-                            .replace(" ", "")            // Elimina los espacios intermedios
-                            .replace("á", "a")           // Remueve tildes comunes
+                            .lowercase()
+                            .replace(" ", "")
+                            .replace("á", "a")
                             .replace("é", "e")
                             .replace("í", "i")
                             .replace("ó", "o")
@@ -137,7 +134,6 @@ fun ClienteDetalleDialog(
         targetValue = if (viewModel.estaEscuchandoVoz) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primaryContainer,
         label = "MicColor"
     )
-    // ─────────────────────────────────────────────────────────────────────────
 
     LaunchedEffect(idCliente, esNuevo) {
         initialized = false
@@ -179,7 +175,7 @@ fun ClienteDetalleDialog(
         telefonoError = if (telefono.isBlank()) {
             "Requerido"
         } else if (telefono.replace(" ", "").length < 7) {
-            "Teléfono inválido" // Validación opcional de longitud mínima
+            "Teléfono inválido"
         } else {
             null
         }
@@ -191,263 +187,323 @@ fun ClienteDetalleDialog(
         return nombreError == null && apellidoError == null && emailError == null && telefonoError == null
     }
 
-    AlertDialog(
+    BasicAlertDialog(
         onDismissRequest = {
             if (!guardando) {
                 viewModel.estaEscuchandoVoz = false
                 onDismiss()
             }
-        },
-        title = {
-            Row(
-                verticalAlignment    = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Icon(
-                    imageVector        = if (esNuevo) Icons.Outlined.PersonAdd else Icons.Outlined.Edit,
-                    contentDescription = null,
-                    tint               = MaterialTheme.colorScheme.primary
-                )
-                Text(if (esNuevo) "Nuevo cliente" else "Editar cliente")
-            }
-        },
-        text = {
-            if (!esNuevo && detalleState is ClienteDetalleState.Loading) {
-                Box(
-                    modifier = Modifier.fillMaxWidth().height(120.dp),
-                    contentAlignment = Alignment.Center
+        }
+    ) {
+        Surface(
+            shape = RoundedCornerShape(28.dp),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            tonalElevation = 6.dp
+        ) {
+            Column(modifier = Modifier.padding(20.dp)) {
+
+                // Header M3
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    CircularProgressIndicator(strokeWidth = 2.5.dp)
-                }
-            } else {
-                Column(
-                    modifier = Modifier.verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Card(
-                        modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.primaryContainer
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(10.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                        Icon(
+                            imageVector = if (esNuevo) Icons.Outlined.PersonAdd else Icons.Outlined.Edit,
+                            contentDescription = null,
+                            modifier = Modifier.padding(10.dp).size(24.dp),
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
+                    Column {
+                        Text(
+                            text = if (esNuevo) "Nuevo cliente" else "Editar cliente",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "Campos marcados con * son obligatorios",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                Spacer(modifier = Modifier.height(12.dp))
+
+                if (!esNuevo && detalleState is ClienteDetalleState.Loading) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().height(140.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(strokeWidth = 3.dp)
+                    }
+                } else {
+                    Column(
+                        modifier = Modifier
+                            .weight(1f, fill = false)
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        // Card Asistente de Voz M3
+                        OutlinedCard(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                         ) {
-                            Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = micContainerColor,
-                                modifier = Modifier.size(38.dp)
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    if (viewModel.cargandoParserVoz) {
-                                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                                    } else {
-                                        Icon(
-                                            imageVector = if (viewModel.estaEscuchandoVoz) Icons.Outlined.Mic else Icons.Outlined.MicOff,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(18.dp),
-                                            tint = if (viewModel.estaEscuchandoVoz) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onPrimaryContainer
-                                        )
+                                Surface(
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = micContainerColor,
+                                    modifier = Modifier.size(38.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        if (viewModel.cargandoParserVoz) {
+                                            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                                        } else {
+                                            Icon(
+                                                imageVector = if (viewModel.estaEscuchandoVoz) Icons.Outlined.Mic else Icons.Outlined.MicOff,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(18.dp),
+                                                tint = if (viewModel.estaEscuchandoVoz) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onPrimaryContainer
+                                            )
+                                        }
                                     }
                                 }
-                            }
 
-                            Spacer(Modifier.width(10.dp))
+                                Spacer(Modifier.width(10.dp))
 
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = if (viewModel.estaEscuchandoVoz) "Escucha activa" else "Asistente de voz",
-                                    style = MaterialTheme.typography.labelLarge,
-                                    fontWeight = FontWeight.Bold
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = if (viewModel.estaEscuchandoVoz) "Escucha activa" else "Asistente de voz",
+                                        style = MaterialTheme.typography.labelLarge,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        text = if (viewModel.estaEscuchandoVoz) "Procesando audio..." else "Active para dictar datos",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+
+                                Switch(
+                                    checked = viewModel.estaEscuchandoVoz,
+                                    onCheckedChange = { encendido ->
+                                        if (encendido) {
+                                            permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                                        } else {
+                                            viewModel.estaEscuchandoVoz = false
+                                        }
+                                    },
+                                    modifier = Modifier.scale(0.8f),
+                                    enabled = !guardando
                                 )
-                                Text(
-                                    text = if (viewModel.estaEscuchandoVoz) "Procesando audio..." else "Active para dictar datos",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
                             }
-
-                            Switch(
-                                checked = viewModel.estaEscuchandoVoz,
-                                onCheckedChange = { encendido ->
-                                    if (encendido) {
-                                        permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-                                    } else {
-                                        viewModel.estaEscuchandoVoz = false
-                                    }
-                                },
-                                modifier = Modifier.scale(0.75f),
-                                enabled = !guardando
-                            )
                         }
-                    }
 
-                    Text(
-                        text  = "Los campos marcados con * son obligatorios.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                        SectionLabel(icon = Icons.Outlined.Badge, texto = "DATOS PERSONALES")
 
-                    Spacer(Modifier.height(2.dp))
-
-                    SectionLabel(icon = Icons.Outlined.Badge, texto = "Datos personales")
-                    Spacer(Modifier.height(2.dp))
-
-                    OutlinedTextField(
-                        value         = nombre,
-                        onValueChange = { nombre = it; nombreError = null },
-                        label         = { Text("Nombre *") },
-                        leadingIcon   = { Icon(Icons.Outlined.Person, null) },
-                        isError       = nombreError != null,
-                        supportingText = nombreError?.let { { Text(it) } },
-                        modifier      = Modifier.fillMaxWidth(),
-                        singleLine    = true,
-                        enabled       = !guardando,
-                        keyboardOptions = KeyboardOptions(
-                            capitalization = KeyboardCapitalization.Words,
-                            imeAction = ImeAction.Next
-                        )
-                    )
-
-                    OutlinedTextField(
-                        value         = apellido,
-                        onValueChange = { apellido = it; apellidoError = null },
-                        label         = { Text("Apellido *") },
-                        leadingIcon   = { Icon(Icons.Outlined.Person, null) },
-                        isError       = apellidoError != null,
-                        supportingText = apellidoError?.let { { Text(it) } },
-                        modifier      = Modifier.fillMaxWidth(),
-                        singleLine    = true,
-                        enabled       = !guardando,
-                        keyboardOptions = KeyboardOptions(
-                            capitalization = KeyboardCapitalization.Words,
-                            imeAction = ImeAction.Next
-                        )
-                    )
-
-                    Spacer(Modifier.height(4.dp))
-
-                    SectionLabel(icon = Icons.Outlined.ContactMail, texto = "Contacto")
-                    Spacer(Modifier.height(2.dp))
-
-                    OutlinedTextField(
-                        value         = telefono,
-                        onValueChange = {
-                            telefono = it
-                            telefonoError = null // <-- Limpia el error al escribir
-                        },
-                        label         = { Text("Teléfono *") }, // <-- Añadido el asterisco (*)
-                        leadingIcon   = { Icon(Icons.Outlined.Phone, null) },
-                        isError       = telefonoError != null, // <-- Vinculado al estado de error
-                        supportingText = telefonoError?.let { { Text(it) } }, // <-- Muestra el mensaje "Requerido"
-                        modifier      = Modifier.fillMaxWidth(),
-                        singleLine    = true,
-                        enabled       = !guardando,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone, imeAction = ImeAction.Next)
-                    )
-
-                    OutlinedTextField(
-                        value         = email,
-                        onValueChange = { email = it; emailError = null },
-                        label         = { Text("Correo electrónico *") },
-                        leadingIcon   = { Icon(Icons.Outlined.Email, null) },
-                        isError       = emailError != null,
-                        supportingText = emailError?.let { { Text(it) } },
-                        modifier      = Modifier.fillMaxWidth(),
-                        singleLine    = true,
-                        enabled       = !guardando,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Done)
-                    )
-
-                    if (!esNuevo) {
-                        Spacer(Modifier.height(8.dp))
-                        OutlinedButton(
-                            onClick  = { showConfirmDesactivar = true },
-                            modifier = Modifier.fillMaxWidth(),
-                            enabled  = !guardando,
-                            colors   = ButtonDefaults.outlinedButtonColors(
-                                contentColor = MaterialTheme.colorScheme.error
+                        OutlinedTextField(
+                            value         = nombre,
+                            onValueChange = { nombre = it; nombreError = null },
+                            label         = { Text("Nombre *") },
+                            leadingIcon   = { Icon(Icons.Outlined.Person, null, tint = MaterialTheme.colorScheme.primary) },
+                            isError       = nombreError != null,
+                            supportingText = nombreError?.let { { Text(it) } },
+                            modifier      = Modifier.fillMaxWidth(),
+                            singleLine    = true,
+                            enabled       = !guardando,
+                            shape         = RoundedCornerShape(14.dp),
+                            colors        = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
                             ),
-                            border = ButtonDefaults.outlinedButtonColors().run {
-                                BorderStroke(0.5.dp, MaterialTheme.colorScheme.error)
+                            keyboardOptions = KeyboardOptions(
+                                capitalization = KeyboardCapitalization.Words,
+                                imeAction = ImeAction.Next
+                            )
+                        )
+
+                        OutlinedTextField(
+                            value         = apellido,
+                            onValueChange = { apellido = it; apellidoError = null },
+                            label         = { Text("Apellido *") },
+                            leadingIcon   = { Icon(Icons.Outlined.Person, null, tint = MaterialTheme.colorScheme.primary) },
+                            isError       = apellidoError != null,
+                            supportingText = apellidoError?.let { { Text(it) } },
+                            modifier      = Modifier.fillMaxWidth(),
+                            singleLine    = true,
+                            enabled       = !guardando,
+                            shape         = RoundedCornerShape(14.dp),
+                            colors        = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                            ),
+                            keyboardOptions = KeyboardOptions(
+                                capitalization = KeyboardCapitalization.Words,
+                                imeAction = ImeAction.Next
+                            )
+                        )
+
+                        SectionLabel(icon = Icons.Outlined.ContactMail, texto = "CONTACTO")
+
+                        OutlinedTextField(
+                            value         = telefono,
+                            onValueChange = {
+                                telefono = it
+                                telefonoError = null
+                            },
+                            label         = { Text("Teléfono *") },
+                            leadingIcon   = { Icon(Icons.Outlined.Phone, null, tint = MaterialTheme.colorScheme.primary) },
+                            isError       = telefonoError != null,
+                            supportingText = telefonoError?.let { { Text(it) } },
+                            modifier      = Modifier.fillMaxWidth(),
+                            singleLine    = true,
+                            enabled       = !guardando,
+                            shape         = RoundedCornerShape(14.dp),
+                            colors        = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                            ),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone, imeAction = ImeAction.Next)
+                        )
+
+                        OutlinedTextField(
+                            value         = email,
+                            onValueChange = { email = it; emailError = null },
+                            label         = { Text("Correo electrónico *") },
+                            leadingIcon   = { Icon(Icons.Outlined.Email, null, tint = MaterialTheme.colorScheme.primary) },
+                            isError       = emailError != null,
+                            supportingText = emailError?.let { { Text(it) } },
+                            modifier      = Modifier.fillMaxWidth(),
+                            singleLine    = true,
+                            enabled       = !guardando,
+                            shape         = RoundedCornerShape(14.dp),
+                            colors        = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                            ),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Done)
+                        )
+
+                        if (!esNuevo) {
+                            Spacer(Modifier.height(4.dp))
+                            OutlinedButton(
+                                onClick  = { showConfirmDesactivar = true },
+                                modifier = Modifier.fillMaxWidth(),
+                                enabled  = !guardando,
+                                shape    = RoundedCornerShape(12.dp),
+                                colors   = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = MaterialTheme.colorScheme.error
+                                ),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
+                            ) {
+                                Icon(Icons.Outlined.PersonOff, null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text("Desactivar cuenta", fontWeight = FontWeight.SemiBold)
                             }
-                        ) {
-                            Icon(Icons.Outlined.PersonOff, null, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text("Desactivar cuenta", fontWeight = FontWeight.Medium)
                         }
                     }
                 }
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    if (validar()) {
-                        viewModel.estaEscuchandoVoz = false
 
-                        // Sanitizamos el teléfono eliminando todos los espacios en blanco
-                        val telefonoSanitizado = telefono.replace(" ", "").trim()
+                Spacer(modifier = Modifier.height(14.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                Spacer(modifier = Modifier.height(14.dp))
 
-                        if (esNuevo) {
-                            viewModel.crearCliente(
-                                CrearClienteRequest(
-                                    nombre.trim(),
-                                    apellido.trim(),
-                                    telefonoSanitizado.trim(),
-                                    email.trim()
-                                )
+                // Acciones M3
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = {
+                            viewModel.estaEscuchandoVoz = false
+                            onDismiss()
+                        },
+                        enabled = !guardando,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Cancelar", fontWeight = FontWeight.SemiBold)
+                    }
+
+                    Button(
+                        onClick = {
+                            if (validar()) {
+                                viewModel.estaEscuchandoVoz = false
+                                val telefonoSanitizado = telefono.replace(" ", "").trim()
+
+                                if (esNuevo) {
+                                    viewModel.crearCliente(
+                                        CrearClienteRequest(
+                                            nombre.trim(),
+                                            apellido.trim(),
+                                            telefonoSanitizado.trim(),
+                                            email.trim()
+                                        )
+                                    )
+                                } else {
+                                    viewModel.actualizarCliente(
+                                        idCliente,
+                                        ActualizarClienteRequest(
+                                            nombre.trim(),
+                                            apellido.trim(),
+                                            telefonoSanitizado.trim(),
+                                            email.trim()
+                                        )
+                                    )
+                                }
+                            }
+                        },
+                        enabled = !guardando,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        if (guardando) {
+                            CircularProgressIndicator(
+                                modifier    = Modifier.size(18.dp),
+                                strokeWidth = 2.dp,
+                                color       = MaterialTheme.colorScheme.onPrimary
                             )
                         } else {
-                            viewModel.actualizarCliente(
-                                idCliente,
-                                ActualizarClienteRequest(
-                                    nombre.trim(),
-                                    apellido.trim(),
-                                    telefonoSanitizado.trim(),
-                                    email.trim()
-                                )
-                            )
+                            Icon(Icons.Outlined.Check, null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text(if (esNuevo) "Registrar" else "Guardar", fontWeight = FontWeight.Bold)
                         }
                     }
-                },
-                enabled = !guardando
-            ) {
-                if (guardando) {
-                    CircularProgressIndicator(
-                        modifier    = Modifier.size(16.dp),
-                        strokeWidth = 2.dp,
-                        color       = MaterialTheme.colorScheme.onPrimary
-                    )
-                    Spacer(Modifier.width(6.dp))
-                    Text("Guardando...")
-                } else {
-                    Icon(Icons.Outlined.Check, null, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text(if (esNuevo) "Registrar" else "Guardar")
                 }
             }
-        },
-        dismissButton = {
-            OutlinedButton(
-                onClick = {
-                    viewModel.estaEscuchandoVoz = false
-                    onDismiss()
-                },
-                enabled = !guardando
-            ) {
-                Text("Cancelar")
-            }
         }
-    )
+    }
 
     if (showConfirmDesactivar) {
         AlertDialog(
             onDismissRequest = { showConfirmDesactivar = false },
-            icon  = { Icon(Icons.Outlined.Warning, null, tint = MaterialTheme.colorScheme.error) },
-            title = { Text("¿Desactivar cliente?") },
-            text  = { Text("El cliente ya no aparecerá en las listas de reserva activas.") },
+            shape            = RoundedCornerShape(28.dp),
+            containerColor   = MaterialTheme.colorScheme.surfaceContainerHigh,
+            icon  = {
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.errorContainer
+                ) {
+                    Icon(Icons.Outlined.Warning, null, tint = MaterialTheme.colorScheme.onErrorContainer, modifier = Modifier.padding(12.dp).size(26.dp))
+                }
+            },
+            title = { Text("¿Desactivar cliente?", fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
+            text  = { Text("El cliente ya no aparecerá en las listas de reserva activas.", style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center) },
             confirmButton = {
                 Button(
                     onClick = {
@@ -455,13 +511,17 @@ fun ClienteDetalleDialog(
                         viewModel.estaEscuchandoVoz = false
                         viewModel.desactivarCliente(idCliente)
                     },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error
-                    )
-                ) { Text("Desactivar") }
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("Desactivar cliente", fontWeight = FontWeight.Bold) }
             },
             dismissButton = {
-                TextButton(onClick = { showConfirmDesactivar = false }) { Text("Cancelar") }
+                OutlinedButton(
+                    onClick = { showConfirmDesactivar = false },
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("Cancelar") }
             }
         )
     }
@@ -471,19 +531,19 @@ fun ClienteDetalleDialog(
 private fun SectionLabel(icon: androidx.compose.ui.graphics.vector.ImageVector, texto: String) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier          = Modifier.padding(start = 2.dp)
+        modifier          = Modifier.padding(top = 6.dp, bottom = 2.dp)
     ) {
         Icon(
             imageVector        = icon,
             contentDescription = null,
-            modifier           = Modifier.size(14.dp),
+            modifier           = Modifier.size(16.dp),
             tint               = MaterialTheme.colorScheme.primary
         )
-        Spacer(Modifier.width(5.dp))
+        Spacer(Modifier.width(6.dp))
         Text(
             text       = texto,
-            style      = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Medium,
+            style      = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
             color      = MaterialTheme.colorScheme.primary
         )
     }
