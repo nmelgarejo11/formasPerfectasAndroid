@@ -1,15 +1,18 @@
+// Ruta: app/src/main/java/com/spa/appointments/ui/admin/catalogos/CatalogosScreen.kt
 package com.spa.appointments.ui.admin.catalogos
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -19,6 +22,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -29,7 +33,7 @@ import com.spa.appointments.domain.model.CategoriaAdmin
 import com.spa.appointments.domain.model.ServicioAdmin
 import com.spa.appointments.domain.model.ServicioRequest
 
-// ─── Screen principal ──────────────────────────────────────────────────────────
+// ─── Screen Principal ─────────────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -80,36 +84,76 @@ fun ServiciosAdminScreen(
     }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text       = "Servicios",
-                            style      = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        if (servicios.isNotEmpty()) {
+            Column {
+                TopAppBar(
+                    title = {
+                        Column {
                             Text(
-                                text  = "${servicios.size} ${if (servicios.size == 1) "servicio" else "servicios"}",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                text       = "Servicios",
+                                style      = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
                             )
+                            if (servicios.isNotEmpty()) {
+                                Surface(
+                                    shape    = RoundedCornerShape(50),
+                                    color    = MaterialTheme.colorScheme.primaryContainer,
+                                    modifier = Modifier.padding(top = 2.dp)
+                                ) {
+                                    Text(
+                                        text     = "${servicios.size} ${if (servicios.size == 1) "servicio" else "servicios"}",
+                                        style    = MaterialTheme.typography.labelSmall,
+                                        color    = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 1.dp)
+                                    )
+                                }
+                            }
                         }
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Volver")
-                    }
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Volver")
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.background
+                    )
+                )
+
+                // 🎨 Canvas: Acento decorativo debajo de la TopAppBar
+                val primaryColor   = MaterialTheme.colorScheme.primary
+                val secondaryColor = MaterialTheme.colorScheme.secondary
+                Canvas(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(3.dp)
+                ) {
+                    drawRect(
+                        brush = Brush.horizontalGradient(
+                            colors = listOf(
+                                primaryColor.copy(alpha = 0.4f),
+                                secondaryColor.copy(alpha = 0.2f),
+                                primaryColor.copy(alpha = 0.05f)
+                            )
+                        )
+                    )
                 }
-            )
+
+                HorizontalDivider(
+                    thickness = 0.5.dp,
+                    color     = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                )
+            }
         },
         floatingActionButton = {
             ExtendedFloatingActionButton(
-                onClick = { editando = null; showDialog = true },
-                icon    = { Icon(Icons.Default.Add, null) },
-                text    = { Text("Nuevo servicio") }
+                onClick        = { editando = null; showDialog = true },
+                icon           = { Icon(Icons.Default.Add, null) },
+                text           = { Text("Nuevo servicio", fontWeight = FontWeight.Bold) },
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor   = MaterialTheme.colorScheme.onPrimary,
+                shape          = RoundedCornerShape(16.dp)
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -120,61 +164,31 @@ fun ServiciosAdminScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // ── Buscador Compacto ──────────────────────────────────────────
-            Surface(
-                modifier = Modifier
+            Spacer(Modifier.height(8.dp))
+
+            // ── Buscador M3 ───────────────────────────────────────────────
+            OutlinedTextField(
+                value         = busqueda,
+                onValueChange = { busqueda = it },
+                label         = { Text("Buscar servicio o categoría") },
+                leadingIcon   = { Icon(Icons.Default.Search, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                trailingIcon  = {
+                    if (busqueda.isNotBlank()) {
+                        IconButton(onClick = { busqueda = "" }) {
+                            Icon(Icons.Default.Clear, null)
+                        }
+                    }
+                },
+                modifier   = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 6.dp),
-                shape = RoundedCornerShape(20.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 14.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Search,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(Modifier.width(10.dp))
-                    Box(modifier = Modifier.weight(1f)) {
-                        if (busqueda.isEmpty()) {
-                            Text(
-                                text = "Buscar servicio o categoría...",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                            )
-                        }
-                        BasicTextField(
-                            value = busqueda,
-                            onValueChange = { busqueda = it },
-                            singleLine = true,
-                            textStyle = MaterialTheme.typography.bodyMedium.copy(
-                                color = MaterialTheme.colorScheme.onSurface
-                            ),
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                    if (busqueda.isNotBlank()) {
-                        IconButton(
-                            onClick = { busqueda = "" },
-                            modifier = Modifier.size(20.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Clear,
-                                contentDescription = "Limpiar",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    }
-                }
-            }
+                shape      = RoundedCornerShape(14.dp),
+                colors     = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                ),
+                singleLine = true
+            )
 
             Box(modifier = Modifier.fillMaxSize()) {
                 when {
@@ -182,65 +196,88 @@ fun ServiciosAdminScreen(
                         Column(
                             modifier            = Modifier.align(Alignment.Center),
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            CircularProgressIndicator()
+                            CircularProgressIndicator(
+                                color       = MaterialTheme.colorScheme.primary,
+                                trackColor  = MaterialTheme.colorScheme.primaryContainer,
+                                strokeWidth = 3.dp,
+                                modifier    = Modifier.size(36.dp)
+                            )
                             Text(
                                 "Cargando servicios…",
-                                style = MaterialTheme.typography.bodySmall,
+                                style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
 
                     filtrados.isEmpty() -> {
-                        Column(
-                            modifier            = Modifier
-                                .align(Alignment.Center)
-                                .padding(40.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        val primaryColor = MaterialTheme.colorScheme.primary
+
+                        OutlinedCard(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp)
+                                .align(Alignment.Center),
+                            shape  = RoundedCornerShape(24.dp),
+                            colors = CardDefaults.outlinedCardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                            )
                         ) {
-                            Surface(
-                                shape = RoundedCornerShape(24.dp),
-                                color = MaterialTheme.colorScheme.surfaceVariant
+                            Column(
+                                modifier            = Modifier.padding(32.dp).fillMaxWidth(),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(14.dp)
                             ) {
-                                Icon(
-                                    imageVector        = if (busqueda.isBlank()) Icons.Default.Spa
-                                    else Icons.Default.SearchOff,
-                                    contentDescription = null,
-                                    modifier           = Modifier
-                                        .padding(20.dp)
-                                        .size(48.dp),
-                                    tint               = MaterialTheme.colorScheme.onSurfaceVariant
+                                Box(
+                                    modifier         = Modifier.size(80.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Canvas(modifier = Modifier.fillMaxSize()) {
+                                        drawCircle(color = primaryColor.copy(alpha = 0.15f))
+                                    }
+                                    Surface(
+                                        shape = CircleShape,
+                                        color = MaterialTheme.colorScheme.surfaceContainerHigh
+                                    ) {
+                                        Icon(
+                                            imageVector        = if (busqueda.isBlank()) Icons.Default.Spa
+                                            else Icons.Default.SearchOff,
+                                            contentDescription = null,
+                                            modifier           = Modifier.padding(18.dp).size(36.dp),
+                                            tint               = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                                Text(
+                                    text       = if (busqueda.isBlank()) "Sin servicios aún" else "Sin resultados",
+                                    style      = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color      = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text      = if (busqueda.isBlank())
+                                        "Crea el primer servicio con el botón inferior."
+                                    else
+                                        "Ningún servicio coincide con \"$busqueda\".",
+                                    style     = MaterialTheme.typography.bodyMedium,
+                                    color     = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    textAlign = TextAlign.Center
                                 )
                             }
-                            Text(
-                                text       = if (busqueda.isBlank()) "Sin servicios aún" else "Sin resultados",
-                                style      = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                text      = if (busqueda.isBlank())
-                                    "Crea el primer servicio con el botón inferior."
-                                else
-                                    "Ningún servicio coincide con \"$busqueda\".",
-                                style     = MaterialTheme.typography.bodyMedium,
-                                color     = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = TextAlign.Center
-                            )
                         }
                     }
 
                     else -> {
                         LazyColumn(
-                            contentPadding = PaddingValues(
+                            contentPadding      = PaddingValues(
                                 start  = 16.dp,
-                                top    = 4.dp,
                                 end    = 16.dp,
+                                top    = 8.dp,
                                 bottom = 88.dp
                             ),
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             items(filtrados, key = { it.id }) { srv ->
                                 ServicioAdminCard(
@@ -290,7 +327,7 @@ fun ServiciosAdminScreen(
     }
 }
 
-// ─── Card de servicio ──────────────────────────────────────────────────────────
+// ─── Card de Servicio M3 ───────────────────────────────────────────────────────
 
 @Composable
 private fun ServicioAdminCard(
@@ -299,20 +336,19 @@ private fun ServicioAdminCard(
     onToggle: () -> Unit,
     onVerPreciosRangos: () -> Unit
 ) {
-    Card(
-        modifier  = Modifier.fillMaxWidth(),
-        shape     = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-        colors    = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+    OutlinedCard(
+        modifier = Modifier.fillMaxWidth(),
+        shape    = RoundedCornerShape(18.dp),
+        colors   = CardDefaults.outlinedCardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             // ── Fila superior: Ícono, Título, Categoría y Switch de estado ──
             Row(
@@ -325,7 +361,7 @@ private fun ServicioAdminCard(
                         MaterialTheme.colorScheme.tertiaryContainer
                     else
                         MaterialTheme.colorScheme.secondaryContainer,
-                    modifier = Modifier.size(44.dp)
+                    modifier = Modifier.size(46.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
@@ -346,7 +382,7 @@ private fun ServicioAdminCard(
                     Text(
                         text = servicio.nombre,
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -359,7 +395,7 @@ private fun ServicioAdminCard(
                             imageVector = Icons.Default.Category,
                             contentDescription = null,
                             modifier = Modifier.size(12.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = MaterialTheme.colorScheme.primary
                         )
                         Spacer(Modifier.width(4.dp))
                         Text(
@@ -399,7 +435,7 @@ private fun ServicioAdminCard(
                     // Duración
                     Surface(
                         shape = RoundedCornerShape(8.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
@@ -415,6 +451,7 @@ private fun ServicioAdminCard(
                             Text(
                                 text = "${servicio.duracionMinutos} min",
                                 style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
@@ -423,7 +460,7 @@ private fun ServicioAdminCard(
                     // Precio Base
                     Surface(
                         shape = RoundedCornerShape(8.dp),
-                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                        color = MaterialTheme.colorScheme.primaryContainer
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
@@ -465,7 +502,7 @@ private fun ServicioAdminCard(
                                 Text(
                                     text = "Grupal",
                                     style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.SemiBold,
+                                    fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onTertiaryContainer
                                 )
                             }
@@ -477,9 +514,9 @@ private fun ServicioAdminCard(
                 Surface(
                     shape = RoundedCornerShape(50),
                     color = if (servicio.estado)
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                        MaterialTheme.colorScheme.primaryContainer
                     else
-                        MaterialTheme.colorScheme.outline.copy(alpha = 0.12f)
+                        MaterialTheme.colorScheme.surfaceContainerHigh
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
@@ -500,9 +537,9 @@ private fun ServicioAdminCard(
                         Text(
                             text = if (servicio.estado) "Activo" else "Inactivo",
                             style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Medium,
+                            fontWeight = FontWeight.Bold,
                             color = if (servicio.estado)
-                                MaterialTheme.colorScheme.primary
+                                MaterialTheme.colorScheme.onPrimaryContainer
                             else
                                 MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -510,7 +547,7 @@ private fun ServicioAdminCard(
                 }
             }
 
-            // ── Fila inferior: Botones de Acción Claras y Destacadas ─────────────
+            // ── Fila inferior: Botones de Acción Claras M3 ────────────────────
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End,
@@ -536,7 +573,7 @@ private fun ServicioAdminCard(
                         Text(
                             text = "Tarifas por persona",
                             style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.SemiBold
+                            fontWeight = FontWeight.Bold
                         )
                     }
                     Spacer(Modifier.width(8.dp))
@@ -561,7 +598,7 @@ private fun ServicioAdminCard(
                     Text(
                         text = "Editar",
                         style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Medium
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }
@@ -569,7 +606,7 @@ private fun ServicioAdminCard(
     }
 }
 
-// ─── Diálogo crear / editar ────────────────────────────────────────────────────
+// ─── Diálogo Crear / Editar M3 ─────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -601,26 +638,28 @@ private fun ServicioDialog(
 
     AlertDialog(
         onDismissRequest = { if (!guardando) onDismiss() },
-        shape = RoundedCornerShape(16.dp),
+        shape            = RoundedCornerShape(28.dp),
+        containerColor   = MaterialTheme.colorScheme.surfaceContainerHigh,
         icon = {
             Surface(
-                shape = RoundedCornerShape(50),
+                shape = CircleShape,
                 color = MaterialTheme.colorScheme.primaryContainer
             ) {
                 Icon(
                     imageVector        = if (servicio != null) Icons.Default.Edit else Icons.Default.Add,
                     contentDescription = null,
                     tint               = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier           = Modifier
-                        .padding(10.dp)
-                        .size(22.dp)
+                    modifier           = Modifier.padding(12.dp).size(24.dp)
                 )
             }
         },
         title = {
             Text(
                 text       = if (servicio != null) "Editar servicio" else "Nuevo servicio",
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                style      = MaterialTheme.typography.titleMedium,
+                textAlign  = TextAlign.Center,
+                modifier   = Modifier.fillMaxWidth()
             )
         },
         text = {
@@ -628,7 +667,7 @@ private fun ServicioDialog(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
                 modifier            = Modifier.fillMaxWidth()
             ) {
-                // Dropdown categoría
+                // Dropdown Categoría
                 ExposedDropdownMenuBox(
                     expanded         = expandedCat,
                     onExpandedChange = { expandedCat = it }
@@ -639,7 +678,11 @@ private fun ServicioDialog(
                         readOnly      = true,
                         label         = { Text("Categoría *") },
                         trailingIcon  = { ExposedDropdownMenuDefaults.TrailingIcon(expandedCat) },
-                        shape         = RoundedCornerShape(12.dp),
+                        shape         = RoundedCornerShape(14.dp),
+                        colors        = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                        ),
                         modifier      = Modifier
                             .menuAnchor()
                             .fillMaxWidth()
@@ -661,20 +704,28 @@ private fun ServicioDialog(
                     value         = nombre,
                     onValueChange = { nombre = it },
                     label         = { Text("Nombre *") },
-                    leadingIcon   = { Icon(Icons.Default.Spa, null) },
+                    leadingIcon   = { Icon(Icons.Default.Spa, null, tint = MaterialTheme.colorScheme.primary) },
                     modifier      = Modifier.fillMaxWidth(),
                     singleLine    = true,
-                    shape         = RoundedCornerShape(12.dp)
+                    shape         = RoundedCornerShape(14.dp),
+                    colors        = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                    )
                 )
 
                 OutlinedTextField(
                     value         = descripcion,
                     onValueChange = { descripcion = it },
                     label         = { Text("Descripción") },
-                    leadingIcon   = { Icon(Icons.Default.Notes, null) },
+                    leadingIcon   = { Icon(Icons.Default.Notes, null, tint = MaterialTheme.colorScheme.primary) },
                     modifier      = Modifier.fillMaxWidth(),
                     maxLines      = 2,
-                    shape         = RoundedCornerShape(12.dp)
+                    shape         = RoundedCornerShape(14.dp),
+                    colors        = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                    )
                 )
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -682,27 +733,35 @@ private fun ServicioDialog(
                         value           = duracion,
                         onValueChange   = { duracion = it },
                         label           = { Text("Min *") },
-                        leadingIcon     = { Icon(Icons.Default.Timer, null, modifier = Modifier.size(18.dp)) },
+                        leadingIcon     = { Icon(Icons.Default.Timer, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary) },
                         modifier        = Modifier.weight(1f),
                         singleLine      = true,
-                        shape           = RoundedCornerShape(12.dp),
+                        shape           = RoundedCornerShape(14.dp),
+                        colors          = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                        ),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                     )
                     OutlinedTextField(
                         value           = precio,
                         onValueChange   = { precio = it },
-                        label           = { Text("Precio *") },
-                        leadingIcon     = { Icon(Icons.Default.AttachMoney, null, modifier = Modifier.size(18.dp)) },
+                        label           = { Text("Precio ($) *") },
+                        leadingIcon     = { Icon(Icons.Default.AttachMoney, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary) },
                         modifier        = Modifier.weight(1f),
                         singleLine      = true,
-                        shape           = RoundedCornerShape(12.dp),
+                        shape           = RoundedCornerShape(14.dp),
+                        colors          = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                        ),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
                     )
                 }
 
-                HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
 
-                // Toggle grupal
+                // Toggle Grupal
                 Row(
                     modifier              = Modifier.fillMaxWidth(),
                     verticalAlignment     = Alignment.CenterVertically,
@@ -713,12 +772,12 @@ private fun ServicioDialog(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Surface(
-                            shape = RoundedCornerShape(8.dp),
+                            shape = RoundedCornerShape(10.dp),
                             color = if (esGrupal)
                                 MaterialTheme.colorScheme.tertiaryContainer
                             else
-                                MaterialTheme.colorScheme.surfaceVariant,
-                            modifier = Modifier.size(36.dp)
+                                MaterialTheme.colorScheme.surfaceContainerLow,
+                            modifier = Modifier.size(38.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
@@ -736,7 +795,7 @@ private fun ServicioDialog(
                             Text(
                                 text       = "Modalidad grupal",
                                 style      = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Medium
+                                fontWeight = FontWeight.Bold
                             )
                             Text(
                                 text  = "Múltiples clientes simultáneos",
@@ -752,14 +811,14 @@ private fun ServicioDialog(
                     )
                 }
 
-                // Hint informativo cuando está activo grupal
+                // Hint Informativo
                 AnimatedVisibility(
                     visible = esGrupal,
                     enter   = expandVertically(),
                     exit    = shrinkVertically()
                 ) {
                     Surface(
-                        shape = RoundedCornerShape(10.dp),
+                        shape = RoundedCornerShape(12.dp),
                         color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
                     ) {
                         Row(
@@ -770,7 +829,7 @@ private fun ServicioDialog(
                             Icon(
                                 imageVector        = Icons.Default.Info,
                                 contentDescription = null,
-                                modifier           = Modifier.size(14.dp),
+                                modifier           = Modifier.size(16.dp),
                                 tint               = MaterialTheme.colorScheme.tertiary
                             )
                             Text(
@@ -798,19 +857,20 @@ private fun ServicioDialog(
                         )
                     )
                 },
-                enabled = esValido && !guardando,
-                shape   = RoundedCornerShape(10.dp)
+                enabled  = esValido && !guardando,
+                shape    = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth()
             ) {
                 if (guardando) {
                     CircularProgressIndicator(
-                        modifier    = Modifier.size(16.dp),
+                        modifier    = Modifier.size(18.dp),
                         strokeWidth = 2.dp,
                         color       = MaterialTheme.colorScheme.onPrimary
                     )
                 } else {
-                    Icon(Icons.Default.Save, null, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Default.Save, null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text("Guardar")
+                    Text("Guardar", fontWeight = FontWeight.Bold)
                 }
             }
         },
@@ -818,7 +878,8 @@ private fun ServicioDialog(
             OutlinedButton(
                 onClick  = onDismiss,
                 enabled  = !guardando,
-                shape    = RoundedCornerShape(10.dp)
+                shape    = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth()
             ) { Text("Cancelar") }
         }
     )

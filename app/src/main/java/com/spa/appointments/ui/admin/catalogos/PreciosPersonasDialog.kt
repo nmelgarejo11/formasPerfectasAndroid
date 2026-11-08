@@ -1,8 +1,11 @@
+// Ruta: app/src/main/java/com/spa/appointments/ui/admin/catalogos/PreciosPersonasDialog.kt
 package com.spa.appointments.ui.admin.catalogos
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -22,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import com.spa.appointments.domain.model.ServicioAdmin
 import com.spa.appointments.domain.model.ServicioPrecioRango
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PreciosPersonasDialog(
     servicio: ServicioAdmin,
@@ -31,10 +35,9 @@ fun PreciosPersonasDialog(
     onDismiss: () -> Unit
 ) {
     var cantidadText by remember { mutableStateOf("") }
-    var precioText by remember { mutableStateOf("") }
+    var precioText   by remember { mutableStateOf("") }
     var esPorPersona by remember { mutableStateOf(false) }
 
-    // Determina el siguiente número de personas automático cuando es multiplicable
     val maxPersonasExistente = remember(preciosRangos) {
         preciosRangos.maxOfOrNull { it.cantidadPersonas } ?: 0
     }
@@ -46,248 +49,282 @@ fun PreciosPersonasDialog(
         (cantidadText.toIntOrNull() ?: 0) >= 1 && (precioText.toDoubleOrNull() ?: 0.0) > 0.0
     }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(20.dp),
-        containerColor = MaterialTheme.colorScheme.surface,
-        icon = {
-            Icon(
-                Icons.Default.Groups,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(32.dp)
-            )
-        },
-        title = {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text = "Tarifas por N° Personas",
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center
-                )
-                Text(
-                    text = servicio.nombre,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        },
-        text = {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                // Banner informativo
-                Surface(
-                    shape = RoundedCornerShape(10.dp),
-                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
-                    modifier = Modifier.fillMaxWidth()
+    BasicAlertDialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(28.dp),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            tonalElevation = 6.dp
+        ) {
+            Column(modifier = Modifier.padding(20.dp)) {
+
+                // Header M3
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.padding(10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.tertiaryContainer
                     ) {
                         Icon(
-                            Icons.Default.Info,
+                            imageVector = Icons.Default.Groups,
                             contentDescription = null,
-                            modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.onSecondaryContainer
+                            modifier = Modifier.padding(10.dp).size(24.dp),
+                            tint = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
+                    }
+                    Column {
+                        Text(
+                            text = "Tarifas por N° Personas",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = if (esPorPersona)
-                                "Modo Multiplicador (Aplica para $siguienteCantMultiplicable+ personas): El precio ingresado se multiplicará por el número de asistentes."
-                            else
-                                "Modo Tarifa Fija: Se cobrará un precio fijo total para el número exacto de personas especificado.",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                            text = servicio.nombre,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
 
-                // Selector de modo de tarifa
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
+                Spacer(modifier = Modifier.height(14.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Checkbox(
-                        checked = esPorPersona,
-                        onCheckedChange = { esPorPersona = it }
-                    )
-                    Text(
-                        text = "Tarifa Multiplicable (x N° de asistentes)",
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
+                    // Banner Informativo
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Info,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                                tint = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                            Text(
+                                text = if (esPorPersona)
+                                    "Modo Multiplicador (Aplica para $siguienteCantMultiplicable+ personas): El precio se multiplicará por el número de asistentes."
+                                else
+                                    "Modo Tarifa Fija: Se cobrará un precio fijo total para el número exacto de personas especificado.",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        }
+                    }
 
-                // Formulario para agregar nuevo nivel
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (!esPorPersona) {
+                    // Selector de modo de tarifa
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Checkbox(
+                            checked = esPorPersona,
+                            onCheckedChange = { esPorPersona = it }
+                        )
+                        Text(
+                            text = "Tarifa Multiplicable (x N° de asistentes)",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+
+                    // Formulario para agregar nuevo nivel
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (!esPorPersona) {
+                            OutlinedTextField(
+                                value = cantidadText,
+                                onValueChange = { cantidadText = it.filter { c -> c.isDigit() } },
+                                placeholder = { Text("Personas", style = MaterialTheme.typography.bodySmall) },
+                                leadingIcon = {
+                                    Icon(
+                                        Icons.Default.Groups,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp),
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(52.dp),
+                                singleLine = true,
+                                shape = RoundedCornerShape(14.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
+                                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                                ),
+                                textStyle = MaterialTheme.typography.bodyMedium
+                            )
+                        } else {
+                            Surface(
+                                shape = RoundedCornerShape(14.dp),
+                                color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.6f),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(52.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 8.dp)) {
+                                    Text(
+                                        text = "$siguienteCantMultiplicable+ Asistentes",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onTertiaryContainer
+                                    )
+                                }
+                            }
+                        }
+
                         OutlinedTextField(
-                            value = cantidadText,
-                            onValueChange = { cantidadText = it.filter { c -> c.isDigit() } },
-                            placeholder = { Text("Personas", style = MaterialTheme.typography.bodySmall) },
+                            value = precioText,
+                            onValueChange = { precioText = it.filter { c -> c.isDigit() || c == '.' } },
+                            placeholder = {
+                                Text(
+                                    if (esPorPersona) "Precio / Persona ($)" else "Precio Total ($)",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            },
                             leadingIcon = {
                                 Icon(
-                                    Icons.Default.Groups,
+                                    Icons.Default.AttachMoney,
                                     contentDescription = null,
                                     modifier = Modifier.size(16.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    tint = MaterialTheme.colorScheme.primary
                                 )
                             },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             modifier = Modifier
-                                .weight(1f)
+                                .weight(1.3f)
                                 .height(52.dp),
                             singleLine = true,
-                            shape = RoundedCornerShape(10.dp),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                            ),
                             textStyle = MaterialTheme.typography.bodyMedium
                         )
-                    } else {
-                        Surface(
-                            shape = RoundedCornerShape(10.dp),
-                            color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.6f),
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(52.dp)
+
+                        FilledTonalButton(
+                            onClick = {
+                                val prec = precioText.toDoubleOrNull()
+                                if (prec != null) {
+                                    val cant = if (esPorPersona) siguienteCantMultiplicable else (cantidadText.toIntOrNull() ?: 1)
+                                    onGuardarRango(cant, prec, esPorPersona)
+                                    cantidadText = ""
+                                    precioText = ""
+                                    esPorPersona = false
+                                }
+                            },
+                            enabled = esValido,
+                            modifier = Modifier.height(52.dp),
+                            shape = RoundedCornerShape(14.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp)
                         ) {
-                            Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 8.dp)) {
-                                Text(
-                                    text = "$siguienteCantMultiplicable+ Asistentes",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onTertiaryContainer
-                                )
-                            }
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = "Agregar tarifa",
+                                modifier = Modifier.size(20.dp)
+                            )
                         }
                     }
 
-                    OutlinedTextField(
-                        value = precioText,
-                        onValueChange = { precioText = it.filter { c -> c.isDigit() || c == '.' } },
-                        placeholder = {
-                            Text(
-                                if (esPorPersona) "Precio / Asistente ($)" else "Precio Total ($)",
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        },
-                        leadingIcon = {
-                            Icon(
-                                Icons.Default.AttachMoney,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp),
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier
-                            .weight(1.3f)
-                            .height(52.dp),
-                        singleLine = true,
-                        shape = RoundedCornerShape(10.dp),
-                        textStyle = MaterialTheme.typography.bodyMedium
-                    )
+                    HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
 
-                    FilledTonalButton(
-                        onClick = {
-                            val prec = precioText.toDoubleOrNull()
-                            if (prec != null) {
-                                val cant = if (esPorPersona) siguienteCantMultiplicable else (cantidadText.toIntOrNull() ?: 1)
-                                onGuardarRango(cant, prec, esPorPersona)
-                                cantidadText = ""
-                                precioText = ""
-                                esPorPersona = false
-                            }
-                        },
-                        enabled = esValido,
-                        modifier = Modifier.height(52.dp),
-                        shape = RoundedCornerShape(10.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = "Agregar tarifa",
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
-
-                HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
-
-                // Lista de rangos configurados
-                Text(
-                    text = "Niveles configurados:",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold
-                )
-
-                if (preciosRangos.isEmpty()) {
                     Text(
-                        text = "Sin tarifas por persona configuradas aún. Se usará el precio base ($${servicio.precioBase}).",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 12.dp)
+                        text = "NIVELES CONFIGURADOS",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
                     )
-                } else {
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(max = 160.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        items(preciosRangos, key = { it.id }) { rango ->
-                            Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = MaterialTheme.colorScheme.surfaceContainerLow,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween
+
+                    if (preciosRangos.isEmpty()) {
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.surfaceContainerLow,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = "Sin tarifas por persona configuradas aún. Se usará el precio base ($${servicio.precioBase}).",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(14.dp)
+                            )
+                        }
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 160.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(preciosRangos, key = { it.id }) { rango ->
+                                OutlinedCard(
+                                    shape = RoundedCornerShape(14.dp),
+                                    colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+                                    modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    Column {
-                                        Text(
-                                            text = if (rango.esPorPersona)
-                                                "${rango.cantidadPersonas}+ personas"
-                                            else
-                                                "${rango.cantidadPersonas} ${if (rango.cantidadPersonas == 1) "persona" else "personas"}",
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                        Text(
-                                            text = if (rango.esPorPersona) "Multiplicable x asistente" else "Monto fijo paquete",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text(
-                                            text = "$${String.format(java.util.Locale.US, "%,.0f", rango.precio)}${if (rango.esPorPersona) " /p" else ""}",
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            fontWeight = FontWeight.SemiBold,
-                                            color = MaterialTheme.colorScheme.primary
-                                        )
-
-                                        Spacer(Modifier.width(8.dp))
-
-                                        IconButton(onClick = { onEliminarRango(rango.id) }) {
-                                            Icon(
-                                                Icons.Default.Delete,
-                                                contentDescription = "Eliminar nivel",
-                                                tint = MaterialTheme.colorScheme.error,
-                                                modifier = Modifier.size(18.dp)
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Column {
+                                            Text(
+                                                text = if (rango.esPorPersona)
+                                                    "${rango.cantidadPersonas}+ personas"
+                                                else
+                                                    "${rango.cantidadPersonas} ${if (rango.cantidadPersonas == 1) "persona" else "personas"}",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.Bold
                                             )
+                                            Text(
+                                                text = if (rango.esPorPersona) "Multiplicable x asistente" else "Monto fijo paquete",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(
+                                                text = "$${String.format(java.util.Locale.US, "%,.0f", rango.precio)}${if (rango.esPorPersona) " /p" else ""}",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.primary
+                                            )
+
+                                            Spacer(Modifier.width(8.dp))
+
+                                            IconButton(
+                                                onClick = { onEliminarRango(rango.id) },
+                                                modifier = Modifier.size(36.dp)
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.Delete,
+                                                    contentDescription = "Eliminar nivel",
+                                                    tint = MaterialTheme.colorScheme.error,
+                                                    modifier = Modifier.size(18.dp)
+                                                )
+                                            }
                                         }
                                     }
                                 }
@@ -295,16 +332,19 @@ fun PreciosPersonasDialog(
                         }
                     }
                 }
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = onDismiss,
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Listo")
+
+                Spacer(modifier = Modifier.height(18.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                Spacer(modifier = Modifier.height(14.dp))
+
+                Button(
+                    onClick = onDismiss,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth().height(48.dp)
+                ) {
+                    Text("Listo", fontWeight = FontWeight.Bold)
+                }
             }
         }
-    )
+    }
 }
