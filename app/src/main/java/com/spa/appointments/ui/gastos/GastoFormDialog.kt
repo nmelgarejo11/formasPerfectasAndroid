@@ -304,17 +304,19 @@ fun GastoFormDialog(
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
                 Spacer(modifier = Modifier.height(14.dp))
 
-                // Botones M3
+                // Botones M3 Estándar
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     OutlinedButton(
                         onClick = onDismiss,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp),
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Text("Cancelar")
+                        Text("Cancelar", fontWeight = FontWeight.SemiBold)
                     }
                     Button(
                         enabled = formularioValido,
@@ -330,7 +332,9 @@ fun GastoFormDialog(
                                 )
                             )
                         },
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp),
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Text("Guardar", fontWeight = FontWeight.Bold)

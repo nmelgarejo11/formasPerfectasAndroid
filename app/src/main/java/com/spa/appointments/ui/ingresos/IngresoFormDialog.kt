@@ -254,7 +254,7 @@ fun IngresoFormDialog(
                         }
                     }
 
-                    // Dropdown Detalle de Método (Opcional)
+                    // Detalle del método (solo si aplica)
                     if (metodoPagoSeleccionado?.detalles?.isNotEmpty() == true) {
                         ExposedDropdownMenuBox(
                             expanded = expandedDetalle,
@@ -297,17 +297,19 @@ fun IngresoFormDialog(
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
                 Spacer(modifier = Modifier.height(14.dp))
 
-                // Acciones M3
+                // Botones M3 Estándar
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     OutlinedButton(
                         onClick = onDismiss,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp),
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Text("Cancelar")
+                        Text("Cancelar", fontWeight = FontWeight.SemiBold)
                     }
                     Button(
                         onClick = {
@@ -325,7 +327,9 @@ fun IngresoFormDialog(
                             }
                         },
                         enabled = formularioValido,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp),
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Text("Confirmar", fontWeight = FontWeight.Bold)
