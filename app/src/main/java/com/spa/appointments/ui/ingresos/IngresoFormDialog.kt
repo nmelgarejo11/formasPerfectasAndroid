@@ -1,9 +1,12 @@
+// Ruta: app/src/main/java/com/spa/appointments/ui/ingresos/IngresoFormDialog.kt
 package com.spa.appointments.ui.ingresos
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -51,27 +54,32 @@ fun IngresoFormDialog(
 
     BasicAlertDialog(onDismissRequest = onDismiss) {
         Surface(
-            shape = MaterialTheme.shapes.extraLarge,
-            color = MaterialTheme.colorScheme.surface,
+            shape = RoundedCornerShape(28.dp),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
             tonalElevation = 6.dp
         ) {
             Column(modifier = Modifier.padding(24.dp)) {
 
-                // Header
+                // Header M3
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Outlined.ReceiptLong,
-                        contentDescription = null,
-                        modifier = Modifier.size(28.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.primaryContainer
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Outlined.ReceiptLong,
+                            contentDescription = null,
+                            modifier = Modifier.padding(10.dp).size(24.dp),
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
                     Column {
                         Text(
                             text = "Registrar Ingreso",
-                            style = MaterialTheme.typography.titleLarge,
+                            style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
@@ -82,9 +90,9 @@ fun IngresoFormDialog(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(14.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                Spacer(modifier = Modifier.height(14.dp))
 
                 // Formulario con Scroll
                 Column(
@@ -99,20 +107,28 @@ fun IngresoFormDialog(
                         placeholder = { Text("Ej. Venta de productos de vitrina") },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
-                        shape = MaterialTheme.shapes.medium
+                        shape = RoundedCornerShape(14.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                        )
                     )
 
                     // Valor
                     OutlinedTextField(
                         value = valor,
                         onValueChange = { valor = it },
-                        label = { Text("Valor") },
+                        label = { Text("Valor ($)") },
                         placeholder = { Text("0") },
                         modifier = Modifier.fillMaxWidth(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         singleLine = true,
                         prefix = { Text("$ ") },
-                        shape = MaterialTheme.shapes.medium,
+                        shape = RoundedCornerShape(14.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                        ),
                         isError = valor.isNotBlank() && valor.toDoubleOrNull() == null,
                         supportingText = if (valor.isNotBlank() && valor.toDoubleOrNull() == null) {
                             { Text("Ingresa un número válido") }
@@ -131,12 +147,13 @@ fun IngresoFormDialog(
                                 indication = null
                             ) { mostrarDatePicker = true },
                         enabled = false,
-                        shape = MaterialTheme.shapes.medium,
+                        shape = RoundedCornerShape(14.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             disabledTextColor = MaterialTheme.colorScheme.onSurface,
-                            disabledBorderColor = MaterialTheme.colorScheme.outline,
+                            disabledBorderColor = MaterialTheme.colorScheme.outlineVariant,
                             disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
                         ),
                         trailingIcon = {
                             Icon(
@@ -159,7 +176,11 @@ fun IngresoFormDialog(
                             placeholder = { Text("Selecciona una sede") },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expandedSede) },
                             modifier = Modifier.menuAnchor().fillMaxWidth(),
-                            shape = MaterialTheme.shapes.medium
+                            shape = RoundedCornerShape(14.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                            )
                         )
                         ExposedDropdownMenu(
                             expanded = expandedSede,
@@ -191,7 +212,11 @@ fun IngresoFormDialog(
                             placeholder = { Text("Selecciona un método") },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expandedMetodo) },
                             modifier = Modifier.menuAnchor().fillMaxWidth(),
-                            shape = MaterialTheme.shapes.medium
+                            shape = RoundedCornerShape(14.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                            )
                         )
                         ExposedDropdownMenu(
                             expanded = expandedMetodo,
@@ -225,7 +250,11 @@ fun IngresoFormDialog(
                                 placeholder = { Text("Selecciona un detalle") },
                                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expandedDetalle) },
                                 modifier = Modifier.menuAnchor().fillMaxWidth(),
-                                shape = MaterialTheme.shapes.medium
+                                shape = RoundedCornerShape(14.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
+                                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                                )
                             )
                             ExposedDropdownMenu(
                                 expanded = expandedDetalle,
@@ -246,18 +275,22 @@ fun IngresoFormDialog(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(18.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                Spacer(modifier = Modifier.height(14.dp))
 
-                // Acciones
+                // Acciones M3
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    TextButton(onClick = onDismiss) {
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
                         Text("Cancelar")
                     }
-                    Spacer(modifier = Modifier.width(8.dp))
                     Button(
                         onClick = {
                             if (formularioValido) {
@@ -274,9 +307,10 @@ fun IngresoFormDialog(
                             }
                         },
                         enabled = formularioValido,
-                        shape = MaterialTheme.shapes.medium
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp)
                     ) {
-                        Text("Confirmar")
+                        Text("Confirmar", fontWeight = FontWeight.Bold)
                     }
                 }
             }

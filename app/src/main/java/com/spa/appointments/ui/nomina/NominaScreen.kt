@@ -1,17 +1,22 @@
+// Ruta: app/src/main/java/com/spa/appointments/ui/nomina/NominaScreen.kt
 package com.spa.appointments.ui.nomina
 
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.widget.Toast
-import androidx.core.content.FileProvider
+import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.List
@@ -21,7 +26,9 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
@@ -29,6 +36,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -37,15 +46,18 @@ import com.spa.appointments.R
 import com.spa.appointments.domain.model.ConceptoResponse
 import com.spa.appointments.domain.model.ContratoElegibleNomina
 import com.spa.appointments.domain.model.NovedadNominaResponse
+import com.spa.appointments.domain.model.PeriodoNominaItem
 import com.spa.appointments.domain.model.PreliquidacionDetalleResponse
 import com.spa.appointments.domain.model.PreliquidacionResponse
 import kotlinx.coroutines.launch
 import java.io.File
 
+// ─── Screen Principal (Stateful) ──────────────────────────────────────────────
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NominaScreen(
-    onBack: () -> Unit,
+    onBack:    () -> Unit,
     viewModel: NominaViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -54,10 +66,10 @@ fun NominaScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
-    var idContratoParaLiquidar by rememberSaveable { mutableStateOf<Int?>(null) }
+    var idContratoParaLiquidar  by rememberSaveable { mutableStateOf<Int?>(null) }
     var idLiquidacionParaAnular by rememberSaveable { mutableStateOf<Int?>(null) }
-    var motivoAnulacion by rememberSaveable { mutableStateOf("") }
-    var menuPeriodosExpandido by rememberSaveable { mutableStateOf(false) }
+    var motivoAnulacion         by rememberSaveable { mutableStateOf("") }
+    var menuPeriodosExpandido   by rememberSaveable { mutableStateOf(false) }
 
     val contratoParaLiquidar = remember(idContratoParaLiquidar, uiState.contratos) {
         uiState.contratos.find { it.idContratoLaboral == idContratoParaLiquidar }
@@ -73,9 +85,9 @@ fun NominaScreen(
                     is NominaEvent.MostrarRecalcular -> {
                         scope.launch {
                             val result = snackbarHostState.showSnackbar(
-                                message = evento.mensaje,
+                                message     = evento.mensaje,
                                 actionLabel = context.getString(R.string.btn_recalcular),
-                                duration = SnackbarDuration.Long
+                                duration    = SnackbarDuration.Long
                             )
                             if (result == SnackbarResult.ActionPerformed) {
                                 uiState.contratos.find { it.idContratoLaboral == evento.idContratoLaboral }?.let {
@@ -99,30 +111,73 @@ fun NominaScreen(
     }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = stringResource(R.string.titulo_nomina),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
+            Column {
+                TopAppBar(
+                    title = {
+                        Column {
+                            Text(
+                                text       = stringResource(R.string.titulo_nomina),
+                                style      = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            if (uiState.contratos.isNotEmpty()) {
+                                Surface(
+                                    shape    = RoundedCornerShape(50),
+                                    color    = MaterialTheme.colorScheme.primaryContainer,
+                                    modifier = Modifier.padding(top = 2.dp)
+                                ) {
+                                    Text(
+                                        text     = "${uiState.contratos.size} registros",
+                                        style    = MaterialTheme.typography.labelSmall,
+                                        color    = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 1.dp)
+                                    )
+                                }
+                            }
+                        }
+                    },
+                    navigationIcon = {
+                        IconButton(
+                            onClick  = onBack,
+                            modifier = Modifier.size(48.dp)
+                        ) {
+                            Icon(
+                                imageVector        = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = stringResource(R.string.cd_volver)
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.background
                     )
-                },
-                navigationIcon = {
-                    IconButton(
-                        onClick = onBack,
-                        modifier = Modifier.size(48.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.cd_volver)
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
                 )
-            )
+
+                // 🎨 Canvas: Acento decorativo debajo de la TopAppBar
+                val primaryColor   = MaterialTheme.colorScheme.primary
+                val secondaryColor = MaterialTheme.colorScheme.secondary
+                Canvas(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(3.dp)
+                ) {
+                    drawRect(
+                        brush = Brush.horizontalGradient(
+                            colors = listOf(
+                                primaryColor.copy(alpha = 0.4f),
+                                secondaryColor.copy(alpha = 0.2f),
+                                primaryColor.copy(alpha = 0.05f)
+                            )
+                        )
+                    )
+                }
+
+                HorizontalDivider(
+                    thickness = 0.5.dp,
+                    color     = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                )
+            }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
@@ -132,6 +187,8 @@ fun NominaScreen(
                 .padding(padding)
                 .padding(horizontal = 16.dp)
         ) {
+            Spacer(Modifier.height(12.dp))
+
             var anioFiltroSeleccionado by rememberSaveable { mutableStateOf<Int?>(null) }
 
             val aniosDisponibles = remember(uiState.periodos) {
@@ -143,20 +200,24 @@ fun NominaScreen(
                 else uiState.periodos.filter { it.fechaInicio.startsWith(anioFiltroSeleccionado.toString()) }
             }
 
-            // Selector de Periodos Compacto
+            // Selector de Periodos Compacto M3
             if (uiState.cargandoPeriodos) {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp))
+                LinearProgressIndicator(
+                    modifier   = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    color      = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.primaryContainer
+                )
             } else if (uiState.periodos.isEmpty()) {
                 Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    shape    = RoundedCornerShape(14.dp),
+                    color    = MaterialTheme.colorScheme.surfaceContainerLow,
                     modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
                 ) {
                     Text(
-                        text = stringResource(R.string.msg_sin_periodos),
+                        text     = stringResource(R.string.msg_sin_periodos),
                         modifier = Modifier.padding(16.dp),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        style    = MaterialTheme.typography.bodyMedium,
+                        color    = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             } else {
@@ -165,36 +226,36 @@ fun NominaScreen(
                     if (aniosDisponibles.size > 1) {
                         LazyRow(
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp)
+                            modifier              = Modifier.fillMaxWidth().padding(bottom = 8.dp)
                         ) {
                             item {
                                 FilterChip(
                                     selected = anioFiltroSeleccionado == null,
-                                    onClick = { anioFiltroSeleccionado = null },
-                                    label = { Text("Todos los años", style = MaterialTheme.typography.labelSmall) },
-                                    shape = RoundedCornerShape(8.dp)
+                                    onClick  = { anioFiltroSeleccionado = null },
+                                    label    = { Text("Todos los años", style = MaterialTheme.typography.labelSmall) },
+                                    shape    = RoundedCornerShape(10.dp)
                                 )
                             }
                             items(aniosDisponibles) { anio ->
                                 FilterChip(
                                     selected = anioFiltroSeleccionado == anio,
-                                    onClick = { anioFiltroSeleccionado = anio },
-                                    label = { Text(anio.toString(), style = MaterialTheme.typography.labelSmall) },
-                                    shape = RoundedCornerShape(8.dp)
+                                    onClick  = { anioFiltroSeleccionado = anio },
+                                    label    = { Text(anio.toString(), style = MaterialTheme.typography.labelSmall) },
+                                    shape    = RoundedCornerShape(10.dp)
                                 )
                             }
                         }
                     }
 
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
+                        modifier              = Modifier.fillMaxWidth(),
+                        verticalAlignment     = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         ExposedDropdownMenuBox(
-                            expanded = menuPeriodosExpandido,
+                            expanded         = menuPeriodosExpandido,
                             onExpandedChange = { menuPeriodosExpandido = it },
-                            modifier = Modifier.weight(1f)
+                            modifier         = Modifier.weight(1f)
                         ) {
                             val pSel = uiState.periodoSeleccionado
                             val textoPeriodo = if (pSel != null) {
@@ -202,61 +263,66 @@ fun NominaScreen(
                             } else stringResource(R.string.placeholder_seleccionar_periodo)
 
                             OutlinedTextField(
-                                value = textoPeriodo,
+                                value        = textoPeriodo,
                                 onValueChange = {},
-                                readOnly = true,
-                                singleLine = true,
-                                placeholder = { Text(stringResource(R.string.label_periodo_nomina), style = MaterialTheme.typography.bodySmall) },
-                                leadingIcon = {
+                                readOnly     = true,
+                                singleLine   = true,
+                                placeholder  = { Text(stringResource(R.string.label_periodo_nomina), style = MaterialTheme.typography.bodySmall) },
+                                leadingIcon  = {
                                     Icon(
-                                        imageVector = Icons.Default.DateRange,
+                                        imageVector        = Icons.Default.DateRange,
                                         contentDescription = null,
-                                        modifier = Modifier.size(20.dp),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                        modifier           = Modifier.size(20.dp),
+                                        tint               = MaterialTheme.colorScheme.primary
                                     )
                                 },
                                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = menuPeriodosExpandido) },
-                                textStyle = MaterialTheme.typography.bodyMedium,
+                                textStyle    = MaterialTheme.typography.bodyMedium,
+                                colors       = OutlinedTextFieldDefaults.colors(
+                                    focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
+                                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                                ),
                                 modifier = Modifier
                                     .menuAnchor()
                                     .fillMaxWidth()
                                     .defaultMinSize(minHeight = 48.dp),
-                                shape = RoundedCornerShape(12.dp)
+                                shape = RoundedCornerShape(14.dp)
                             )
 
                             ExposedDropdownMenu(
-                                expanded = menuPeriodosExpandido,
+                                expanded         = menuPeriodosExpandido,
                                 onDismissRequest = { menuPeriodosExpandido = false }
                             ) {
                                 periodosFiltrados.forEach { periodo ->
                                     DropdownMenuItem(
                                         text = {
                                             Row(
-                                                modifier = Modifier.fillMaxWidth(),
+                                                modifier              = Modifier.fillMaxWidth(),
                                                 horizontalArrangement = Arrangement.SpaceBetween,
-                                                verticalAlignment = Alignment.CenterVertically
+                                                verticalAlignment     = Alignment.CenterVertically
                                             ) {
                                                 Column(modifier = Modifier.weight(1f)) {
                                                     Text(
-                                                        text = periodo.nombre,
-                                                        style = MaterialTheme.typography.bodyMedium,
+                                                        text       = periodo.nombre,
+                                                        style      = MaterialTheme.typography.bodyMedium,
                                                         fontWeight = FontWeight.Bold
                                                     )
                                                     Text(
-                                                        text = "${formatearFechaDisplay(periodo.fechaInicio)} al ${formatearFechaDisplay(periodo.fechaFin)}",
+                                                        text  = "${formatearFechaDisplay(periodo.fechaInicio)} al ${formatearFechaDisplay(periodo.fechaFin)}",
                                                         style = MaterialTheme.typography.labelSmall,
                                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                                     )
                                                 }
                                                 Spacer(modifier = Modifier.width(8.dp))
                                                 Surface(
-                                                    shape = RoundedCornerShape(4.dp),
+                                                    shape = RoundedCornerShape(6.dp),
                                                     color = if (periodo.esAbierto()) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
                                                 ) {
                                                     Text(
-                                                        text = periodo.nombreEstado,
-                                                        style = MaterialTheme.typography.labelSmall,
-                                                        color = if (periodo.esAbierto()) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                                                        text     = periodo.nombreEstado,
+                                                        style    = MaterialTheme.typography.labelSmall,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color    = if (periodo.esAbierto()) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
                                                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                                     )
                                                 }
@@ -272,12 +338,12 @@ fun NominaScreen(
                         }
 
                         FilledTonalIconButton(
-                            onClick = { viewModel.abrirCrearPeriodoDialog() },
-                            shape = RoundedCornerShape(12.dp),
+                            onClick  = { viewModel.abrirCrearPeriodoDialog() },
+                            shape    = RoundedCornerShape(14.dp),
                             modifier = Modifier.size(48.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Add,
+                                imageVector        = Icons.Default.Add,
                                 contentDescription = "Nuevo Período"
                             )
                         }
@@ -285,48 +351,56 @@ fun NominaScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
-            // Campo de búsqueda compacto (mismo estilo y tamaño que el selector de período)
+            // Buscador M3 de Profesional
             OutlinedTextField(
-                value = uiState.busqueda,
+                value         = uiState.busqueda,
                 onValueChange = { viewModel.actualizarBusqueda(it) },
-                placeholder = { Text(stringResource(R.string.label_buscar_profesional), style = MaterialTheme.typography.bodySmall) },
-                leadingIcon = {
+                placeholder   = { Text(stringResource(R.string.label_buscar_profesional), style = MaterialTheme.typography.bodySmall) },
+                leadingIcon   = {
                     Icon(
-                        imageVector = Icons.Default.Search,
+                        imageVector        = Icons.Default.Search,
                         contentDescription = stringResource(R.string.cd_buscar),
-                        modifier = Modifier.size(20.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        modifier           = Modifier.size(20.dp),
+                        tint               = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 },
                 trailingIcon = {
                     if (uiState.busqueda.isNotBlank()) {
                         IconButton(
-                            onClick = { viewModel.actualizarBusqueda("") },
+                            onClick  = { viewModel.actualizarBusqueda("") },
                             modifier = Modifier.size(36.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Clear,
+                                imageVector        = Icons.Default.Clear,
                                 contentDescription = stringResource(R.string.cd_limpiar_busqueda),
-                                modifier = Modifier.size(18.dp)
+                                modifier           = Modifier.size(18.dp)
                             )
                         }
                     }
                 },
                 textStyle = MaterialTheme.typography.bodyMedium,
+                colors    = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                ),
                 modifier = Modifier
                     .fillMaxWidth()
                     .defaultMinSize(minHeight = 48.dp),
                 singleLine = true,
-                shape = RoundedCornerShape(12.dp)
+                shape      = RoundedCornerShape(14.dp)
             )
 
             Spacer(modifier = Modifier.height(12.dp))
 
             // Indicador de recarga sobre la lista
             if (uiState.cargandoContratos && uiState.contratos.isNotEmpty()) {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp))
+                LinearProgressIndicator(
+                    modifier   = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                    color      = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.primaryContainer
+                )
             }
 
             // Lista de Contratos / Indicadores
@@ -334,72 +408,95 @@ fun NominaScreen(
                 Box(modifier = Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        CircularProgressIndicator(strokeWidth = 3.dp)
+                        CircularProgressIndicator(
+                            color       = MaterialTheme.colorScheme.primary,
+                            trackColor  = MaterialTheme.colorScheme.primaryContainer,
+                            strokeWidth = 3.dp,
+                            modifier    = Modifier.size(36.dp)
+                        )
                         Text(
-                            text = "Cargando nómina…",
-                            style = MaterialTheme.typography.bodySmall,
+                            text  = "Cargando nómina…",
+                            style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
             } else if (!uiState.cargandoContratos && uiState.contratos.isEmpty()) {
-                Box(modifier = Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
-                    Surface(
-                        shape = RoundedCornerShape(20.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                        modifier = Modifier.padding(24.dp)
+                val primaryColor = MaterialTheme.colorScheme.primary
+
+                OutlinedCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    shape  = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.outlinedCardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                    )
+                ) {
+                    Column(
+                        modifier            = Modifier.padding(32.dp).fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
-                        Column(
-                            modifier = Modifier.padding(24.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        Box(
+                            modifier         = Modifier.size(80.dp),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.ReceiptLong,
-                                contentDescription = null,
-                                modifier = Modifier.size(48.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                text = stringResource(R.string.msg_sin_contratos),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
+                            Canvas(modifier = Modifier.fillMaxSize()) {
+                                drawCircle(color = primaryColor.copy(alpha = 0.15f))
+                            }
+                            Surface(
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.surfaceContainerHigh
+                            ) {
+                                Icon(
+                                    imageVector        = Icons.Default.ReceiptLong,
+                                    contentDescription = null,
+                                    modifier           = Modifier.padding(18.dp).size(36.dp),
+                                    tint               = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
+                        Text(
+                            text       = stringResource(R.string.msg_sin_contratos),
+                            style      = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color      = MaterialTheme.colorScheme.onSurface,
+                            textAlign  = TextAlign.Center
+                        )
                     }
                 }
             } else {
                 LazyColumn(
-                    modifier = Modifier.fillMaxWidth().weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(bottom = 24.dp)
+                    modifier            = Modifier.fillMaxWidth().weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                    contentPadding      = PaddingValues(bottom = 24.dp)
                 ) {
                     items(uiState.contratos, key = { it.idContratoLaboral }) { contrato ->
                         val enAccion = uiState.contratosEnAccion.contains(contrato.idContratoLaboral) ||
                                 (contrato.idLiquidacionVigente != null && uiState.liquidacionesEnAccion.contains(contrato.idLiquidacionVigente))
 
                         ContratoNominaCard(
-                            contrato = contrato,
-                            enAccion = enAccion,
-                            onPreliquidar = { viewModel.preliquidar(contrato) },
-                            onVerDetalle = {
+                            contrato                = contrato,
+                            enAccion                = enAccion,
+                            onPreliquidar           = { viewModel.preliquidar(contrato) },
+                            onVerDetalle            = {
                                 contrato.idPreliquidacionVigente?.let { viewModel.verDetallePreliquidacion(it) }
                             },
-                            onLiquidar = { idContratoParaLiquidar = contrato.idContratoLaboral },
-                            onRecalcular = { viewModel.preliquidar(contrato) },
-                            onDesprendible = {
+                            onLiquidar              = { idContratoParaLiquidar = contrato.idContratoLaboral },
+                            onRecalcular            = { viewModel.preliquidar(contrato) },
+                            onDesprendible          = {
                                 contrato.idLiquidacionVigente?.let { viewModel.descargarDesprendible(it) }
                             },
                             onCompartirDesprendible = {
                                 contrato.idLiquidacionVigente?.let { viewModel.compartirDesprendible(it) }
                             },
-                            onAnular = {
+                            onAnular                = {
                                 contrato.idLiquidacionVigente?.let { idLiquidacionParaAnular = it }
                             },
-                            onNovedades = { viewModel.abrirNovedadesContrato(contrato) }
+                            onNovedades             = { viewModel.abrirNovedadesContrato(contrato) }
                         )
                     }
                 }
@@ -411,7 +508,8 @@ fun NominaScreen(
     if (uiState.detallePreliquidacion != null || uiState.cargandoDetalle) {
         ModalBottomSheet(
             onDismissRequest = { viewModel.cerrarDetallePreliquidacion() },
-            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+            shape            = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+            containerColor   = MaterialTheme.colorScheme.surfaceContainerHigh
         ) {
             val detalle = uiState.detallePreliquidacion
             if (uiState.cargandoDetalle || detalle == null) {
@@ -435,24 +533,25 @@ fun NominaScreen(
     contratoParaLiquidar?.let { contrato ->
         AlertDialog(
             onDismissRequest = { idContratoParaLiquidar = null },
-            shape = RoundedCornerShape(20.dp),
+            shape            = RoundedCornerShape(28.dp),
+            containerColor   = MaterialTheme.colorScheme.surfaceContainerHigh,
             icon = {
                 Surface(
-                    shape = RoundedCornerShape(50),
+                    shape = CircleShape,
                     color = MaterialTheme.colorScheme.primaryContainer
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Payments,
+                        imageVector        = Icons.Default.Payments,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.padding(12.dp).size(24.dp)
+                        tint               = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier           = Modifier.padding(12.dp).size(26.dp)
                     )
                 }
             },
             title = {
                 Text(
-                    text = stringResource(R.string.titulo_confirmar_liquidacion),
-                    style = MaterialTheme.typography.titleMedium,
+                    text       = stringResource(R.string.titulo_confirmar_liquidacion),
+                    style      = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
             },
@@ -474,21 +573,17 @@ fun NominaScreen(
                         idContratoParaLiquidar = null
                         viewModel.liquidar(c)
                     },
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    ),
-                    modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
+                    shape    = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(stringResource(R.string.btn_confirmar), fontWeight = FontWeight.Medium)
+                    Text(stringResource(R.string.btn_confirmar), fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
                 OutlinedButton(
-                    onClick = { idContratoParaLiquidar = null },
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
+                    onClick  = { idContratoParaLiquidar = null },
+                    shape    = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(stringResource(R.string.btn_cancelar))
                 }
@@ -503,49 +598,50 @@ fun NominaScreen(
                 idLiquidacionParaAnular = null
                 motivoAnulacion = ""
             },
-            shape = RoundedCornerShape(20.dp),
+            shape            = RoundedCornerShape(28.dp),
+            containerColor   = MaterialTheme.colorScheme.surfaceContainerHigh,
             icon = {
                 Surface(
-                    shape = RoundedCornerShape(50),
+                    shape = CircleShape,
                     color = MaterialTheme.colorScheme.errorContainer
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Cancel,
+                        imageVector        = Icons.Default.Cancel,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onErrorContainer,
-                        modifier = Modifier.padding(12.dp).size(24.dp)
+                        tint               = MaterialTheme.colorScheme.onErrorContainer,
+                        modifier           = Modifier.padding(12.dp).size(26.dp)
                     )
                 }
             },
             title = {
                 Text(
-                    text = stringResource(R.string.titulo_anular_liquidacion),
-                    style = MaterialTheme.typography.titleMedium,
+                    text       = stringResource(R.string.titulo_anular_liquidacion),
+                    style      = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
             },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Surface(
-                        color = MaterialTheme.colorScheme.errorContainer,
-                        shape = RoundedCornerShape(10.dp),
+                        color    = MaterialTheme.colorScheme.errorContainer,
+                        shape    = RoundedCornerShape(12.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
-                            text = stringResource(R.string.nota_anulacion_prestamos),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onErrorContainer,
-                            modifier = Modifier.padding(10.dp)
+                            text     = stringResource(R.string.nota_anulacion_prestamos),
+                            style    = MaterialTheme.typography.bodySmall,
+                            color    = MaterialTheme.colorScheme.onErrorContainer,
+                            modifier = Modifier.padding(12.dp)
                         )
                     }
                     OutlinedTextField(
-                        value = motivoAnulacion,
-                        onValueChange = { if (it.length <= 1000) motivoAnulacion = it },
-                        label = { Text(stringResource(R.string.label_motivo_anulacion)) },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
+                        value          = motivoAnulacion,
+                        onValueChange  = { if (it.length <= 1000) motivoAnulacion = it },
+                        label          = { Text(stringResource(R.string.label_motivo_anulacion)) },
+                        modifier       = Modifier.fillMaxWidth(),
+                        shape          = RoundedCornerShape(14.dp),
                         supportingText = { Text("${motivoAnulacion.length}/1000") },
-                        isError = motivoAnulacion.isNotBlank() && motivoAnulacion.trim().isEmpty()
+                        isError        = motivoAnulacion.isNotBlank() && motivoAnulacion.trim().isEmpty()
                     )
                 }
             },
@@ -559,14 +655,13 @@ fun NominaScreen(
                         motivoAnulacion = ""
                         viewModel.anularLiquidacion(id, motivo)
                     },
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error,
-                        contentColor = MaterialTheme.colorScheme.onError
+                    shape    = RoundedCornerShape(12.dp),
+                    colors   = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
                     ),
-                    modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(stringResource(R.string.btn_confirmar), fontWeight = FontWeight.Medium)
+                    Text(stringResource(R.string.btn_confirmar), fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
@@ -575,8 +670,8 @@ fun NominaScreen(
                         idLiquidacionParaAnular = null
                         motivoAnulacion = ""
                     },
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
+                    shape    = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(stringResource(R.string.btn_cancelar))
                 }
@@ -587,12 +682,12 @@ fun NominaScreen(
     // BottomSheet de Novedades del Contrato
     if (uiState.contratoNovedadesSeleccionado != null) {
         NovedadesBottomSheet(
-            uiState = uiState,
-            onDismiss = { viewModel.cerrarNovedadesContrato() },
+            uiState           = uiState,
+            onDismiss         = { viewModel.cerrarNovedadesContrato() },
             onToggleInactivas = { viewModel.toggleMostrarInactivasNovedades(it) },
-            onNuevaNovedad = { viewModel.abrirFormularioNuevaNovedad() },
-            onEditarNovedad = { viewModel.abrirFormularioEditarNovedad(it) },
-            onAnularNovedad = { viewModel.anularNovedad(it) }
+            onNuevaNovedad    = { viewModel.abrirFormularioNuevaNovedad() },
+            onEditarNovedad   = { viewModel.abrirFormularioEditarNovedad(it) },
+            onAnularNovedad   = { viewModel.anularNovedad(it) }
         )
     }
 
@@ -600,11 +695,11 @@ fun NominaScreen(
     uiState.novedadFormDialogState?.let { formState ->
         NovedadFormDialog(
             dialogState = formState,
-            conceptos = uiState.conceptos,
-            periodo = uiState.periodoSeleccionado,
-            enAccion = uiState.novedadEnAccion,
-            onDismiss = { viewModel.cerrarFormularioNovedad() },
-            onGuardar = { idConcepto, fecha, valor, dias, obs ->
+            conceptos   = uiState.conceptos,
+            periodo     = uiState.periodoSeleccionado,
+            enAccion    = uiState.novedadEnAccion,
+            onDismiss   = { viewModel.cerrarFormularioNovedad() },
+            onGuardar   = { idConcepto, fecha, valor, dias, obs ->
                 viewModel.guardarNovedad(idConcepto, fecha, valor, dias, obs)
             }
         )
@@ -613,7 +708,7 @@ fun NominaScreen(
     // Diálogo de Creación de Período de Nómina
     if (uiState.mostrarCrearPeriodoDialog) {
         CrearPeriodoDialog(
-            creando = uiState.creandoPeriodo,
+            creando   = uiState.creandoPeriodo,
             onDismiss = { viewModel.cerrarCrearPeriodoDialog() },
             onGuardar = { nombre, fInicio, fFin ->
                 viewModel.crearPeriodoNomina(nombre, fInicio, fFin)
@@ -622,84 +717,99 @@ fun NominaScreen(
     }
 }
 
+// ─── Tarjeta de Contrato M3 ───────────────────────────────────────────────────
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ContratoNominaCard(
-    contrato: ContratoElegibleNomina,
-    enAccion: Boolean,
-    onPreliquidar: () -> Unit,
-    onVerDetalle: () -> Unit,
-    onLiquidar: () -> Unit,
-    onRecalcular: () -> Unit,
-    onDesprendible: () -> Unit,
+    contrato:                ContratoElegibleNomina,
+    enAccion:                Boolean,
+    onPreliquidar:           () -> Unit,
+    onVerDetalle:            () -> Unit,
+    onLiquidar:              () -> Unit,
+    onRecalcular:            () -> Unit,
+    onDesprendible:          () -> Unit,
     onCompartirDesprendible: () -> Unit,
-    onAnular: () -> Unit,
-    onNovedades: () -> Unit
+    onAnular:                () -> Unit,
+    onNovedades:             () -> Unit
 ) {
-    val estado = EstadoNominaContrato.desde(contrato)
+    val estado       = EstadoNominaContrato.desde(contrato)
+    val primaryColor = MaterialTheme.colorScheme.primary
 
-    Card(
+    OutlinedCard(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
+        shape    = RoundedCornerShape(18.dp),
+        colors   = CardDefaults.outlinedCardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            // Acciones superiores de PDF (si el contrato está liquidado)
+            // Acciones superiores de PDF
             if (estado is EstadoNominaContrato.Liquidada) {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier              = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment     = Alignment.CenterVertically
                 ) {
                     FilledTonalIconButton(
-                        onClick = onDesprendible,
-                        enabled = !enAccion,
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.size(34.dp)
+                        onClick  = onDesprendible,
+                        enabled  = !enAccion,
+                        shape    = RoundedCornerShape(10.dp),
+                        modifier = Modifier.size(36.dp)
                     ) {
                         Icon(
                             Icons.Default.Download,
                             contentDescription = "Descargar PDF",
-                            modifier = Modifier.size(18.dp)
+                            modifier           = Modifier.size(18.dp)
                         )
                     }
                     Spacer(modifier = Modifier.width(6.dp))
                     FilledTonalIconButton(
-                        onClick = onCompartirDesprendible,
-                        enabled = !enAccion,
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.size(34.dp)
+                        onClick  = onCompartirDesprendible,
+                        enabled  = !enAccion,
+                        shape    = RoundedCornerShape(10.dp),
+                        modifier = Modifier.size(36.dp)
                     ) {
                         Icon(
                             Icons.Default.Share,
                             contentDescription = "Compartir PDF",
-                            modifier = Modifier.size(18.dp)
+                            modifier           = Modifier.size(18.dp)
                         )
                     }
                 }
                 Spacer(modifier = Modifier.height(6.dp))
             }
 
-            // Header del profesional + Avatar M3 + Badge de estado
+            // Header del profesional + Avatar Canvas + Badge de estado
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier              = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment     = Alignment.CenterVertically
             ) {
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    modifier = Modifier.size(44.dp)
+                Box(
+                    modifier         = Modifier.size(52.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text(
-                            text = contrato.profesionalNombre.firstOrNull()?.uppercase() ?: "P",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                    Canvas(modifier = Modifier.fillMaxSize()) {
+                        drawCircle(
+                            color = primaryColor.copy(alpha = 0.25f),
+                            style = Stroke(width = 2.dp.toPx())
                         )
+                    }
+                    Surface(
+                        shape    = CircleShape,
+                        color    = MaterialTheme.colorScheme.primaryContainer,
+                        modifier = Modifier.size(44.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(
+                                text       = contrato.profesionalNombre.firstOrNull()?.uppercase() ?: "P",
+                                style      = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color      = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
                     }
                 }
 
@@ -707,23 +817,23 @@ fun ContratoNominaCard(
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = contrato.profesionalNombre,
-                        style = MaterialTheme.typography.titleSmall,
+                        text       = contrato.profesionalNombre,
+                        style      = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        color = MaterialTheme.colorScheme.onSurface
+                        maxLines   = 1,
+                        overflow   = TextOverflow.Ellipsis,
+                        color      = MaterialTheme.colorScheme.onSurface
                     )
                     if (!contrato.cargo.isNullOrBlank()) {
                         Text(
-                            text = contrato.cargo,
+                            text  = contrato.cargo,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     if (!contrato.profesionalDocumento.isNullOrBlank()) {
                         Text(
-                            text = stringResource(R.string.lbl_doc_prefix, contrato.profesionalDocumento),
+                            text  = stringResource(R.string.lbl_doc_prefix, contrato.profesionalDocumento),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -738,49 +848,50 @@ fun ContratoNominaCard(
 
             // Resumen de Salario Base y Neto Liquidado
             Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                shape    = RoundedCornerShape(14.dp),
+                color    = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.6f),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                    modifier            = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier              = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment     = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = stringResource(R.string.lbl_salario_base),
+                            text  = stringResource(R.string.lbl_salario_base),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            text = formatearCop(contrato.salarioBase),
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurface
+                            text       = formatearCop(contrato.salarioBase),
+                            style      = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color      = MaterialTheme.colorScheme.onSurface
                         )
                     }
 
                     if (estado is EstadoNominaContrato.Liquidada && contrato.netoLiquidado != null) {
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier              = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalAlignment     = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = stringResource(R.string.lbl_neto_liquidado),
+                                text  = stringResource(R.string.lbl_neto_liquidado),
                                 style = MaterialTheme.typography.bodySmall,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary
                             )
                             Text(
-                                text = formatearCop(contrato.netoLiquidado),
-                                style = MaterialTheme.typography.titleSmall,
+                                text       = formatearCop(contrato.netoLiquidado),
+                                style      = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
+                                color      = MaterialTheme.colorScheme.primary
                             )
                         }
                     }
@@ -790,23 +901,23 @@ fun ContratoNominaCard(
             if (estado is EstadoNominaContrato.PreliquidacionDesactualizada) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Surface(
-                    color = MaterialTheme.colorScheme.errorContainer,
-                    shape = RoundedCornerShape(10.dp),
+                    color    = MaterialTheme.colorScheme.errorContainer,
+                    shape    = RoundedCornerShape(10.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
-                        verticalAlignment = Alignment.CenterVertically,
+                        verticalAlignment     = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.padding(10.dp)
+                        modifier              = Modifier.padding(10.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Warning,
+                            imageVector        = Icons.Default.Warning,
                             contentDescription = null,
-                            modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.onErrorContainer
+                            modifier           = Modifier.size(16.dp),
+                            tint               = MaterialTheme.colorScheme.onErrorContainer
                         )
                         Text(
-                            text = stringResource(R.string.lbl_advertencia_prefix, textoMotivoNomina(estado.motivo)),
+                            text  = stringResource(R.string.lbl_advertencia_prefix, textoMotivoNomina(estado.motivo)),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onErrorContainer
                         )
@@ -814,7 +925,7 @@ fun ContratoNominaCard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
             if (enAccion) {
                 Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
@@ -822,24 +933,25 @@ fun ContratoNominaCard(
                 }
             } else {
                 FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier              = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                    verticalArrangement   = Arrangement.spacedBy(6.dp)
                 ) {
                     OutlinedButton(
-                        onClick = onNovedades,
-                        shape = RoundedCornerShape(10.dp),
+                        onClick        = onNovedades,
+                        shape          = RoundedCornerShape(12.dp),
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-                        modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 40.dp)
+                        modifier       = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 40.dp)
                     ) {
                         Icon(
                             Icons.AutoMirrored.Filled.List,
                             contentDescription = null,
-                            modifier = Modifier.size(18.dp)
+                            modifier           = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "Novedades",
+                            text     = "Novedades",
+                            fontWeight = FontWeight.SemiBold,
                             maxLines = 1,
                             softWrap = false
                         )
@@ -848,81 +960,84 @@ fun ContratoNominaCard(
                     when (estado) {
                         is EstadoNominaContrato.SinPreliquidar -> {
                             Button(
-                                onClick = onPreliquidar,
-                                shape = RoundedCornerShape(10.dp),
+                                onClick        = onPreliquidar,
+                                shape          = RoundedCornerShape(12.dp),
                                 contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
-                                modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 40.dp)
+                                modifier       = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 40.dp)
                             ) {
                                 Text(
-                                    text = stringResource(R.string.btn_preliquidar),
-                                    fontWeight = FontWeight.Medium,
-                                    maxLines = 1,
-                                    softWrap = false
+                                    text       = stringResource(R.string.btn_preliquidar),
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines   = 1,
+                                    softWrap   = false
                                 )
                             }
                         }
                         is EstadoNominaContrato.PreliquidadaLista -> {
                             TextButton(
-                                onClick = onVerDetalle,
+                                onClick        = onVerDetalle,
                                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
-                                modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 40.dp)
+                                modifier       = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 40.dp)
                             ) {
                                 Text(
-                                    text = stringResource(R.string.btn_ver_detalle),
+                                    text     = stringResource(R.string.btn_ver_detalle),
+                                    fontWeight = FontWeight.SemiBold,
                                     maxLines = 1,
                                     softWrap = false
                                 )
                             }
                             OutlinedButton(
-                                onClick = onRecalcular,
-                                shape = RoundedCornerShape(10.dp),
+                                onClick        = onRecalcular,
+                                shape          = RoundedCornerShape(12.dp),
                                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-                                modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 40.dp)
+                                modifier       = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 40.dp)
                             ) {
                                 Text(
-                                    text = stringResource(R.string.btn_recalcular),
+                                    text     = stringResource(R.string.btn_recalcular),
+                                    fontWeight = FontWeight.SemiBold,
                                     maxLines = 1,
                                     softWrap = false
                                 )
                             }
                             Button(
-                                onClick = onLiquidar,
-                                shape = RoundedCornerShape(10.dp),
+                                onClick        = onLiquidar,
+                                shape          = RoundedCornerShape(12.dp),
                                 contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
-                                modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 40.dp)
+                                modifier       = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 40.dp)
                             ) {
                                 Text(
-                                    text = stringResource(R.string.btn_liquidar),
-                                    fontWeight = FontWeight.Medium,
-                                    maxLines = 1,
-                                    softWrap = false
+                                    text       = stringResource(R.string.btn_liquidar),
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines   = 1,
+                                    softWrap   = false
                                 )
                             }
                         }
                         is EstadoNominaContrato.PreliquidacionDesactualizada -> {
                             Button(
-                                onClick = onRecalcular,
-                                shape = RoundedCornerShape(10.dp),
+                                onClick        = onRecalcular,
+                                shape          = RoundedCornerShape(12.dp),
                                 contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
-                                modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 40.dp)
+                                modifier       = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 40.dp)
                             ) {
                                 Text(
-                                    text = stringResource(R.string.btn_recalcular),
-                                    fontWeight = FontWeight.Medium,
-                                    maxLines = 1,
-                                    softWrap = false
+                                    text       = stringResource(R.string.btn_recalcular),
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines   = 1,
+                                    softWrap   = false
                                 )
                             }
                         }
                         is EstadoNominaContrato.Liquidada -> {
                             TextButton(
-                                onClick = onAnular,
-                                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                                onClick        = onAnular,
+                                colors         = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
                                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
-                                modifier = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 40.dp)
+                                modifier       = Modifier.defaultMinSize(minWidth = 48.dp, minHeight = 40.dp)
                             ) {
                                 Text(
-                                    text = stringResource(R.string.btn_anular),
+                                    text     = stringResource(R.string.btn_anular),
+                                    fontWeight = FontWeight.Bold,
                                     maxLines = 1,
                                     softWrap = false
                                 )
@@ -934,8 +1049,6 @@ fun ContratoNominaCard(
         }
     }
 }
-
-// ─── Badge Accesible de Estado M3 ─────────────────────────────────────────────
 
 private data class Quadruple<A, B, C, D>(
     val first: A,
@@ -974,23 +1087,23 @@ fun EstadoBadge(estado: EstadoNominaContrato) {
     }
 
     Surface(
-        color = containerColor,
+        color        = containerColor,
         contentColor = contentColor,
-        shape = RoundedCornerShape(12.dp)
+        shape        = RoundedCornerShape(10.dp)
     ) {
         Row(
-            verticalAlignment = Alignment.CenterVertically,
+            verticalAlignment     = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+            modifier              = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
         ) {
             Icon(
-                imageVector = icono,
+                imageVector        = icono,
                 contentDescription = null,
-                modifier = Modifier.size(12.dp)
+                modifier           = Modifier.size(12.dp)
             )
             Text(
-                text = texto,
-                style = MaterialTheme.typography.labelSmall,
+                text       = texto,
+                style      = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold
             )
         }
@@ -999,7 +1112,7 @@ fun EstadoBadge(estado: EstadoNominaContrato) {
 
 @Composable
 fun DetallePreliquidacionSheetContent(
-    detalle: PreliquidacionResponse,
+    detalle:         PreliquidacionResponse,
     onLiquidarClick: () -> Unit
 ) {
     Column(
@@ -1008,14 +1121,14 @@ fun DetallePreliquidacionSheetContent(
             .padding(20.dp)
     ) {
         Text(
-            text = stringResource(R.string.titulo_detalle_preliquidacion),
-            style = MaterialTheme.typography.titleLarge,
+            text       = stringResource(R.string.titulo_detalle_preliquidacion),
+            style      = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
+            color      = MaterialTheme.colorScheme.onSurface
         )
         if (!detalle.profesionalNombre.isNullOrBlank()) {
             Text(
-                text = detalle.profesionalNombre,
+                text  = detalle.profesionalNombre,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -1025,36 +1138,36 @@ fun DetallePreliquidacionSheetContent(
 
         // Card Prominente de Neto a Pagar M3
         Surface(
-            shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.primaryContainer,
+            shape    = RoundedCornerShape(18.dp),
+            color    = MaterialTheme.colorScheme.primaryContainer,
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(
-                modifier = Modifier.padding(16.dp),
+                modifier            = Modifier.padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier              = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment     = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = stringResource(R.string.lbl_neto_pagar),
-                        style = MaterialTheme.typography.titleMedium,
+                        text       = stringResource(R.string.lbl_neto_pagar),
+                        style      = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                        color      = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                     Text(
-                        text = formatearCop(detalle.netoPagar),
-                        style = MaterialTheme.typography.headlineSmall,
+                        text       = formatearCop(detalle.netoPagar),
+                        style      = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                        color      = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 }
 
                 HorizontalDivider(
                     thickness = 0.5.dp,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f)
+                    color     = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f)
                 )
 
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -1082,27 +1195,27 @@ fun DetallePreliquidacionSheetContent(
 
         // Lista de conceptos agrupados
         Text(
-            text = stringResource(R.string.lbl_conceptos),
-            style = MaterialTheme.typography.titleMedium,
+            text       = stringResource(R.string.lbl_conceptos),
+            style      = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
+            color      = MaterialTheme.colorScheme.onSurface
         )
         Spacer(modifier = Modifier.height(8.dp))
 
-        val devengados = detalle.detalles.filter { it.tipoConcepto == 1 }
+        val devengados  = detalle.detalles.filter { it.tipoConcepto == 1 }
         val deducciones = detalle.detalles.filter { it.tipoConcepto == 2 }
 
         LazyColumn(
-            modifier = Modifier.fillMaxWidth().weight(1f, fill = false),
+            modifier            = Modifier.fillMaxWidth().weight(1f, fill = false),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             if (devengados.isNotEmpty()) {
                 item {
                     Text(
-                        text = stringResource(R.string.lbl_devengados).uppercase(),
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
+                        text          = stringResource(R.string.lbl_devengados).uppercase(),
+                        style         = MaterialTheme.typography.labelSmall,
+                        fontWeight    = FontWeight.Bold,
+                        color         = MaterialTheme.colorScheme.primary
                     )
                 }
                 items(devengados) { item -> ConceptoItemRow(item) }
@@ -1112,10 +1225,10 @@ fun DetallePreliquidacionSheetContent(
                 item {
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = stringResource(R.string.lbl_deducciones).uppercase(),
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.error
+                        text          = stringResource(R.string.lbl_deducciones).uppercase(),
+                        style         = MaterialTheme.typography.labelSmall,
+                        fontWeight    = FontWeight.Bold,
+                        color         = MaterialTheme.colorScheme.error
                     )
                 }
                 items(deducciones) { item -> ConceptoItemRow(item) }
@@ -1127,11 +1240,11 @@ fun DetallePreliquidacionSheetContent(
         // Botón Liquidar / Advertencia
         if (detalle.liquidable == true) {
             Button(
-                onClick = onLiquidarClick,
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(
+                onClick  = onLiquidarClick,
+                shape    = RoundedCornerShape(12.dp),
+                colors   = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
+                    contentColor   = MaterialTheme.colorScheme.onPrimary
                 ),
                 modifier = Modifier.fillMaxWidth().defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
             ) {
@@ -1141,14 +1254,14 @@ fun DetallePreliquidacionSheetContent(
             }
         } else {
             Surface(
-                color = MaterialTheme.colorScheme.errorContainer,
-                shape = RoundedCornerShape(12.dp),
+                color    = MaterialTheme.colorScheme.errorContainer,
+                shape    = RoundedCornerShape(12.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    text = stringResource(R.string.lbl_no_liquidable_prefix, textoMotivoNomina(detalle.motivo)),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onErrorContainer,
+                    text     = stringResource(R.string.lbl_no_liquidable_prefix, textoMotivoNomina(detalle.motivo)),
+                    style    = MaterialTheme.typography.bodyMedium,
+                    color    = MaterialTheme.colorScheme.onErrorContainer,
                     modifier = Modifier.padding(14.dp)
                 )
             }
@@ -1159,28 +1272,29 @@ fun DetallePreliquidacionSheetContent(
 @Composable
 fun ConceptoItemRow(item: PreliquidacionDetalleResponse) {
     Surface(
-        shape = RoundedCornerShape(10.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+        shape    = RoundedCornerShape(12.dp),
+        color    = MaterialTheme.colorScheme.surfaceContainerLow,
+        border   = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+            modifier              = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment     = Alignment.CenterVertically
         ) {
             Column(
-                modifier = Modifier.weight(1f),
+                modifier            = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 Text(
-                    text = item.nombreConcepto ?: item.codigoConcepto ?: stringResource(R.string.lbl_concepto_default),
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurface
+                    text       = item.nombreConcepto ?: item.codigoConcepto ?: stringResource(R.string.lbl_concepto_default),
+                    style      = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color      = MaterialTheme.colorScheme.onSurface
                 )
 
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
+                    verticalAlignment     = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     if (item.idNovedadNomina != null) {
@@ -1189,9 +1303,9 @@ fun ConceptoItemRow(item: PreliquidacionDetalleResponse) {
                             color = MaterialTheme.colorScheme.primaryContainer
                         ) {
                             Text(
-                                text = "Novedad",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                text     = "Novedad",
+                                style    = MaterialTheme.typography.labelSmall,
+                                color    = MaterialTheme.colorScheme.onPrimaryContainer,
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)
                             )
                         }
@@ -1202,16 +1316,16 @@ fun ConceptoItemRow(item: PreliquidacionDetalleResponse) {
                             color = MaterialTheme.colorScheme.tertiaryContainer
                         ) {
                             Text(
-                                text = "Préstamo",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                text     = "Préstamo",
+                                style    = MaterialTheme.typography.labelSmall,
+                                color    = MaterialTheme.colorScheme.onTertiaryContainer,
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)
                             )
                         }
                     }
                     if (item.cantidad != null && item.cantidad > 0) {
                         Text(
-                            text = stringResource(R.string.lbl_cantidad_prefix, formatearCantidad(item.cantidad)),
+                            text  = stringResource(R.string.lbl_cantidad_prefix, formatearCantidad(item.cantidad)),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -1222,10 +1336,10 @@ fun ConceptoItemRow(item: PreliquidacionDetalleResponse) {
             Spacer(modifier = Modifier.width(12.dp))
 
             Text(
-                text = formatearCop(item.valor),
-                style = MaterialTheme.typography.bodyMedium,
+                text       = formatearCop(item.valor),
+                style      = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
+                color      = MaterialTheme.colorScheme.onSurface
             )
         }
     }
@@ -1242,7 +1356,7 @@ fun formatearCantidad(cantidad: Double?): String {
 
 private fun abrirPdfConIntent(context: Context, file: File) {
     try {
-        val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+        val uri    = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
         val intent = Intent(Intent.ACTION_VIEW).apply {
             setDataAndType(uri, "application/pdf")
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
@@ -1260,24 +1374,25 @@ private fun abrirPdfConIntent(context: Context, file: File) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NovedadesBottomSheet(
-    uiState: NominaUiState,
-    onDismiss: () -> Unit,
+    uiState:           NominaUiState,
+    onDismiss:         () -> Unit,
     onToggleInactivas: (Boolean) -> Unit,
-    onNuevaNovedad: () -> Unit,
-    onEditarNovedad: (NovedadNominaResponse) -> Unit,
-    onAnularNovedad: (NovedadNominaResponse) -> Unit
+    onNuevaNovedad:    () -> Unit,
+    onEditarNovedad:   (NovedadNominaResponse) -> Unit,
+    onAnularNovedad:   (NovedadNominaResponse) -> Unit
 ) {
-    val contrato = uiState.contratoNovedadesSeleccionado ?: return
-    val periodo = uiState.periodoSeleccionado
-    val esLiquidado = contrato.idLiquidacionVigente != null
-    val esAbierto = periodo.esAbierto()
+    val contrato      = uiState.contratoNovedadesSeleccionado ?: return
+    val periodo       = uiState.periodoSeleccionado
+    val esLiquidado   = contrato.idLiquidacionVigente != null
+    val esAbierto     = periodo.esAbierto()
     val esModificable = esAbierto && !esLiquidado
 
     var novedadParaAnular by remember { mutableStateOf<NovedadNominaResponse?>(null) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+        shape            = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+        containerColor   = MaterialTheme.colorScheme.surfaceContainerHigh
     ) {
         Column(
             modifier = Modifier
@@ -1285,21 +1400,21 @@ fun NovedadesBottomSheet(
                 .padding(horizontal = 20.dp, vertical = 12.dp)
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier              = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment     = Alignment.CenterVertically
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Novedades - ${contrato.profesionalNombre}",
-                        style = MaterialTheme.typography.titleMedium,
+                        text       = "Novedades - ${contrato.profesionalNombre}",
+                        style      = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        maxLines   = 1,
+                        overflow   = TextOverflow.Ellipsis
                     )
                     if (periodo != null) {
                         Text(
-                            text = "Período: ${periodo.nombre} (${formatearFechaDisplay(periodo.fechaInicio)} al ${formatearFechaDisplay(periodo.fechaFin)})",
+                            text  = "Período: ${periodo.nombre} (${formatearFechaDisplay(periodo.fechaInicio)} al ${formatearFechaDisplay(periodo.fechaFin)})",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -1313,18 +1428,18 @@ fun NovedadesBottomSheet(
             Spacer(modifier = Modifier.height(8.dp))
 
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier              = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment     = Alignment.CenterVertically
             ) {
                 FilterChip(
-                    selected = uiState.mostrarInactivasNovedades,
-                    onClick = { onToggleInactivas(!uiState.mostrarInactivasNovedades) },
-                    label = { Text("Mostrar inactivas", style = MaterialTheme.typography.labelMedium) },
+                    selected    = uiState.mostrarInactivasNovedades,
+                    onClick     = { onToggleInactivas(!uiState.mostrarInactivasNovedades) },
+                    label       = { Text("Mostrar inactivas", style = MaterialTheme.typography.labelMedium) },
                     leadingIcon = if (uiState.mostrarInactivasNovedades) {
                         { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
                     } else null,
-                    shape = RoundedCornerShape(8.dp)
+                    shape = RoundedCornerShape(10.dp)
                 )
 
                 if (esModificable) {
@@ -1333,11 +1448,11 @@ fun NovedadesBottomSheet(
                     Button(
                         onClick = onNuevaNovedad,
                         enabled = !uiState.novedadEnAccion,
-                        shape = RoundedCornerShape(10.dp)
+                        shape   = RoundedCornerShape(12.dp)
                     ) {
                         Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Nueva novedad", fontWeight = FontWeight.Medium)
+                        Text("Nueva novedad", fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -1345,21 +1460,21 @@ fun NovedadesBottomSheet(
             if (esLiquidado) {
                 Spacer(modifier = Modifier.height(6.dp))
                 Surface(
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    shape = RoundedCornerShape(8.dp),
+                    color    = MaterialTheme.colorScheme.surfaceContainerLow,
+                    shape    = RoundedCornerShape(10.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = "El contrato ya se encuentra liquidado. Las novedades son de solo lectura.",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        text     = "El contrato ya se encuentra liquidado. Las novedades son de solo lectura.",
+                        style    = MaterialTheme.typography.labelSmall,
+                        color    = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
                     )
                 }
             } else if (!esAbierto) {
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = "El período seleccionado no está abierto. Solo lectura.",
+                    text  = "El período seleccionado no está abierto. Solo lectura.",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.error
                 )
@@ -1397,16 +1512,16 @@ fun NovedadesBottomSheet(
                 } else {
                     LazyColumn(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
-                        contentPadding = PaddingValues(bottom = 24.dp),
-                        modifier = Modifier.weight(1f, fill = false)
+                        contentPadding      = PaddingValues(bottom = 24.dp),
+                        modifier            = Modifier.weight(1f, fill = false)
                     ) {
                         items(listaMostrar, key = { it.id }) { novedad ->
                             NovedadItemCard(
-                                novedad = novedad,
+                                novedad       = novedad,
                                 esModificable = esModificable,
-                                enAccion = uiState.novedadEnAccion,
-                                onEditar = { onEditarNovedad(novedad) },
-                                onAnular = { novedadParaAnular = novedad }
+                                enAccion      = uiState.novedadEnAccion,
+                                onEditar      = { onEditarNovedad(novedad) },
+                                onAnular      = { novedadParaAnular = novedad }
                             )
                         }
                     }
@@ -1418,12 +1533,13 @@ fun NovedadesBottomSheet(
     novedadParaAnular?.let { nov ->
         AlertDialog(
             onDismissRequest = { novedadParaAnular = null },
-            shape = RoundedCornerShape(20.dp),
+            shape            = RoundedCornerShape(28.dp),
+            containerColor   = MaterialTheme.colorScheme.surfaceContainerHigh,
             title = {
-                Text("Anular Novedad", fontWeight = FontWeight.Bold)
+                Text("Anular Novedad", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
             },
             text = {
-                Text("¿Desea anular la novedad '${nov.nombreConcepto ?: "Concepto"}' por valor de ${formatearCop(nov.valor)}?")
+                Text("¿Desea anular la novedad '${nov.nombreConcepto ?: "Concepto"}' por valor de ${formatearCop(nov.valor)}?", style = MaterialTheme.typography.bodyMedium)
             },
             confirmButton = {
                 Button(
@@ -1432,13 +1548,17 @@ fun NovedadesBottomSheet(
                         novedadParaAnular = null
                         onAnularNovedad(n)
                     },
+                    shape  = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                 ) {
-                    Text("Anular")
+                    Text("Anular", fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
-                OutlinedButton(onClick = { novedadParaAnular = null }) {
+                OutlinedButton(
+                    onClick = { novedadParaAnular = null },
+                    shape   = RoundedCornerShape(12.dp)
+                ) {
                     Text("Cancelar")
                 }
             }
@@ -1448,35 +1568,37 @@ fun NovedadesBottomSheet(
 
 @Composable
 fun NovedadItemCard(
-    novedad: NovedadNominaResponse,
+    novedad:       NovedadNominaResponse,
     esModificable: Boolean,
-    enAccion: Boolean,
-    onEditar: () -> Unit,
-    onAnular: () -> Unit
+    enAccion:      Boolean,
+    onEditar:      () -> Unit,
+    onAnular:      () -> Unit
 ) {
     val activa = novedad.estado
 
-    Surface(
-        shape = RoundedCornerShape(12.dp),
-        color = if (activa) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f),
-        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant)
+    OutlinedCard(
+        shape    = RoundedCornerShape(14.dp),
+        colors   = CardDefaults.outlinedCardColors(
+            containerColor = if (activa) MaterialTheme.colorScheme.surfaceContainerLow else MaterialTheme.colorScheme.surfaceContainerLowest
+        ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+        modifier = Modifier.fillMaxWidth()
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
+        Column(modifier = Modifier.padding(14.dp)) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier              = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment     = Alignment.CenterVertically
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = novedad.nombreConcepto ?: "Concepto #${novedad.idConcepto}",
-                        style = MaterialTheme.typography.titleSmall,
+                        text       = novedad.nombreConcepto ?: "Concepto #${novedad.idConcepto}",
+                        style      = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
-                        color = if (activa) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+                        color      = if (activa) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = "Fecha: ${formatearFechaDisplay(novedad.fechaNovedad)}",
+                        text  = "Fecha: ${formatearFechaDisplay(novedad.fechaNovedad)}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -1487,9 +1609,10 @@ fun NovedadItemCard(
                     color = if (activa) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.errorContainer
                 ) {
                     Text(
-                        text = if (activa) "Activa" else "Inactiva",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = if (activa) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onErrorContainer,
+                        text     = if (activa) "Activa" else "Inactiva",
+                        style    = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color    = if (activa) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onErrorContainer,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
                     )
                 }
@@ -1498,20 +1621,20 @@ fun NovedadItemCard(
             Spacer(modifier = Modifier.height(8.dp))
 
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier              = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment     = Alignment.CenterVertically
             ) {
                 Column {
                     Text(
-                        text = formatearCop(novedad.valor),
-                        style = MaterialTheme.typography.bodyMedium,
+                        text       = formatearCop(novedad.valor),
+                        style      = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Bold,
-                        color = if (activa) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                        color      = if (activa) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     if (novedad.dias != null && novedad.dias > 0) {
                         Text(
-                            text = "Días: ${formatearCantidad(novedad.dias)}",
+                            text  = "Días: ${formatearCantidad(novedad.dias)}",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -1527,8 +1650,8 @@ fun NovedadItemCard(
                             Icon(
                                 Icons.Default.Delete,
                                 contentDescription = "Anular",
-                                tint = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.size(18.dp)
+                                tint               = MaterialTheme.colorScheme.error,
+                                modifier           = Modifier.size(18.dp)
                             )
                         }
                     }
@@ -1536,12 +1659,19 @@ fun NovedadItemCard(
             }
 
             if (!novedad.observaciones.isNullOrBlank()) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "Obs: ${novedad.observaciones}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.5f),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text     = "Obs: ${novedad.observaciones}",
+                        style    = MaterialTheme.typography.labelSmall,
+                        color    = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
             }
         }
     }
@@ -1551,20 +1681,20 @@ fun NovedadItemCard(
 @Composable
 fun NovedadFormDialog(
     dialogState: NovedadFormDialogState,
-    conceptos: List<ConceptoResponse>,
-    periodo: com.spa.appointments.domain.model.PeriodoNominaItem?,
-    enAccion: Boolean,
-    onDismiss: () -> Unit,
-    onGuardar: (idConcepto: Int, fecha: String, valor: String, dias: String, obs: String) -> Unit
+    conceptos:   List<ConceptoResponse>,
+    periodo:     PeriodoNominaItem?,
+    enAccion:    Boolean,
+    onDismiss:   () -> Unit,
+    onGuardar:   (idConcepto: Int, fecha: String, valor: String, dias: String, obs: String) -> Unit
 ) {
-    val context = LocalContext.current
+    val context   = LocalContext.current
     val esEdicion = dialogState.novedadEditar != null
 
-    var selectedConceptoId by remember { mutableStateOf(dialogState.idConceptoSeleccionado ?: conceptos.firstOrNull()?.id ?: 0) }
-    var fechaNovedad by remember { mutableStateOf(dialogState.fechaNovedad.ifBlank { periodo?.fechaInicio?.take(10) ?: "" }) }
-    var valor by remember { mutableStateOf(dialogState.valor) }
-    var dias by remember { mutableStateOf(dialogState.dias) }
-    var observaciones by remember { mutableStateOf(dialogState.observaciones) }
+    var selectedConceptoId   by remember { mutableStateOf(dialogState.idConceptoSeleccionado ?: conceptos.firstOrNull()?.id ?: 0) }
+    var fechaNovedad         by remember { mutableStateOf(dialogState.fechaNovedad.ifBlank { periodo?.fechaInicio?.take(10) ?: "" }) }
+    var valor                by remember { mutableStateOf(dialogState.valor) }
+    var dias                 by remember { mutableStateOf(dialogState.dias) }
+    var observaciones        by remember { mutableStateOf(dialogState.observaciones) }
     var conceptoMenuExpanded by remember { mutableStateOf(false) }
 
     val selectedConcepto = remember(selectedConceptoId, conceptos) {
@@ -1572,7 +1702,6 @@ fun NovedadFormDialog(
     }
     val requiereDias = selectedConcepto?.descuentaDiasSueldo == true
 
-    // Category Filter: 1 = Devengado, 2 = Deducción
     var tipoConceptoFiltro by remember {
         mutableStateOf(selectedConcepto?.tipoConcepto ?: 1)
     }
@@ -1581,7 +1710,6 @@ fun NovedadFormDialog(
         conceptos.filter { it.tipoConcepto == tipoConceptoFiltro }
     }
 
-    // Parse date limits for DatePickerDialog (local timezone, inclusive of full end day)
     val fechaInicioMillis = remember(periodo) {
         try {
             val datePart = periodo?.fechaInicio?.take(10) ?: return@remember null
@@ -1629,81 +1757,85 @@ fun NovedadFormDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(20.dp),
+        shape            = RoundedCornerShape(28.dp),
+        containerColor   = MaterialTheme.colorScheme.surfaceContainerHigh,
         title = {
             Text(
-                text = if (esEdicion) "Editar Novedad" else "Nueva Novedad",
-                fontWeight = FontWeight.Bold
+                text       = if (esEdicion) "Editar Novedad" else "Nueva Novedad",
+                fontWeight = FontWeight.Bold,
+                style      = MaterialTheme.typography.titleMedium
             )
         },
         text = {
             Column(
-                modifier = Modifier.fillMaxWidth(),
+                modifier            = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                // Category Selector Chips (Devengados vs Deducciones)
                 if (!esEdicion) {
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier              = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         FilterChip(
                             selected = tipoConceptoFiltro == 1,
-                            onClick = {
+                            onClick  = {
                                 tipoConceptoFiltro = 1
                                 conceptos.firstOrNull { it.tipoConcepto == 1 }?.let { selectedConceptoId = it.id }
                             },
-                            label = { Text("Devengados", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center) },
+                            label    = { Text("Devengados", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center) },
                             modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(8.dp)
+                            shape    = RoundedCornerShape(10.dp)
                         )
                         FilterChip(
                             selected = tipoConceptoFiltro == 2,
-                            onClick = {
+                            onClick  = {
                                 tipoConceptoFiltro = 2
                                 conceptos.firstOrNull { it.tipoConcepto == 2 }?.let { selectedConceptoId = it.id }
                             },
-                            label = { Text("Deducciones", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center) },
+                            label    = { Text("Deducciones", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center) },
                             modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(8.dp)
+                            shape    = RoundedCornerShape(10.dp)
                         )
                     }
                 }
 
-                // Selector de Concepto (shows clean full names)
                 ExposedDropdownMenuBox(
-                    expanded = conceptoMenuExpanded,
+                    expanded         = conceptoMenuExpanded,
                     onExpandedChange = { if (!esEdicion) conceptoMenuExpanded = it },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier         = Modifier.fillMaxWidth()
                 ) {
                     val textoConcepto = selectedConcepto?.nombre ?: "Seleccione un concepto"
 
                     OutlinedTextField(
-                        value = textoConcepto,
+                        value        = textoConcepto,
                         onValueChange = {},
-                        readOnly = true,
-                        enabled = !esEdicion,
-                        label = { Text("Concepto") },
+                        readOnly     = true,
+                        enabled      = !esEdicion,
+                        label        = { Text("Concepto") },
                         trailingIcon = { if (!esEdicion) ExposedDropdownMenuDefaults.TrailingIcon(expanded = conceptoMenuExpanded) },
-                        modifier = Modifier.menuAnchor().fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
+                        modifier     = Modifier.menuAnchor().fillMaxWidth(),
+                        shape        = RoundedCornerShape(14.dp),
+                        colors       = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                        )
                     )
 
                     ExposedDropdownMenu(
-                        expanded = conceptoMenuExpanded,
+                        expanded         = conceptoMenuExpanded,
                         onDismissRequest = { conceptoMenuExpanded = false }
                     ) {
                         conceptosFiltrados.forEach { concepto ->
                             DropdownMenuItem(
                                 text = {
                                     Text(
-                                        text = concepto.nombre,
-                                        style = MaterialTheme.typography.bodyMedium,
+                                        text       = concepto.nombre,
+                                        style      = MaterialTheme.typography.bodyMedium,
                                         fontWeight = FontWeight.Medium
                                     )
                                 },
                                 onClick = {
-                                    selectedConceptoId = concepto.id
+                                    selectedConceptoId   = concepto.id
                                     conceptoMenuExpanded = false
                                 }
                             )
@@ -1711,70 +1843,79 @@ fun NovedadFormDialog(
                     }
                 }
 
-                // Date Picker restricted to period date range
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { abrirDatePicker() }
                 ) {
                     OutlinedTextField(
-                        value = fechaNovedad,
+                        value        = fechaNovedad,
                         onValueChange = {},
-                        readOnly = true,
-                        enabled = false,
-                        label = { Text("Fecha de la novedad") },
-                        placeholder = { Text("yyyy-MM-dd") },
+                        readOnly     = true,
+                        enabled      = false,
+                        label        = { Text("Fecha de la novedad") },
+                        placeholder  = { Text("yyyy-MM-dd") },
                         trailingIcon = {
                             Icon(Icons.Default.CalendarToday, contentDescription = "Seleccionar fecha")
                         },
                         colors = OutlinedTextFieldDefaults.colors(
-                            disabledTextColor = MaterialTheme.colorScheme.onSurface,
-                            disabledBorderColor = MaterialTheme.colorScheme.outline,
-                            disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            disabledTextColor         = MaterialTheme.colorScheme.onSurface,
+                            disabledBorderColor       = MaterialTheme.colorScheme.outlineVariant,
+                            disabledLabelColor        = MaterialTheme.colorScheme.onSurfaceVariant,
+                            disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            disabledContainerColor    = MaterialTheme.colorScheme.surfaceContainerLow
                         ),
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
+                        shape    = RoundedCornerShape(14.dp)
                     )
                 }
 
-                // Field for Días (if concept descontarDiasSueldo == true)
                 if (requiereDias) {
                     OutlinedTextField(
-                        value = dias,
+                        value         = dias,
                         onValueChange = { dias = it },
-                        label = { Text("Días (Obligatorio)") },
-                        placeholder = { Text("Ej: 1") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
+                        label         = { Text("Días (Obligatorio)") },
+                        placeholder   = { Text("Ej: 1") },
+                        singleLine    = true,
+                        modifier      = Modifier.fillMaxWidth(),
+                        shape         = RoundedCornerShape(14.dp),
+                        colors        = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                        )
                     )
                 }
 
-                // Field for Valor
                 OutlinedTextField(
-                    value = valor,
-                    onValueChange = { valor = it },
-                    label = { Text("Valor ($)") },
-                    placeholder = { Text(if (requiereDias) "Opcional (Auto-calculado si queda vacío)" else "Ej: 150000") },
+                    value          = valor,
+                    onValueChange  = { valor = it },
+                    label          = { Text("Valor ($)") },
+                    placeholder    = { Text(if (requiereDias) "Opcional (Auto-calculado si queda vacío)" else "Ej: 150000") },
                     supportingText = {
                         if (requiereDias) {
                             Text("Se calcula automáticamente según salario diario si se deja vacío")
                         }
                     },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
+                    modifier   = Modifier.fillMaxWidth(),
+                    shape      = RoundedCornerShape(14.dp),
+                    colors     = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                    )
                 )
 
-                // Observaciones
                 OutlinedTextField(
-                    value = observaciones,
+                    value         = observaciones,
                     onValueChange = { observaciones = it },
-                    label = { Text("Observaciones (Opcional)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    maxLines = 3,
-                    shape = RoundedCornerShape(12.dp)
+                    label         = { Text("Observaciones (Opcional)") },
+                    modifier      = Modifier.fillMaxWidth(),
+                    maxLines      = 3,
+                    shape         = RoundedCornerShape(14.dp),
+                    colors        = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                    )
                 )
             }
         },
@@ -1783,38 +1924,44 @@ fun NovedadFormDialog(
                 onClick = {
                     onGuardar(selectedConceptoId, fechaNovedad, valor, dias, observaciones)
                 },
-                enabled = !enAccion,
-                shape = RoundedCornerShape(10.dp)
+                enabled  = !enAccion,
+                shape    = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth()
             ) {
                 if (enAccion) {
                     CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                 } else {
-                    Text("Guardar")
+                    Text("Guardar", fontWeight = FontWeight.Bold)
                 }
             }
         },
         dismissButton = {
-            OutlinedButton(onClick = onDismiss, enabled = !enAccion, shape = RoundedCornerShape(10.dp)) {
+            OutlinedButton(
+                onClick  = onDismiss,
+                enabled  = !enAccion,
+                shape    = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Text("Cancelar")
             }
         }
     )
 }
 
-// ── Composable de Creación de Período ───────────────────────────────────────
+// ─── Composable de Creación de Período ───────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CrearPeriodoDialog(
-    creando: Boolean,
+    creando:   Boolean,
     onDismiss: () -> Unit,
     onGuardar: (nombre: String, fechaInicio: String, fechaFin: String) -> Unit
 ) {
     val context = LocalContext.current
 
-    var nombre by remember { mutableStateOf("") }
+    var nombre      by remember { mutableStateOf("") }
     var fechaInicio by remember { mutableStateOf(java.time.LocalDate.now().withDayOfMonth(1).format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE)) }
-    var fechaFin by remember { mutableStateOf(java.time.LocalDate.now().withDayOfMonth(15).format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE)) }
+    var fechaFin    by remember { mutableStateOf(java.time.LocalDate.now().withDayOfMonth(15).format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE)) }
 
     fun abrirDatePickerInicio() {
         val fActual = try { java.time.LocalDate.parse(fechaInicio) } catch (_: Exception) { java.time.LocalDate.now() }
@@ -1846,79 +1993,92 @@ fun CrearPeriodoDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(20.dp),
+        shape            = RoundedCornerShape(28.dp),
+        containerColor   = MaterialTheme.colorScheme.surfaceContainerHigh,
         title = {
-            Text("Nuevo Período de Nómina", fontWeight = FontWeight.Bold)
+            Text("Nuevo Período de Nómina", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
         },
         text = {
             Column(
-                modifier = Modifier.fillMaxWidth(),
+                modifier            = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 OutlinedTextField(
-                    value = nombre,
+                    value         = nombre,
                     onValueChange = { nombre = it },
-                    label = { Text("Nombre del Período (Opcional)") },
-                    placeholder = { Text("Ej: 1ra Quincena - Noviembre 2026") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
+                    label         = { Text("Nombre del Período (Opcional)") },
+                    placeholder   = { Text("Ej: 1ra Quincena - Noviembre 2026") },
+                    singleLine    = true,
+                    modifier      = Modifier.fillMaxWidth(),
+                    shape         = RoundedCornerShape(14.dp),
+                    colors        = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                    )
                 )
 
                 Box(modifier = Modifier.fillMaxWidth().clickable { abrirDatePickerInicio() }) {
                     OutlinedTextField(
-                        value = fechaInicio,
+                        value        = fechaInicio,
                         onValueChange = {},
-                        readOnly = true,
-                        enabled = false,
-                        label = { Text("Fecha de Inicio") },
+                        readOnly     = true,
+                        enabled      = false,
+                        label        = { Text("Fecha de Inicio") },
                         trailingIcon = { Icon(Icons.Default.CalendarToday, contentDescription = null) },
-                        colors = OutlinedTextFieldDefaults.colors(
-                            disabledTextColor = MaterialTheme.colorScheme.onSurface,
-                            disabledBorderColor = MaterialTheme.colorScheme.outline,
-                            disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        colors       = OutlinedTextFieldDefaults.colors(
+                            disabledTextColor         = MaterialTheme.colorScheme.onSurface,
+                            disabledBorderColor       = MaterialTheme.colorScheme.outlineVariant,
+                            disabledLabelColor        = MaterialTheme.colorScheme.onSurfaceVariant,
+                            disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            disabledContainerColor    = MaterialTheme.colorScheme.surfaceContainerLow
                         ),
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
+                        shape    = RoundedCornerShape(14.dp)
                     )
                 }
 
                 Box(modifier = Modifier.fillMaxWidth().clickable { abrirDatePickerFin() }) {
                     OutlinedTextField(
-                        value = fechaFin,
+                        value        = fechaFin,
                         onValueChange = {},
-                        readOnly = true,
-                        enabled = false,
-                        label = { Text("Fecha de Fin") },
+                        readOnly     = true,
+                        enabled      = false,
+                        label        = { Text("Fecha de Fin") },
                         trailingIcon = { Icon(Icons.Default.CalendarToday, contentDescription = null) },
-                        colors = OutlinedTextFieldDefaults.colors(
-                            disabledTextColor = MaterialTheme.colorScheme.onSurface,
-                            disabledBorderColor = MaterialTheme.colorScheme.outline,
-                            disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        colors       = OutlinedTextFieldDefaults.colors(
+                            disabledTextColor         = MaterialTheme.colorScheme.onSurface,
+                            disabledBorderColor       = MaterialTheme.colorScheme.outlineVariant,
+                            disabledLabelColor        = MaterialTheme.colorScheme.onSurfaceVariant,
+                            disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            disabledContainerColor    = MaterialTheme.colorScheme.surfaceContainerLow
                         ),
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
+                        shape    = RoundedCornerShape(14.dp)
                     )
                 }
             }
         },
         confirmButton = {
             Button(
-                onClick = { onGuardar(nombre, fechaInicio, fechaFin) },
-                enabled = !creando,
-                shape = RoundedCornerShape(10.dp)
+                onClick  = { onGuardar(nombre, fechaInicio, fechaFin) },
+                enabled  = !creando,
+                shape    = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth()
             ) {
                 if (creando) {
                     CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                 } else {
-                    Text("Crear Período")
+                    Text("Crear Período", fontWeight = FontWeight.Bold)
                 }
             }
         },
         dismissButton = {
-            OutlinedButton(onClick = onDismiss, enabled = !creando, shape = RoundedCornerShape(10.dp)) {
+            OutlinedButton(
+                onClick  = onDismiss,
+                enabled  = !creando,
+                shape    = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Text("Cancelar")
             }
         }
@@ -1927,7 +2087,7 @@ fun CrearPeriodoDialog(
 
 private fun compartirPdfConIntent(context: Context, file: File) {
     try {
-        val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+        val uri    = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
         val intent = Intent(Intent.ACTION_SEND).apply {
             type = "application/pdf"
             putExtra(Intent.EXTRA_STREAM, uri)
