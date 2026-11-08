@@ -1,6 +1,7 @@
 // Ruta: app/src/main/java/com/spa/appointments/ui/gastos/GastoFormDialog.kt
 package com.spa.appointments.ui.gastos
 
+import android.app.DatePickerDialog
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -16,17 +17,15 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.spa.appointments.domain.model.GastoRequest
 import com.spa.appointments.domain.model.MetodoPago
 import com.spa.appointments.domain.model.MetodoPagoDetalle
 import com.spa.appointments.domain.model.Sede
-import java.time.Instant
 import java.time.LocalDate
-import java.time.ZoneOffset
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,6 +35,7 @@ fun GastoFormDialog(
     onDismiss: () -> Unit,
     onConfirmar: (GastoRequest) -> Unit
 ) {
+    val context = LocalContext.current
     var concepto by remember { mutableStateOf("") }
     var valor by remember { mutableStateOf("") }
     var fechaGasto by remember { mutableStateOf(LocalDate.now().toString()) }
@@ -45,7 +45,24 @@ fun GastoFormDialog(
     var expandedSede by remember { mutableStateOf(false) }
     var expandedMetodo by remember { mutableStateOf(false) }
     var expandedDetalle by remember { mutableStateOf(false) }
-    var mostrarDatePicker by remember { mutableStateOf(false) }
+
+    val fechaParsed = remember(fechaGasto) {
+        runCatching { LocalDate.parse(fechaGasto) }.getOrElse { LocalDate.now() }
+    }
+
+    val nativeDatePicker = remember(fechaParsed) {
+        DatePickerDialog(
+            context,
+            { _, year, month, dayOfMonth ->
+                fechaGasto = String.format(java.util.Locale.US, "%d-%02d-%02d", year, month + 1, dayOfMonth)
+            },
+            fechaParsed.year,
+            fechaParsed.monthValue - 1,
+            fechaParsed.dayOfMonth
+        ).apply {
+            datePicker.maxDate = System.currentTimeMillis()
+        }
+    }
 
     val formularioValido = concepto.isNotBlank()
             && valor.toDoubleOrNull() != null
@@ -96,7 +113,9 @@ fun GastoFormDialog(
 
                 // Campos en scroll
                 Column(
-                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                    modifier = Modifier
+                        .weight(1f, fill = false)
+                        .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     // Concepto
@@ -135,7 +154,7 @@ fun GastoFormDialog(
                         } else null
                     )
 
-                    // Fecha
+                    // Fecha con Calendario Nativo
                     OutlinedTextField(
                         value = fechaGasto,
                         onValueChange = {},
@@ -145,7 +164,7 @@ fun GastoFormDialog(
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null
-                            ) { mostrarDatePicker = true },
+                            ) { nativeDatePicker.show() },
                         enabled = false,
                         shape = RoundedCornerShape(14.dp),
                         colors = OutlinedTextFieldDefaults.colors(
@@ -318,32 +337,6 @@ fun GastoFormDialog(
                     }
                 }
             }
-        }
-    }
-
-    // DatePicker
-    if (mostrarDatePicker) {
-        val datePickerState = rememberDatePickerState(
-            initialSelectedDateMillis = System.currentTimeMillis()
-        )
-        DatePickerDialog(
-            onDismissRequest = { mostrarDatePicker = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    datePickerState.selectedDateMillis?.let { millis ->
-                        fechaGasto = Instant.ofEpochMilli(millis)
-                            .atOffset(ZoneOffset.UTC)
-                            .toLocalDate()
-                            .toString()
-                    }
-                    mostrarDatePicker = false
-                }) { Text("Aceptar") }
-            },
-            dismissButton = {
-                TextButton(onClick = { mostrarDatePicker = false }) { Text("Cancelar") }
-            }
-        ) {
-            DatePicker(state = datePickerState)
         }
     }
 }

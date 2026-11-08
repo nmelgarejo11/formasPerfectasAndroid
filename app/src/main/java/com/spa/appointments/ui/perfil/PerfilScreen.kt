@@ -490,31 +490,6 @@ fun PerfilScreen(
                         }
                     }
 
-                    Spacer(Modifier.height(12.dp))
-
-                    // ── Botón Cerrar Sesión ───────────────────────────────
-                    OutlinedButton(
-                        onClick  = onLogout,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(48.dp),
-                        shape    = RoundedCornerShape(14.dp),
-                        colors   = ButtonDefaults.outlinedButtonColors(
-                            contentColor = MaterialTheme.colorScheme.error
-                        ),
-                        border = BorderStroke(
-                            1.dp,
-                            MaterialTheme.colorScheme.error.copy(alpha = 0.5f)
-                        )
-                    ) {
-                        Icon(
-                            Icons.Default.ExitToApp, null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text("Cerrar sesión", fontWeight = FontWeight.Bold)
-                    }
-
                     Spacer(Modifier.height(16.dp))
                 }
             }
