@@ -2,6 +2,7 @@
 package com.spa.appointments.ui.admin.profesionales
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -10,10 +11,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -21,9 +24,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.spa.appointments.domain.model.SedeAdmin
 import com.spa.appointments.domain.model.ServicioAdmin
 import com.spa.appointments.domain.model.ServicioProfesionalItem
-import androidx.compose.material.icons.outlined.Info
 
-// ─── Screen principal ─────────────────────────────────────────────────────────
+// ─── Screen Principal ─────────────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -71,28 +73,58 @@ fun ProfesionalDetalleScreen(
     }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text       = "Asignaciones",
-                            style      = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
+            Column {
+                TopAppBar(
+                    title = {
+                        Column {
+                            Text(
+                                text       = "Asignaciones",
+                                style      = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text  = "Sedes y servicios del profesional",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Volver")
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.background
+                    )
+                )
+
+                // 🎨 Canvas: Acento decorativo debajo de la TopAppBar
+                val primaryColor   = MaterialTheme.colorScheme.primary
+                val secondaryColor = MaterialTheme.colorScheme.secondary
+                Canvas(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(3.dp)
+                ) {
+                    drawRect(
+                        brush = Brush.horizontalGradient(
+                            colors = listOf(
+                                primaryColor.copy(alpha = 0.4f),
+                                secondaryColor.copy(alpha = 0.2f),
+                                primaryColor.copy(alpha = 0.05f)
+                            )
                         )
-                        Text(
-                            text  = "Sedes y servicios del profesional",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Volver")
-                    }
+                    )
                 }
-            )
+
+                HorizontalDivider(
+                    thickness = 0.5.dp,
+                    color     = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                )
+            }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
@@ -103,15 +135,17 @@ fun ProfesionalDetalleScreen(
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
 
-            // ── Card: Sedes ───────────────────────────────────────────────
-            Card(
-                modifier  = Modifier.fillMaxWidth(),
-                shape     = RoundedCornerShape(14.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                border    = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+            // ── Card: Sedes M3 ────────────────────────────────────────────
+            OutlinedCard(
+                modifier = Modifier.fillMaxWidth(),
+                shape    = RoundedCornerShape(18.dp),
+                colors   = CardDefaults.outlinedCardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                ),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
 
@@ -121,19 +155,19 @@ fun ProfesionalDetalleScreen(
                     ) {
                         Icon(
                             Icons.Default.Store, null,
-                            modifier = Modifier.size(18.dp),
+                            modifier = Modifier.size(20.dp),
                             tint     = MaterialTheme.colorScheme.primary
                         )
                         Spacer(Modifier.width(8.dp))
                         Text(
                             text       = "Sedes asignadas",
-                            style      = MaterialTheme.typography.titleSmall,
+                            style      = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
                     }
 
                     HorizontalDivider(
-                        color    = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                        color    = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
 
@@ -154,7 +188,7 @@ fun ProfesionalDetalleScreen(
                         }
                     }
 
-                    Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(14.dp))
 
                     Button(
                         onClick  = {
@@ -164,8 +198,8 @@ fun ProfesionalDetalleScreen(
                             )
                         },
                         enabled  = !isLoading && sedeSeleccionada != null,
-                        shape    = RoundedCornerShape(10.dp),
-                        modifier = Modifier.align(Alignment.End).height(40.dp)
+                        shape    = RoundedCornerShape(12.dp),
+                        modifier = Modifier.align(Alignment.End).height(42.dp)
                     ) {
                         if (isLoading) {
                             CircularProgressIndicator(
@@ -175,19 +209,21 @@ fun ProfesionalDetalleScreen(
                             )
                         } else {
                             Icon(Icons.Default.Save, null, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(4.dp))
-                            Text("Guardar sede")
+                            Spacer(Modifier.width(6.dp))
+                            Text("Guardar sede", fontWeight = FontWeight.Bold)
                         }
                     }
                 }
             }
 
-            // ── Card: Servicios ───────────────────────────────────────────
-            Card(
-                modifier  = Modifier.fillMaxWidth(),
-                shape     = RoundedCornerShape(14.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                border    = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+            // ── Card: Servicios M3 ────────────────────────────────────────
+            OutlinedCard(
+                modifier = Modifier.fillMaxWidth(),
+                shape    = RoundedCornerShape(18.dp),
+                colors   = CardDefaults.outlinedCardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                ),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
 
@@ -197,17 +233,16 @@ fun ProfesionalDetalleScreen(
                     ) {
                         Icon(
                             Icons.Default.Spa, null,
-                            modifier = Modifier.size(18.dp),
+                            modifier = Modifier.size(20.dp),
                             tint     = MaterialTheme.colorScheme.primary
                         )
                         Spacer(Modifier.width(8.dp))
                         Text(
                             text       = "Servicios asignados",
-                            style      = MaterialTheme.typography.titleSmall,
+                            style      = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             modifier   = Modifier.weight(1f)
                         )
-                        // Contador de asignados
                         val asignadosCount = serviciosEditados.count { it.second }
                         if (asignadosCount > 0) {
                             Surface(
@@ -215,18 +250,18 @@ fun ProfesionalDetalleScreen(
                                 color = MaterialTheme.colorScheme.primaryContainer
                             ) {
                                 Text(
-                                    text  = "$asignadosCount",
-                                    style = MaterialTheme.typography.labelSmall,
+                                    text       = "$asignadosCount",
+                                    style      = MaterialTheme.typography.labelSmall,
                                     fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                    color      = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    modifier   = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                                 )
                             }
                         }
                     }
 
                     HorizontalDivider(
-                        color    = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                        color    = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
 
@@ -257,7 +292,7 @@ fun ProfesionalDetalleScreen(
                         }
                     }
 
-                    Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(14.dp))
 
                     Button(
                         onClick  = {
@@ -271,8 +306,8 @@ fun ProfesionalDetalleScreen(
                             viewModel.guardarServicios(idProfesional, items)
                         },
                         enabled  = !isLoading,
-                        shape    = RoundedCornerShape(10.dp),
-                        modifier = Modifier.align(Alignment.End).height(40.dp)
+                        shape    = RoundedCornerShape(12.dp),
+                        modifier = Modifier.align(Alignment.End).height(42.dp)
                     ) {
                         if (isLoading) {
                             CircularProgressIndicator(
@@ -282,8 +317,8 @@ fun ProfesionalDetalleScreen(
                             )
                         } else {
                             Icon(Icons.Default.Save, null, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(4.dp))
-                            Text("Guardar servicios")
+                            Spacer(Modifier.width(6.dp))
+                            Text("Guardar servicios", fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -299,8 +334,8 @@ fun ProfesionalDetalleScreen(
 @Composable
 private fun EmptySeccionBanner(texto: String) {
     Surface(
-        shape    = RoundedCornerShape(10.dp),
-        color    = MaterialTheme.colorScheme.surfaceVariant,
+        shape    = RoundedCornerShape(12.dp),
+        color    = MaterialTheme.colorScheme.surfaceContainerHigh,
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
@@ -309,7 +344,7 @@ private fun EmptySeccionBanner(texto: String) {
         ) {
             Icon(
                 Icons.Outlined.Info, null,
-                modifier = Modifier.size(14.dp),
+                modifier = Modifier.size(16.dp),
                 tint     = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(Modifier.width(8.dp))
@@ -322,7 +357,7 @@ private fun EmptySeccionBanner(texto: String) {
     }
 }
 
-// ─── Fila de sede ─────────────────────────────────────────────────────────────
+// ─── Fila de Sede M3 ──────────────────────────────────────────────────────────
 
 @Composable
 private fun SedeRadioRow(
@@ -331,15 +366,15 @@ private fun SedeRadioRow(
     onSelected: () -> Unit
 ) {
     Surface(
-        shape    = RoundedCornerShape(10.dp),
+        shape    = RoundedCornerShape(12.dp),
         color    = if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-        else MaterialTheme.colorScheme.surface,
+        else MaterialTheme.colorScheme.surfaceContainerLow,
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
             modifier          = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 4.dp, vertical = 4.dp),
+                .padding(horizontal = 6.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             RadioButton(
@@ -350,21 +385,21 @@ private fun SedeRadioRow(
             Surface(
                 shape = RoundedCornerShape(8.dp),
                 color = if (selected) MaterialTheme.colorScheme.primaryContainer
-                else MaterialTheme.colorScheme.surfaceVariant
+                else MaterialTheme.colorScheme.surfaceContainerHigh
             ) {
                 Icon(
                     Icons.Default.Store, null,
-                    modifier = Modifier.padding(5.dp).size(14.dp),
+                    modifier = Modifier.padding(6.dp).size(16.dp),
                     tint     = if (selected) MaterialTheme.colorScheme.onPrimaryContainer
                     else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(10.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text       = sede.nombre,
                     style      = MaterialTheme.typography.bodyMedium,
-                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
+                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
                 )
                 if (!sede.direccion.isNullOrBlank()) {
                     Text(
@@ -378,7 +413,7 @@ private fun SedeRadioRow(
     }
 }
 
-// ─── Fila de servicio ─────────────────────────────────────────────────────────
+// ─── Fila de Servicio M3 ──────────────────────────────────────────────────────
 
 @Composable
 private fun ServicioCheckRow(
@@ -405,8 +440,8 @@ private fun ServicioCheckRow(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text       = servicio.nombre,
-                    style      = MaterialTheme.typography.bodySmall,
-                    fontWeight = if (checked) FontWeight.SemiBold else FontWeight.Normal
+                    style      = MaterialTheme.typography.bodyMedium,
+                    fontWeight = if (checked) FontWeight.Bold else FontWeight.Medium
                 )
                 Text(
                     text  = servicio.nombreCategoria,
@@ -416,18 +451,21 @@ private fun ServicioCheckRow(
             }
         }
 
-        // Campo precio solo cuando está seleccionado — ocupa todo el ancho disponible
         if (checked) {
             OutlinedTextField(
                 value         = precio,
                 onValueChange = onPrecio,
-                label         = { Text("Precio personalizado") },
-                leadingIcon   = { Icon(Icons.Default.AttachMoney, null, modifier = Modifier.size(18.dp)) },
+                label         = { Text("Precio personalizado ($)") },
+                leadingIcon   = { Icon(Icons.Default.AttachMoney, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary) },
                 modifier      = Modifier
                     .fillMaxWidth()
                     .padding(start = 44.dp, top = 4.dp),
                 singleLine    = true,
-                shape         = RoundedCornerShape(10.dp),
+                shape         = RoundedCornerShape(12.dp),
+                colors        = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                ),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
             )
         }

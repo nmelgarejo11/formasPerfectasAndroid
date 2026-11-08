@@ -1,8 +1,10 @@
+// Ruta: app/src/main/java/com/spa/appointments/ui/admin/profesionales/ProfesionalesAdminScreen.kt
 package com.spa.appointments.ui.admin.profesionales
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -17,6 +19,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -26,7 +29,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.spa.appointments.domain.model.ProfesionalAdmin
 
-// ─── Screen principal ─────────────────────────────────────────────────────────
+// ─── Screen Principal ─────────────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -79,36 +82,76 @@ fun ProfesionalesAdminScreen(
     }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text       = "Profesionales",
-                            style      = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        if (profesionales.isNotEmpty()) {
+            Column {
+                TopAppBar(
+                    title = {
+                        Column {
                             Text(
-                                text  = "${profesionales.size} ${if (profesionales.size == 1) "profesional" else "profesionales"}",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                text       = "Profesionales",
+                                style      = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
                             )
+                            if (profesionales.isNotEmpty()) {
+                                Surface(
+                                    shape    = RoundedCornerShape(50),
+                                    color    = MaterialTheme.colorScheme.primaryContainer,
+                                    modifier = Modifier.padding(top = 2.dp)
+                                ) {
+                                    Text(
+                                        text     = "${profesionales.size} ${if (profesionales.size == 1) "profesional" else "profesionales"}",
+                                        style    = MaterialTheme.typography.labelSmall,
+                                        color    = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 1.dp)
+                                    )
+                                }
+                            }
                         }
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Volver")
-                    }
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Volver")
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.background
+                    )
+                )
+
+                // 🎨 Canvas: Acento decorativo debajo de la TopAppBar
+                val primaryColor   = MaterialTheme.colorScheme.primary
+                val secondaryColor = MaterialTheme.colorScheme.secondary
+                Canvas(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(3.dp)
+                ) {
+                    drawRect(
+                        brush = Brush.horizontalGradient(
+                            colors = listOf(
+                                primaryColor.copy(alpha = 0.4f),
+                                secondaryColor.copy(alpha = 0.2f),
+                                primaryColor.copy(alpha = 0.05f)
+                            )
+                        )
+                    )
                 }
-            )
+
+                HorizontalDivider(
+                    thickness = 0.5.dp,
+                    color     = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                )
+            }
         },
         floatingActionButton = {
             ExtendedFloatingActionButton(
-                onClick = { editando = null; showDialog = true },
-                icon    = { Icon(Icons.Default.Add, null) },
-                text    = { Text("Nuevo profesional") }
+                onClick        = { editando = null; showDialog = true },
+                icon           = { Icon(Icons.Default.Add, null) },
+                text           = { Text("Nuevo profesional", fontWeight = FontWeight.Bold) },
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor   = MaterialTheme.colorScheme.onPrimary,
+                shape          = RoundedCornerShape(16.dp)
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -119,12 +162,14 @@ fun ProfesionalesAdminScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // ── Buscador ──────────────────────────────────────────────────
+            Spacer(Modifier.height(8.dp))
+
+            // ── Buscador M3 ───────────────────────────────────────────────
             OutlinedTextField(
                 value         = busqueda,
                 onValueChange = { busqueda = it },
                 label         = { Text("Buscar profesional") },
-                leadingIcon   = { Icon(Icons.Default.Search, null) },
+                leadingIcon   = { Icon(Icons.Default.Search, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
                 trailingIcon  = {
                     if (busqueda.isNotBlank()) {
                         IconButton(onClick = { busqueda = "" }) {
@@ -134,8 +179,12 @@ fun ProfesionalesAdminScreen(
                 },
                 modifier   = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                shape      = RoundedCornerShape(12.dp),
+                    .padding(horizontal = 16.dp, vertical = 6.dp),
+                shape      = RoundedCornerShape(14.dp),
+                colors     = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                ),
                 singleLine = true
             )
 
@@ -145,52 +194,76 @@ fun ProfesionalesAdminScreen(
                         Column(
                             modifier            = Modifier.align(Alignment.Center),
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            CircularProgressIndicator()
+                            CircularProgressIndicator(
+                                color       = MaterialTheme.colorScheme.primary,
+                                trackColor  = MaterialTheme.colorScheme.primaryContainer,
+                                strokeWidth = 3.dp,
+                                modifier    = Modifier.size(36.dp)
+                            )
                             Text(
                                 "Cargando profesionales…",
-                                style = MaterialTheme.typography.bodySmall,
+                                style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
 
                     filtrados.isEmpty() -> {
-                        Column(
-                            modifier            = Modifier
-                                .align(Alignment.Center)
-                                .padding(40.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        val primaryColor = MaterialTheme.colorScheme.primary
+
+                        OutlinedCard(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp)
+                                .align(Alignment.Center),
+                            shape  = RoundedCornerShape(24.dp),
+                            colors = CardDefaults.outlinedCardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                            )
                         ) {
-                            Surface(
-                                shape = RoundedCornerShape(24.dp),
-                                color = MaterialTheme.colorScheme.surfaceVariant
+                            Column(
+                                modifier            = Modifier.padding(32.dp).fillMaxWidth(),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(14.dp)
                             ) {
-                                Icon(
-                                    imageVector        = if (busqueda.isBlank()) Icons.Default.Group
-                                    else Icons.Default.SearchOff,
-                                    contentDescription = null,
-                                    modifier           = Modifier.padding(20.dp).size(48.dp),
-                                    tint               = MaterialTheme.colorScheme.onSurfaceVariant
+                                Box(
+                                    modifier         = Modifier.size(80.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Canvas(modifier = Modifier.fillMaxSize()) {
+                                        drawCircle(color = primaryColor.copy(alpha = 0.15f))
+                                    }
+                                    Surface(
+                                        shape = CircleShape,
+                                        color = MaterialTheme.colorScheme.surfaceContainerHigh
+                                    ) {
+                                        Icon(
+                                            imageVector        = if (busqueda.isBlank()) Icons.Default.Group
+                                            else Icons.Default.SearchOff,
+                                            contentDescription = null,
+                                            modifier           = Modifier.padding(18.dp).size(36.dp),
+                                            tint               = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                                Text(
+                                    text       = if (busqueda.isBlank()) "Sin profesionales aún" else "Sin resultados",
+                                    style      = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color      = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text      = if (busqueda.isBlank())
+                                        "Crea el primer profesional con el botón inferior."
+                                    else
+                                        "Ningún profesional coincide con \"$busqueda\".",
+                                    style     = MaterialTheme.typography.bodyMedium,
+                                    color     = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    textAlign = TextAlign.Center
                                 )
                             }
-                            Text(
-                                text       = if (busqueda.isBlank()) "Sin profesionales aún"
-                                else "Sin resultados",
-                                style      = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                text      = if (busqueda.isBlank())
-                                    "Crea el primer profesional con el botón inferior."
-                                else
-                                    "Ningún profesional coincide con \"$busqueda\".",
-                                style     = MaterialTheme.typography.bodyMedium,
-                                color     = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = TextAlign.Center
-                            )
                         }
                     }
 
@@ -199,10 +272,10 @@ fun ProfesionalesAdminScreen(
                             contentPadding      = PaddingValues(
                                 start  = 16.dp,
                                 end    = 16.dp,
-                                top    = 4.dp,
+                                top    = 8.dp,
                                 bottom = 88.dp
                             ),
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             items(filtrados, key = { it.id }) { prof ->
                                 ProfesionalCard(
@@ -235,7 +308,7 @@ fun ProfesionalesAdminScreen(
     }
 }
 
-// ─── Card de profesional ──────────────────────────────────────────────────────
+// ─── Card de Profesional M3 ───────────────────────────────────────────────────
 
 @Composable
 private fun ProfesionalCard(
@@ -250,19 +323,18 @@ private fun ProfesionalCard(
     val inicial = "${profesional.nombre.firstOrNull() ?: ""}${profesional.apellido.firstOrNull() ?: ""}"
         .uppercase()
 
-    Card(
-        modifier  = Modifier.fillMaxWidth(),
-        shape     = RoundedCornerShape(14.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors    = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+    OutlinedCard(
+        modifier = Modifier.fillMaxWidth(),
+        shape    = RoundedCornerShape(18.dp),
+        colors   = CardDefaults.outlinedCardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
     ) {
         Row(
             modifier          = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
+                .padding(14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // ── Avatar con botón cámara ───────────────────────────────────
@@ -288,7 +360,7 @@ private fun ProfesionalCard(
                         Box(contentAlignment = Alignment.Center) {
                             Text(
                                 text       = inicial,
-                                style      = MaterialTheme.typography.titleSmall,
+                                style      = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color      = MaterialTheme.colorScheme.onPrimaryContainer
                             )
@@ -301,13 +373,13 @@ private fun ProfesionalCard(
                     shape    = CircleShape,
                     color    = MaterialTheme.colorScheme.primary,
                     modifier = Modifier
-                        .size(22.dp)
+                        .size(24.dp)
                         .clickable { onFoto() }
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
                             Icons.Default.CameraAlt, "Cambiar foto",
-                            modifier = Modifier.size(12.dp),
+                            modifier = Modifier.size(13.dp),
                             tint     = MaterialTheme.colorScheme.onPrimary
                         )
                     }
@@ -325,8 +397,9 @@ private fun ProfesionalCard(
                 ) {
                     Text(
                         text       = "${profesional.nombre} ${profesional.apellido}",
-                        style      = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold,
+                        style      = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color      = MaterialTheme.colorScheme.onSurface,
                         modifier   = Modifier.weight(1f)
                     )
                     // Chip estado
@@ -335,16 +408,17 @@ private fun ProfesionalCard(
                         color = if (profesional.estado)
                             MaterialTheme.colorScheme.primaryContainer
                         else
-                            MaterialTheme.colorScheme.surfaceVariant
+                            MaterialTheme.colorScheme.surfaceContainerHigh
                     ) {
                         Text(
-                            text  = if (profesional.estado) "Activo" else "Inactivo",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = if (profesional.estado)
+                            text       = if (profesional.estado) "Activo" else "Inactivo",
+                            style      = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color      = if (profesional.estado)
                                 MaterialTheme.colorScheme.onPrimaryContainer
                             else
                                 MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            modifier   = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                         )
                     }
                 }
@@ -352,10 +426,10 @@ private fun ProfesionalCard(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         Icons.Default.Badge, null,
-                        modifier = Modifier.size(11.dp),
-                        tint     = MaterialTheme.colorScheme.onSurfaceVariant
+                        modifier = Modifier.size(12.dp),
+                        tint     = MaterialTheme.colorScheme.primary
                     )
-                    Spacer(Modifier.width(3.dp))
+                    Spacer(Modifier.width(4.dp))
                     Text(
                         text  = profesional.nombreCargo,
                         style = MaterialTheme.typography.bodySmall,
@@ -367,10 +441,10 @@ private fun ProfesionalCard(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             Icons.Default.Phone, null,
-                            modifier = Modifier.size(11.dp),
+                            modifier = Modifier.size(12.dp),
                             tint     = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        Spacer(Modifier.width(3.dp))
+                        Spacer(Modifier.width(4.dp))
                         Text(
                             text  = profesional.telefono,
                             style = MaterialTheme.typography.bodySmall,
@@ -380,12 +454,13 @@ private fun ProfesionalCard(
                 }
             }
 
-            // ── Menú contextual (reemplaza 3 IconButtons) ─────────────────
+            // ── Menú Contextual M3 ─────────────────────────────────────────
             Box {
                 IconButton(onClick = { menuExpanded = true }) {
                     Icon(
                         Icons.Default.MoreVert, "Más opciones",
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(20.dp),
+                        tint     = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 DropdownMenu(
@@ -393,17 +468,17 @@ private fun ProfesionalCard(
                     onDismissRequest = { menuExpanded = false }
                 ) {
                     DropdownMenuItem(
-                        text        = { Text("Asignaciones") },
-                        leadingIcon = { Icon(Icons.Default.Tune, null) },
+                        text        = { Text("Asignaciones", fontWeight = FontWeight.SemiBold) },
+                        leadingIcon = { Icon(Icons.Default.Tune, null, tint = MaterialTheme.colorScheme.primary) },
                         onClick     = { menuExpanded = false; onDetalle() }
                     )
                     DropdownMenuItem(
-                        text        = { Text("Horario") },
-                        leadingIcon = { Icon(Icons.Default.CalendarMonth, null) },
+                        text        = { Text("Horario", fontWeight = FontWeight.SemiBold) },
+                        leadingIcon = { Icon(Icons.Default.CalendarMonth, null, tint = MaterialTheme.colorScheme.primary) },
                         onClick     = { menuExpanded = false; onVerHorario() }
                     )
                     DropdownMenuItem(
-                        text        = { Text("Editar") },
+                        text        = { Text("Editar", fontWeight = FontWeight.SemiBold) },
                         leadingIcon = { Icon(Icons.Default.Edit, null) },
                         onClick     = { menuExpanded = false; onEditar() }
                     )
@@ -412,6 +487,7 @@ private fun ProfesionalCard(
                         text        = {
                             Text(
                                 if (profesional.estado) "Desactivar" else "Activar",
+                                fontWeight = FontWeight.Bold,
                                 color = if (profesional.estado) MaterialTheme.colorScheme.error
                                 else MaterialTheme.colorScheme.primary
                             )
