@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Tallo Vertical de la P -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M34,26h9c2.2,0 4,1.8 4,4v48c0,2.2 -1.8,4 -4,4h-9c-2.2,0 -4,-1.8 -4,-4V30c0,-2.2 1.8,-4 4,-4z" />
+    <!-- Bucle Principal de la P -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M38,26h18c11,0 20,9 20,20c0,11 -9,20 -20,20H38V26z" />
+    <!-- Hueco Interior -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M47,35h9c6,0 11,5 11,11c0,6 -5,11 -11,11h-9V35z" />
+    <!-- Agujas del Reloj Monocromáticas -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:pathData="M54,46L54,42M54,46L58,46" />
+    <!-- Destello -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M78,20 C78,26 78,26 84,26 C78,26 78,26 78,32 C78,26 78,26 72,26 C78,26 78,26 78,20 Z" />
+</vector>
