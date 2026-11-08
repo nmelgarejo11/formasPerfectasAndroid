@@ -1,31 +1,39 @@
+// Ruta: app/src/main/java/com/spa/appointments/ui/tema/TemaScreen.kt
 package com.spa.appointments.ui.tema
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.ui.res.painterResource
 import com.spa.appointments.R
+
+// ─── Screen Principal ─────────────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,42 +58,80 @@ fun TemaScreen(
     }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "Tema de la empresa",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Medium
+            Column {
+                TopAppBar(
+                    title = {
+                        Column {
+                            Text(
+                                text       = "Tema de la empresa",
+                                style      = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text  = "Personalización de colores y marca",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Volver")
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.background
                     )
-                },
-                navigationIcon = {
-                    // Botón atrás con borde circular
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier
-                            .padding(start = 8.dp)
-                            .size(36.dp)
-                            .clickable { onBack() }
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Atrás",
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
                 )
-            )
+
+                // 🎨 Canvas: Acento decorativo debajo de la TopAppBar
+                val primaryColor   = MaterialTheme.colorScheme.primary
+                val secondaryColor = MaterialTheme.colorScheme.secondary
+                Canvas(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(3.dp)
+                ) {
+                    drawRect(
+                        brush = Brush.horizontalGradient(
+                            colors = listOf(
+                                primaryColor.copy(alpha = 0.4f),
+                                secondaryColor.copy(alpha = 0.2f),
+                                primaryColor.copy(alpha = 0.05f)
+                            )
+                        )
+                    )
+                }
+
+                HorizontalDivider(
+                    thickness = 0.5.dp,
+                    color     = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                )
+            }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
 
         if (state.cargando) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
+            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    CircularProgressIndicator(
+                        color       = MaterialTheme.colorScheme.primary,
+                        trackColor  = MaterialTheme.colorScheme.primaryContainer,
+                        strokeWidth = 3.dp,
+                        modifier    = Modifier.size(36.dp)
+                    )
+                    Text(
+                        "Cargando configuración de tema…",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
             return@Scaffold
         }
@@ -94,206 +140,237 @@ fun TemaScreen(
             modifier = Modifier
                 .padding(padding)
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 20.dp),
+                .padding(horizontal = 20.dp, vertical = 20.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
 
             // ── SECCIÓN COLORES ──────────────────────────────────────────────
-            SeccionContainer(titulo = "Paleta de colores") {
-
-                // Lista de colores
+            SeccionContainer(
+                titulo = "Paleta de Colores",
+                icono  = Icons.Outlined.Palette
+            ) {
                 val colores = listOf(
                     Triple("Color primario", state.colorPrimario, viewModel::onColorPrimarioChange),
                     Triple("Color secundario", state.colorSecundario, viewModel::onColorSecundarioChange),
                     Triple("Color terciario", state.colorTerciario, viewModel::onColorTerciarioChange)
                 )
 
-                Card(
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface
+                OutlinedCard(
+                    shape  = RoundedCornerShape(18.dp),
+                    colors = CardDefaults.outlinedCardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
                     ),
-                    border = androidx.compose.foundation.BorderStroke(
-                        0.5.dp, MaterialTheme.colorScheme.outlineVariant
-                    ),
-                    elevation = CardDefaults.cardElevation(0.dp)
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    colores.forEachIndexed { index, (label, valor, onChange) ->
-                        ColorRow(
-                            label = label,
-                            value = valor,
-                            onValueChange = onChange
-                        )
-                        if (index < colores.lastIndex) {
-                            HorizontalDivider(
-                                thickness = 0.5.dp,
-                                color = MaterialTheme.colorScheme.outlineVariant
+                    Column {
+                        colores.forEachIndexed { index, (label, valor, onChange) ->
+                            ColorRow(
+                                label         = label,
+                                value         = valor,
+                                onValueChange = onChange
                             )
+                            if (index < colores.lastIndex) {
+                                HorizontalDivider(
+                                    thickness = 0.5.dp,
+                                    color     = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                                )
+                            }
                         }
                     }
                 }
 
-                // Preview de paleta
+                Spacer(Modifier.height(4.dp))
+
+                // Preview de paleta con Canvas Bar
                 PaletaPreview(
-                    primario = state.colorPrimario,
+                    primario   = state.colorPrimario,
                     secundario = state.colorSecundario,
-                    terciario = state.colorTerciario
+                    terciario  = state.colorTerciario
                 )
             }
 
             // ── SECCIÓN INFORMACIÓN ──────────────────────────────────────────
-            SeccionContainer(titulo = "Información") {
-                Card(
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface
+            SeccionContainer(
+                titulo = "Información de la Empresa",
+                icono  = Icons.Outlined.Business
+            ) {
+                OutlinedCard(
+                    shape  = RoundedCornerShape(18.dp),
+                    colors = CardDefaults.outlinedCardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
                     ),
-                    border = androidx.compose.foundation.BorderStroke(
-                        0.5.dp, MaterialTheme.colorScheme.outlineVariant
-                    ),
-                    elevation = CardDefaults.cardElevation(0.dp)
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Column {
-                        CampoTextoPlano(
-                            label = "Nombre de la app",
-                            value = state.nombreApp,
+                    Column(
+                        modifier            = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        OutlinedTextField(
+                            value         = state.nombreApp,
                             onValueChange = viewModel::onNombreAppChange,
-                            capitalization = KeyboardCapitalization.Words,
-                            singleLine = true
+                            label         = { Text("Nombre de la aplicación") },
+                            leadingIcon   = { Icon(Icons.Outlined.Store, null, tint = MaterialTheme.colorScheme.primary) },
+                            modifier      = Modifier.fillMaxWidth(),
+                            singleLine    = true,
+                            shape         = RoundedCornerShape(14.dp),
+                            colors        = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                            ),
+                            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words)
                         )
-                        HorizontalDivider(
-                            thickness = 0.5.dp,
-                            color = MaterialTheme.colorScheme.outlineVariant
-                        )
-                        CampoTextoPlano(
-                            label = "Slogan",
-                            value = state.slogan,
+
+                        OutlinedTextField(
+                            value         = state.slogan,
                             onValueChange = viewModel::onSloganChange,
-                            capitalization = KeyboardCapitalization.Sentences,
-                            minLines = 2
+                            label         = { Text("Slogan o lema") },
+                            leadingIcon   = { Icon(Icons.Outlined.FormatQuote, null, tint = MaterialTheme.colorScheme.primary) },
+                            modifier      = Modifier.fillMaxWidth(),
+                            minLines      = 2,
+                            maxLines      = 3,
+                            shape         = RoundedCornerShape(14.dp),
+                            colors        = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                            ),
+                            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences)
                         )
-                        HorizontalDivider(
-                            thickness = 0.5.dp,
-                            color = MaterialTheme.colorScheme.outlineVariant
-                        )
-                        CampoTextoPlano(
-                            label = "NIT / Identificación Fiscal",
-                            value = state.nit,
+
+                        OutlinedTextField(
+                            value         = state.nit,
                             onValueChange = viewModel::onNitChange,
-                            capitalization = KeyboardCapitalization.Characters,
-                            singleLine = true
+                            label         = { Text("NIT / Identificación Fiscal") },
+                            leadingIcon   = { Icon(Icons.Outlined.Badge, null, tint = MaterialTheme.colorScheme.primary) },
+                            modifier      = Modifier.fillMaxWidth(),
+                            singleLine    = true,
+                            shape         = RoundedCornerShape(14.dp),
+                            colors        = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                            ),
+                            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters)
                         )
-                        HorizontalDivider(
-                            thickness = 0.5.dp,
-                            color = MaterialTheme.colorScheme.outlineVariant
-                        )
-                        CampoTextoPlano(
-                            label = "Razón Social",
-                            value = state.razonSocial,
+
+                        OutlinedTextField(
+                            value         = state.razonSocial,
                             onValueChange = viewModel::onRazonSocialChange,
-                            capitalization = KeyboardCapitalization.Words,
-                            singleLine = true
+                            label         = { Text("Razón Social") },
+                            leadingIcon   = { Icon(Icons.Outlined.Domain, null, tint = MaterialTheme.colorScheme.primary) },
+                            modifier      = Modifier.fillMaxWidth(),
+                            singleLine    = true,
+                            shape         = RoundedCornerShape(14.dp),
+                            colors        = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                            ),
+                            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words)
                         )
                     }
                 }
             }
 
             // ── SECCIÓN WHATSAPP ─────────────────────────────────────────────
-            SeccionContainer(titulo = "Mensaje WhatsApp") {
-                Card(
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface
+            SeccionContainer(
+                titulo = "Mensaje Automático de WhatsApp",
+                icono  = Icons.Outlined.Chat
+            ) {
+                OutlinedCard(
+                    shape  = RoundedCornerShape(18.dp),
+                    colors = CardDefaults.outlinedCardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
                     ),
-                    border = androidx.compose.foundation.BorderStroke(
-                        0.5.dp, MaterialTheme.colorScheme.outlineVariant
-                    ),
-                    elevation = CardDefaults.cardElevation(0.dp)
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     MensajeWhatsAppField(
-                        value = state.mensajeWhatsApp,
-                        onValueChange = viewModel::onMensajeWhatsAppChange,
-                        variables = viewModel.variablesDisponibles,
+                        value              = state.mensajeWhatsApp,
+                        onValueChange      = viewModel::onMensajeWhatsAppChange,
+                        variables          = viewModel.variablesDisponibles,
                         onInsertarVariable = viewModel::insertarVariable
                     )
                 }
             }
 
+            Spacer(Modifier.height(8.dp))
+
             // ── BOTÓN GUARDAR PRINCIPAL ──────────────────────────────────────
             Button(
-                onClick = viewModel::guardar,
+                onClick  = viewModel::guardar,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
-                enabled = !state.guardando,
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(
+                enabled  = !state.guardando,
+                shape    = RoundedCornerShape(14.dp),
+                colors   = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
+                    contentColor   = MaterialTheme.colorScheme.onPrimary
                 )
             ) {
                 if (state.guardando) {
                     CircularProgressIndicator(
-                        modifier = Modifier.size(18.dp),
+                        modifier    = Modifier.size(18.dp),
                         strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.onPrimary
+                        color       = MaterialTheme.colorScheme.onPrimary
                     )
                     Spacer(Modifier.width(10.dp))
                 } else {
                     Icon(
-                        imageVector = Icons.Default.Save,
+                        imageVector        = Icons.Default.Save,
                         contentDescription = null,
-                        modifier = Modifier.size(18.dp)
+                        modifier           = Modifier.size(20.dp)
                     )
-                    Spacer(Modifier.width(10.dp))
+                    Spacer(Modifier.width(8.dp))
                 }
 
                 Text(
-                    text = if (state.guardando)
-                        "Guardando..."
-                    else
-                        "Guardar cambios",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium
+                    text       = if (state.guardando) "Guardando tema…" else "Guardar cambios",
+                    style      = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
                 )
             }
+
+            Spacer(Modifier.height(16.dp))
         }
     }
 }
 
-// ── Contenedor de sección con header minimalista ─────────────────────────────
+// ── Contenedor de Sección con Header M3 ────────────────────────────────────────
+
 @Composable
 private fun SeccionContainer(
-    titulo: String,
+    titulo:  String,
+    icono:   androidx.compose.ui.graphics.vector.ImageVector,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        // Header: punto + label en uppercase
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            modifier          = Modifier.padding(start = 2.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .size(6.dp)
-                    .clip(RoundedCornerShape(50))
-                    .background(MaterialTheme.colorScheme.onSurface)
+            Icon(
+                imageVector        = icono,
+                contentDescription = null,
+                modifier           = Modifier.size(18.dp),
+                tint               = MaterialTheme.colorScheme.primary
             )
+            Spacer(Modifier.width(8.dp))
             Text(
-                text = titulo.uppercase(),
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Medium,
+                text       = titulo.uppercase(),
+                style      = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
                 letterSpacing = 0.08.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color      = MaterialTheme.colorScheme.primary
             )
         }
         content()
     }
 }
 
-// ── Fila de color dentro del card ────────────────────────────────────────────
+// ── Fila de Color ─────────────────────────────────────────────────────────────
+
 @Composable
 private fun ColorRow(
     label: String,
@@ -307,41 +384,46 @@ private fun ColorRow(
     }.getOrNull()
 
     Row(
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment     = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
-        modifier = Modifier
+        modifier              = Modifier
             .fillMaxWidth()
             .clickable { mostrarDialog = true }
             .padding(horizontal = 16.dp, vertical = 14.dp)
     ) {
-        // Swatch rectangular redondeado
-        Box(
-            modifier = Modifier
-                .size(44.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(colorParseado ?: Color.LightGray)
-        )
+        Surface(
+            modifier = Modifier.size(44.dp),
+            shape    = RoundedCornerShape(12.dp),
+            color    = colorParseado ?: Color.LightGray,
+            border   = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+        ) {}
 
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = label,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurface
+                text       = label,
+                style      = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color      = MaterialTheme.colorScheme.onSurface
             )
             Text(
-                text = "#${value.uppercase().trimStart('#')}",
-                style = MaterialTheme.typography.labelSmall,
-                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                text       = "#${value.uppercase().trimStart('#')}",
+                style      = MaterialTheme.typography.labelMedium,
+                fontFamily = FontFamily.Monospace,
+                color      = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+
+        Icon(
+            imageVector        = Icons.Default.ChevronRight,
+            contentDescription = null,
+            tint               = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 
     if (mostrarDialog) {
         ColorPickerDialog(
-            label = label,
-            colorActual = value,
+            label               = label,
+            colorActual         = value,
             onColorSeleccionado = { hex ->
                 onValueChange(hex)
                 mostrarDialog = false
@@ -351,12 +433,13 @@ private fun ColorRow(
     }
 }
 
-// ── Preview de la paleta de colores ──────────────────────────────────────────
+// ── Preview de la Paleta de Colores con Canvas ────────────────────────────────
+
 @Composable
 private fun PaletaPreview(
-    primario: String,
+    primario:   String,
     secundario: String,
-    terciario: String
+    terciario:  String
 ) {
     val colorP = runCatching {
         Color(android.graphics.Color.parseColor("#${primario.trimStart('#')}"))
@@ -370,38 +453,39 @@ private fun PaletaPreview(
         Color(android.graphics.Color.parseColor("#${terciario.trimStart('#')}"))
     }.getOrElse { Color(0xFFF4975A) }
 
-    Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+    OutlinedCard(
+        shape  = RoundedCornerShape(18.dp),
+        colors = CardDefaults.outlinedCardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
-        border = androidx.compose.foundation.BorderStroke(
-            0.5.dp, MaterialTheme.colorScheme.outlineVariant
-        ),
-        elevation = CardDefaults.cardElevation(0.dp)
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
+        modifier = Modifier.fillMaxWidth()
     ) {
-        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(
-                text = "Vista previa",
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(bottom = 2.dp)
+                text       = "Vista Previa de la Paleta",
+                style      = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color      = MaterialTheme.colorScheme.primary
             )
-            // Barra de proporción de colores
-            Row(
+
+            // 🎨 Canvas: Barra de proporción continua trazada con Canvas
+            Canvas(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(8.dp)
-                    .clip(RoundedCornerShape(4.dp))
+                    .height(10.dp)
+                    .clip(RoundedCornerShape(6.dp))
             ) {
-                Box(Modifier.weight(1f).fillMaxHeight().background(colorP))
-                Box(Modifier.weight(1f).fillMaxHeight().background(colorS))
-                Box(Modifier.weight(1f).fillMaxHeight().background(colorT))
+                val w = size.width
+                val segmentW = w / 3f
+                drawRect(color = colorP, size = androidx.compose.ui.geometry.Size(segmentW, size.height))
+                drawRect(color = colorS, topLeft = androidx.compose.ui.geometry.Offset(segmentW, 0f), size = androidx.compose.ui.geometry.Size(segmentW, size.height))
+                drawRect(color = colorT, topLeft = androidx.compose.ui.geometry.Offset(segmentW * 2, 0f), size = androidx.compose.ui.geometry.Size(segmentW, size.height))
             }
-            // Botones de muestra
+
+            // Muestras de botones de la paleta
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier              = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 listOf(
@@ -409,20 +493,21 @@ private fun PaletaPreview(
                     "Secundario" to colorS,
                     "Terciario" to colorT
                 ).forEach { (nombre, color) ->
-                    Box(
-                        contentAlignment = Alignment.Center,
+                    Surface(
                         modifier = Modifier
                             .weight(1f)
-                            .height(36.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(color)
+                            .height(38.dp),
+                        shape    = RoundedCornerShape(10.dp),
+                        color    = color
                     ) {
-                        Text(
-                            text = nombre,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color.White,
-                            fontWeight = FontWeight.Medium
-                        )
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(
+                                text       = nombre,
+                                style      = MaterialTheme.typography.labelSmall,
+                                color      = Color.White,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
                 }
             }
@@ -430,110 +515,61 @@ private fun PaletaPreview(
     }
 }
 
-// ── Campo de texto plano dentro de card (sin OutlinedTextField) ───────────────
-@Composable
-private fun CampoTextoPlano(
-    label: String,
-    value: String,
-    onValueChange: (String) -> Unit,
-    capitalization: KeyboardCapitalization = KeyboardCapitalization.None,
-    singleLine: Boolean = false,
-    minLines: Int = 1
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 14.dp)
-    ) {
-        Text(
-            text = label.uppercase(),
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.Medium,
-            letterSpacing = 0.07.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(bottom = 4.dp)
-        )
-        BasicTextField(
-            value = value,
-            onValueChange = onValueChange,
-            singleLine = singleLine,
-            minLines = minLines,
-            keyboardOptions = KeyboardOptions(capitalization = capitalization),
-            textStyle = MaterialTheme.typography.bodyLarge.copy(
-                color = MaterialTheme.colorScheme.onSurface
-            ),
-            decorationBox = { inner ->
-                if (value.isEmpty()) {
-                    Text(
-                        text = "Escribe aquí...",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                    )
-                }
-                inner()
-            },
-            modifier = Modifier.fillMaxWidth()
-        )
-    }
-}
+// ── Mensaje WhatsApp con Chips y Burbuja M3 ───────────────────────────────────
 
-// ── Mensaje WhatsApp con chips y burbuja de preview ───────────────────────────
 @Composable
 private fun MensajeWhatsAppField(
-    value: TextFieldValue,
-    onValueChange: (TextFieldValue) -> Unit,
-    variables: List<String>,
+    value:              TextFieldValue,
+    onValueChange:      (TextFieldValue) -> Unit,
+    variables:          List<String>,
     onInsertarVariable: (String) -> Unit
 ) {
-    val whatsappVerde = Color(0xFF25D366)
     val bubbleBackground = Color(0xFFE7F8EE)
-    val bubbleText = Color(0xFF1A3323)
-    val bubbleMeta = Color(0xFF5A9A75)
-    val bubbleLabel = Color(0xFF1A7A45)
+    val bubbleText       = Color(0xFF1A3323)
+    val bubbleMeta       = Color(0xFF5A9A75)
+    val bubbleLabel      = Color(0xFF1A7A45)
 
-    Column {
-        // Header con ícono WhatsApp
+    Column(modifier = Modifier.padding(16.dp)) {
         Row(
-            verticalAlignment = Alignment.CenterVertically,
+            verticalAlignment     = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 4.dp)
+            modifier              = Modifier.padding(bottom = 8.dp)
         ) {
             Icon(
-                painter = painterResource(id = R.drawable.ic_whatsapp),
+                painter            = painterResource(id = R.drawable.ic_whatsapp),
                 contentDescription = "WhatsApp",
-                tint = Color.Unspecified,
-                modifier = Modifier.size(16.dp)
+                tint               = Color.Unspecified,
+                modifier           = Modifier.size(18.dp)
             )
             Text(
-                text = "Texto de confirmación automática",
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                text       = "Plantilla de mensaje automático",
+                style      = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color      = MaterialTheme.colorScheme.onSurface
             )
         }
 
-        // Campo de texto
-        BasicTextField(
-            value = value,
+        OutlinedTextField(
+            value         = value,
             onValueChange = onValueChange,
-            minLines = 3,
-            maxLines = 5,
+            minLines      = 3,
+            maxLines      = 5,
             keyboardOptions = KeyboardOptions(
                 capitalization = KeyboardCapitalization.Sentences
             ),
-            textStyle = MaterialTheme.typography.bodyMedium.copy(
-                color = MaterialTheme.colorScheme.onSurface
-            ),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp)
+            modifier = Modifier.fillMaxWidth(),
+            shape    = RoundedCornerShape(14.dp),
+            colors   = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
+            )
         )
+
+        Spacer(Modifier.height(10.dp))
 
         // Chips de variables
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 16.dp, end = 16.dp, bottom = 14.dp),
+            modifier              = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             variables.forEach { variable ->
@@ -545,10 +581,11 @@ private fun MensajeWhatsAppField(
                 }
                 SuggestionChip(
                     onClick = { onInsertarVariable(variable) },
-                    label = {
+                    label   = {
                         Text(
                             etiqueta,
-                            style = MaterialTheme.typography.labelSmall
+                            style      = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold
                         )
                     },
                     shape = RoundedCornerShape(50)
@@ -556,11 +593,12 @@ private fun MensajeWhatsAppField(
             }
         }
 
+        Spacer(Modifier.height(12.dp))
         HorizontalDivider(
-            modifier = Modifier.padding(horizontal = 16.dp),
             thickness = 0.5.dp,
-            color = MaterialTheme.colorScheme.outlineVariant
+            color     = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
         )
+        Spacer(Modifier.height(12.dp))
 
         // Burbuja de preview estilo WhatsApp
         val preview = value.text
@@ -571,34 +609,33 @@ private fun MensajeWhatsAppField(
         if (preview.isNotBlank()) {
             Box(
                 modifier = Modifier
-                    .padding(horizontal = 16.dp, vertical = 14.dp)
-                    .clip(RoundedCornerShape(topStart = 0.dp, topEnd = 12.dp, bottomStart = 12.dp, bottomEnd = 12.dp))
+                    .clip(RoundedCornerShape(topStart = 0.dp, topEnd = 14.dp, bottomStart = 14.dp, bottomEnd = 14.dp))
                     .background(bubbleBackground)
                     .padding(horizontal = 14.dp, vertical = 10.dp)
             ) {
                 Column {
                     Text(
-                        text = "VISTA PREVIA",
-                        style = MaterialTheme.typography.labelSmall.copy(
+                        text       = "VISTA PREVIA WHATSAPP",
+                        style      = MaterialTheme.typography.labelSmall.copy(
                             letterSpacing = 0.07.sp,
-                            fontSize = 10.sp
+                            fontSize      = 10.sp
                         ),
-                        fontWeight = FontWeight.Medium,
-                        color = bubbleLabel
+                        fontWeight = FontWeight.Bold,
+                        color      = bubbleLabel
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        text = preview,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = bubbleText,
+                        text       = preview,
+                        style      = MaterialTheme.typography.bodyMedium,
+                        color      = bubbleText,
                         lineHeight = 20.sp
                     )
                     Text(
-                        text = "10:30 ✓✓",
-                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                        color = bubbleMeta,
-                        modifier = Modifier.fillMaxWidth(),
-                        textAlign = androidx.compose.ui.text.style.TextAlign.End
+                        text      = "10:30 ✓✓",
+                        style     = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                        color     = bubbleMeta,
+                        modifier  = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.End
                     )
                 }
             }
