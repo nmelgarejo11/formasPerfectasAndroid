@@ -136,12 +136,13 @@ fun CalendarioDiaView(
             }
         }
 
-        // ── Filtrado de Citas para el Día Seleccionado ────────────────────────
-        val citasDelDia = remember(citas, fechaSeleccionada) {
-            citas.filter { cita ->
+        // ── Filtrado y Posicionamiento de Citas para el Día Seleccionado ───────
+        val citasPosicionadas = remember(citas, fechaSeleccionada) {
+            val citasDelDia = citas.filter { cita ->
                 val inicio = parseFechaHora(cita.fechaHoraInicio)
                 inicio?.toLocalDate() == fechaSeleccionada
-            }.sortedBy { parseFechaHora(it.fechaHoraInicio) }
+            }
+            calcularPosicionesCitas(citasDelDia)
         }
 
         val scrollState      = rememberScrollState()
@@ -219,7 +220,7 @@ fun CalendarioDiaView(
             }
 
             // ── Bloques de Citas Renderizados ────────────────────────────────
-            if (citasDelDia.isEmpty()) {
+            if (citasPosicionadas.isEmpty()) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -251,70 +252,78 @@ fun CalendarioDiaView(
                     }
                 }
             } else {
-                // Layout superpuesto de citas en la línea de tiempo
-                Box(
+                // Layout paralelo para citas con posible solapamiento de horario
+                BoxWithConstraints(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(start = 68.dp, end = 12.dp)
                 ) {
-                    citasDelDia.forEach { cita ->
-                        val inicioTime = parseFechaHora(cita.fechaHoraInicio)
-                        val finTime    = parseFechaHora(cita.fechaHoraFin)
+                    val anchoDisponible = this.maxWidth
 
-                        if (inicioTime != null && finTime != null) {
-                            val minutosDesdeInicio = ((inicioTime.hour - horaInicioConfig) * 60 + inicioTime.minute).coerceAtLeast(0)
-                            val duracionMinutos    = ((finTime.hour - inicioTime.hour) * 60 + (finTime.minute - inicioTime.minute)).coerceAtLeast(15)
+                    citasPosicionadas.forEach { pos ->
+                        val cita       = pos.cita
+                        val inicioTime = pos.inicioTime
+                        val finTime    = pos.finTime
 
-                            val topOffset  = (minutosDesdeInicio * (72.0 / 60.0)).dp + 8.dp
-                            val bloqueAlto = (duracionMinutos * (72.0 / 60.0)).dp.coerceAtLeast(76.dp)
+                        val minutosDesdeInicio = ((inicioTime.hour - horaInicioConfig) * 60 + inicioTime.minute).coerceAtLeast(0)
+                        val duracionMinutos    = ((finTime.hour - inicioTime.hour) * 60 + (finTime.minute - inicioTime.minute)).coerceAtLeast(15)
 
-                            val colorBase = parseColorHex(cita.colorEstado) ?: MaterialTheme.colorScheme.primaryContainer
+                        val topOffset  = (minutosDesdeInicio * (72.0 / 60.0)).dp + 8.dp
+                        val bloqueAlto = (duracionMinutos * (72.0 / 60.0)).dp.coerceAtLeast(76.dp)
 
-                            Surface(
+                        val colWidth   = anchoDisponible / pos.totalColumns
+                        val leftOffset = colWidth * pos.columnIndex
+
+                        val colorBase  = parseColorHex(cita.colorEstado) ?: MaterialTheme.colorScheme.primaryContainer
+
+                        Surface(
+                            modifier = Modifier
+                                .width(colWidth)
+                                .offset(x = leftOffset, y = topOffset)
+                                .height(bloqueAlto)
+                                .padding(horizontal = 2.dp, vertical = 2.dp)
+                                .clickable { onCitaClick(cita) },
+                            shape  = RoundedCornerShape(12.dp),
+                            color  = colorBase.copy(alpha = 0.94f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, colorBase)
+                        ) {
+                            Row(
                                 modifier = Modifier
-                                    .fillMaxWidth()
-                                    .offset(y = topOffset)
-                                    .height(bloqueAlto)
-                                    .padding(vertical = 2.dp)
-                                    .clickable { onCitaClick(cita) },
-                                shape = RoundedCornerShape(12.dp),
-                                color = colorBase.copy(alpha = 0.94f),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, colorBase)
+                                    .padding(horizontal = 6.dp, vertical = 6.dp)
+                                    .fillMaxSize(),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Row(
+                                // Borde indicador de estado
+                                Box(
                                     modifier = Modifier
-                                        .padding(horizontal = 10.dp, vertical = 6.dp)
-                                        .fillMaxSize(),
-                                    verticalAlignment = Alignment.CenterVertically
+                                        .width(4.dp)
+                                        .fillMaxHeight()
+                                        .clip(CircleShape)
+                                        .background(Color.White)
+                                )
+
+                                Spacer(Modifier.width(6.dp))
+
+                                Column(
+                                    verticalArrangement = Arrangement.spacedBy(1.dp, Alignment.CenterVertically),
+                                    modifier            = Modifier
+                                        .weight(1f)
+                                        .padding(vertical = 1.dp)
                                 ) {
-                                    // Borde indicador de estado
-                                    Box(
-                                        modifier = Modifier
-                                            .width(4.dp)
-                                            .fillMaxHeight()
-                                            .clip(CircleShape)
-                                            .background(Color.White)
-                                    )
-
-                                    Spacer(Modifier.width(8.dp))
-
-                                    Column(
-                                        verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
-                                        modifier            = Modifier
-                                            .weight(1f)
-                                            .padding(vertical = 2.dp)
+                                    Row(
+                                        modifier              = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment     = Alignment.CenterVertically
                                     ) {
-                                        Row(
-                                            modifier              = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.SpaceBetween,
-                                            verticalAlignment     = Alignment.CenterVertically
-                                        ) {
-                                            Text(
-                                                text       = "${inicioTime.format(DateTimeFormatter.ofPattern("hh:mm a"))} – ${finTime.format(DateTimeFormatter.ofPattern("hh:mm a"))}",
-                                                style      = MaterialTheme.typography.labelSmall,
-                                                fontWeight = FontWeight.Bold,
-                                                color      = Color.White
-                                            )
+                                        Text(
+                                            text       = "${inicioTime.format(DateTimeFormatter.ofPattern("hh:mm a"))} – ${finTime.format(DateTimeFormatter.ofPattern("hh:mm a"))}",
+                                            style      = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                                            fontWeight = FontWeight.Bold,
+                                            color      = Color.White,
+                                            maxLines   = 1,
+                                            overflow   = TextOverflow.Ellipsis
+                                        )
+                                        if (pos.totalColumns == 1) {
                                             Surface(
                                                 shape = RoundedCornerShape(4.dp),
                                                 color = Color.White.copy(alpha = 0.25f)
@@ -328,37 +337,38 @@ fun CalendarioDiaView(
                                                 )
                                             }
                                         }
+                                    }
 
-                                        val cliente = cita.nombreCliente?.ifBlank { null } ?: "Cliente General"
+                                    val cliente = cita.nombreCliente?.ifBlank { null } ?: "Cliente General"
+                                    Text(
+                                        text       = cliente,
+                                        style      = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+                                        fontWeight = FontWeight.Bold,
+                                        color      = Color.White,
+                                        maxLines   = 1,
+                                        overflow   = TextOverflow.Ellipsis
+                                    )
+
+                                    val textoServicio = remember(cita.servicios) { obtenerTextoServicios(cita.servicios) }
+                                    if (textoServicio.isNotBlank()) {
                                         Text(
-                                            text       = cliente,
-                                            style      = MaterialTheme.typography.bodySmall,
-                                            fontWeight = FontWeight.Bold,
-                                            color      = Color.White,
-                                            maxLines   = 1,
-                                            overflow   = TextOverflow.Ellipsis
+                                            text     = textoServicio,
+                                            style    = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                                            color    = Color.White.copy(alpha = 0.95f),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
                                         )
+                                    }
 
-                                        val textoServicio = remember(cita.servicios) { obtenerTextoServicios(cita.servicios) }
-                                        if (textoServicio.isNotBlank()) {
-                                            Text(
-                                                text     = textoServicio,
-                                                style    = MaterialTheme.typography.labelSmall,
-                                                color    = Color.White.copy(alpha = 0.95f),
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis
-                                            )
-                                        }
-
-                                        if (cita.profesional.isNotBlank()) {
-                                            Text(
-                                                text     = "Prof: ${cita.profesional}",
-                                                style    = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                                                color    = Color.White.copy(alpha = 0.85f),
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis
-                                            )
-                                        }
+                                    if (cita.profesional.isNotBlank()) {
+                                        Text(
+                                            text     = "Prof: ${cita.profesional}",
+                                            style    = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                                            fontWeight = FontWeight.SemiBold,
+                                            color    = Color.White.copy(alpha = 0.9f),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
                                     }
                                 }
                             }
@@ -408,4 +418,76 @@ private fun parseColorHex(hex: String?): Color? {
         val colorInt = android.graphics.Color.parseColor("#$cleanHex")
         Color(colorInt)
     }.getOrNull()
+}
+
+private data class CitaPosicionada(
+    val cita: Cita,
+    val inicioTime: LocalDateTime,
+    val finTime: LocalDateTime,
+    var columnIndex: Int = 0,
+    var totalColumns: Int = 1
+)
+
+private fun calcularPosicionesCitas(citas: List<Cita>): List<CitaPosicionada> {
+    val parsed = citas.mapNotNull { cita ->
+        val inicio = parseFechaHora(cita.fechaHoraInicio)
+        val fin = parseFechaHora(cita.fechaHoraFin)
+        if (inicio != null && fin != null) {
+            CitaPosicionada(cita = cita, inicioTime = inicio, finTime = fin)
+        } else null
+    }.sortedWith(compareBy({ it.inicioTime }, { it.finTime }))
+
+    if (parsed.isEmpty()) return emptyList()
+
+    val grupos = mutableListOf<MutableList<CitaPosicionada>>()
+    var grupoActual = mutableListOf<CitaPosicionada>()
+    var maxFinEnGrupo: LocalDateTime? = null
+
+    for (item in parsed) {
+        if (grupoActual.isEmpty()) {
+            grupoActual.add(item)
+            maxFinEnGrupo = item.finTime
+        } else {
+            if (item.inicioTime.isBefore(maxFinEnGrupo!!)) {
+                grupoActual.add(item)
+                if (item.finTime.isAfter(maxFinEnGrupo)) {
+                    maxFinEnGrupo = item.finTime
+                }
+            } else {
+                grupos.add(grupoActual)
+                grupoActual = mutableListOf(item)
+                maxFinEnGrupo = item.finTime
+            }
+        }
+    }
+    if (grupoActual.isNotEmpty()) {
+        grupos.add(grupoActual)
+    }
+
+    for (grupo in grupos) {
+        val columnasTermino = mutableListOf<LocalDateTime>()
+
+        for (item in grupo) {
+            var asignado = false
+            for (colIdx in columnasTermino.indices) {
+                if (!columnasTermino[colIdx].isAfter(item.inicioTime)) {
+                    item.columnIndex = colIdx
+                    columnasTermino[colIdx] = item.finTime
+                    asignado = true
+                    break
+                }
+            }
+            if (!asignado) {
+                item.columnIndex = columnasTermino.size
+                columnasTermino.add(item.finTime)
+            }
+        }
+
+        val maxCols = columnasTermino.size
+        for (item in grupo) {
+            item.totalColumns = maxCols
+        }
+    }
+
+    return parsed
 }
