@@ -180,8 +180,7 @@ fun ClienteDetalleDialog(
             null
         }
         emailError = when {
-            email.isBlank() -> "Requerido"
-            !android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches() -> "Email inválido"
+            email.isNotBlank() && !android.util.Patterns.EMAIL_ADDRESS.matcher(email.trim()).matches() -> "Email inválido"
             else -> null
         }
         return nombreError == null && apellidoError == null && emailError == null && telefonoError == null
@@ -380,7 +379,7 @@ fun ClienteDetalleDialog(
                         OutlinedTextField(
                             value         = email,
                             onValueChange = { email = it; emailError = null },
-                            label         = { Text("Correo electrónico *") },
+                            label         = { Text("Correo electrónico") },
                             leadingIcon   = { Icon(Icons.Outlined.Email, null, tint = MaterialTheme.colorScheme.primary) },
                             isError       = emailError != null,
                             supportingText = emailError?.let { { Text(it) } },
@@ -444,13 +443,15 @@ fun ClienteDetalleDialog(
                                 viewModel.estaEscuchandoVoz = false
                                 val telefonoSanitizado = telefono.replace(" ", "").trim()
 
+                                val emailSanitizado = email.trim().ifBlank { null }
+
                                 if (esNuevo) {
                                     viewModel.crearCliente(
                                         CrearClienteRequest(
                                             nombre.trim(),
                                             apellido.trim(),
                                             telefonoSanitizado.trim(),
-                                            email.trim()
+                                            emailSanitizado
                                         )
                                     )
                                 } else {
@@ -460,7 +461,7 @@ fun ClienteDetalleDialog(
                                             nombre.trim(),
                                             apellido.trim(),
                                             telefonoSanitizado.trim(),
-                                            email.trim()
+                                            emailSanitizado
                                         )
                                     )
                                 }
