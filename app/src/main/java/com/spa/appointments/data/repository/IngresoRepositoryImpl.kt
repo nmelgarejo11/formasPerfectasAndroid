@@ -27,6 +27,10 @@ class IngresoRepositoryImpl @Inject constructor(
         apiService.registrarIngreso(request)
     }
 
+    override suspend fun actualizarIngreso(id: Int, request: IngresoRequest): Result<IngresoResultado> = runCatching {
+        apiService.actualizarIngreso(id, request)
+    }
+
     override suspend fun eliminarIngreso(id: Int): Result<IngresoResultado> = runCatching {
         apiService.eliminarIngreso(id)
     }

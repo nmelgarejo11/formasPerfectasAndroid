@@ -106,6 +106,20 @@ class GastoViewModel @Inject constructor(
         }
     }
 
+    fun actualizarGasto(id: Int, request: GastoRequest, onSuccess: () -> Unit) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            repository.actualizarGasto(id, request)
+                .onSuccess {
+                    _mensaje.value = it.mensaje
+                    cargarGastos()
+                    onSuccess()
+                }
+                .onFailure { _mensaje.value = it.message }
+            _isLoading.value = false
+        }
+    }
+
     fun eliminarGasto(id: Int) {
         viewModelScope.launch {
             _isLoading.value = true

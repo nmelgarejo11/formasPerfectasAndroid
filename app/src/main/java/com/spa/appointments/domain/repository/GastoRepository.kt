@@ -8,6 +8,7 @@ import com.spa.appointments.domain.model.Sede
 
 interface GastoRepository {
     suspend fun registrarGasto(request: GastoRequest): Result<GastoResultado>
+    suspend fun actualizarGasto(id: Int, request: GastoRequest): Result<GastoResultado>
     suspend fun listarGastos(idSede: Int?, fechaDesde: String?, fechaHasta: String?): Result<List<GastoResponse>>
     suspend fun eliminarGasto(id: Int): Result<GastoResultado>
     suspend fun getMetodosPago(): Result<List<MetodoPago>>

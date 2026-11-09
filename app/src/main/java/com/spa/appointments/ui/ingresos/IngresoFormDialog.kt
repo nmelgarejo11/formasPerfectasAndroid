@@ -22,6 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.spa.appointments.domain.model.IngresoRequest
+import com.spa.appointments.domain.model.IngresoResponse
 import com.spa.appointments.domain.model.MetodoPago
 import com.spa.appointments.domain.model.MetodoPagoDetalle
 import com.spa.appointments.domain.model.Sede
@@ -32,16 +33,31 @@ import java.time.LocalDate
 fun IngresoFormDialog(
     metodosPago: List<MetodoPago>,
     sedes: List<Sede>,
+    ingresoAEditar: IngresoResponse? = null,
     onDismiss: () -> Unit,
     onConfirmar: (IngresoRequest) -> Unit
 ) {
     val context = LocalContext.current
-    var concepto by remember { mutableStateOf("") }
-    var valor by remember { mutableStateOf("") }
-    var fechaIngreso by remember { mutableStateOf(LocalDate.now().toString()) }
-    var sedeSeleccionada by remember { mutableStateOf<Sede?>(null) }
-    var metodoPagoSeleccionado by remember { mutableStateOf<MetodoPago?>(null) }
-    var detalleSeleccionado by remember { mutableStateOf<MetodoPagoDetalle?>(null) }
+    var concepto by remember(ingresoAEditar) { mutableStateOf(ingresoAEditar?.concepto ?: "") }
+    var valor by remember(ingresoAEditar) {
+        mutableStateOf(
+            ingresoAEditar?.let {
+                if (it.valor % 1.0 == 0.0) it.valor.toLong().toString() else it.valor.toString()
+            } ?: ""
+        )
+    }
+    var fechaIngreso by remember(ingresoAEditar) { mutableStateOf(ingresoAEditar?.fechaIngreso ?: LocalDate.now().toString()) }
+    var sedeSeleccionada by remember(ingresoAEditar, sedes) {
+        mutableStateOf(sedes.find { it.id == ingresoAEditar?.idSede })
+    }
+    var metodoPagoSeleccionado by remember(ingresoAEditar, metodosPago) {
+        mutableStateOf(metodosPago.find { it.id == ingresoAEditar?.idMetodoPago })
+    }
+    var detalleSeleccionado by remember(ingresoAEditar, metodoPagoSeleccionado) {
+        mutableStateOf(
+            metodoPagoSeleccionado?.detalles?.find { it.id == ingresoAEditar?.idMetodoPagoDetalle }
+        )
+    }
 
     var expandedSede by remember { mutableStateOf(false) }
     var expandedMetodo by remember { mutableStateOf(false) }
@@ -96,12 +112,12 @@ fun IngresoFormDialog(
                     }
                     Column {
                         Text(
-                            text = "Registrar Ingreso",
+                            text = if (ingresoAEditar != null) "Editar Ingreso" else "Registrar Ingreso",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = "Completa los datos del ingreso manual",
+                            text = if (ingresoAEditar != null) "Modifica los datos del ingreso" else "Completa los datos del ingreso manual",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -307,9 +323,10 @@ fun IngresoFormDialog(
                         modifier = Modifier
                             .weight(1f)
                             .height(48.dp),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(12.dp),
+                        contentPadding = PaddingValues(horizontal = 8.dp)
                     ) {
-                        Text("Cancelar", fontWeight = FontWeight.SemiBold)
+                        Text("Cancelar", fontWeight = FontWeight.SemiBold, maxLines = 1)
                     }
                     Button(
                         onClick = {
@@ -330,9 +347,10 @@ fun IngresoFormDialog(
                         modifier = Modifier
                             .weight(1f)
                             .height(48.dp),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(12.dp),
+                        contentPadding = PaddingValues(horizontal = 8.dp)
                     ) {
-                        Text("Confirmar", fontWeight = FontWeight.Bold)
+                        Text("Guardar", fontWeight = FontWeight.Bold, maxLines = 1)
                     }
                 }
             }

@@ -31,6 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.spa.appointments.domain.model.IngresoResponse
 import java.util.Calendar
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -48,6 +49,7 @@ fun IngresoScreen(
 
     val context = LocalContext.current
     var mostrarFormulario by remember { mutableStateOf(false) }
+    var ingresoAEditar by remember { mutableStateOf<IngresoResponse?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
 
     // Configuración del Selector de Fecha
@@ -167,7 +169,10 @@ fun IngresoScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             ExtendedFloatingActionButton(
-                onClick = { mostrarFormulario = true },
+                onClick = {
+                    ingresoAEditar = null
+                    mostrarFormulario = true
+                },
                 icon = { Icon(Icons.Default.Add, contentDescription = null) },
                 text = { Text("Nuevo ingreso", fontWeight = FontWeight.Bold) },
                 containerColor = MaterialTheme.colorScheme.primary,
@@ -278,6 +283,10 @@ fun IngresoScreen(
                         ) {
                             IngresoItem(
                                 ingreso = ingreso,
+                                onEditar = {
+                                    ingresoAEditar = ingreso
+                                    mostrarFormulario = true
+                                },
                                 onEliminar = { viewModel.eliminarIngreso(ingreso.id) }
                             )
                         }
@@ -290,10 +299,22 @@ fun IngresoScreen(
             IngresoFormDialog(
                 metodosPago = metodosPago,
                 sedes = sedes,
-                onDismiss = { mostrarFormulario = false },
+                ingresoAEditar = ingresoAEditar,
+                onDismiss = {
+                    mostrarFormulario = false
+                    ingresoAEditar = null
+                },
                 onConfirmar = { request ->
-                    viewModel.registrarIngreso(request) {
-                        mostrarFormulario = false
+                    val aEditar = ingresoAEditar
+                    if (aEditar != null) {
+                        viewModel.actualizarIngreso(aEditar.id, request) {
+                            mostrarFormulario = false
+                            ingresoAEditar = null
+                        }
+                    } else {
+                        viewModel.registrarIngreso(request) {
+                            mostrarFormulario = false
+                        }
                     }
                 }
             )

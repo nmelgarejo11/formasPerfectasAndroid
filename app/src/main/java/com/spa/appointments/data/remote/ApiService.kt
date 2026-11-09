@@ -328,6 +328,9 @@ interface ApiService {
     @POST("financiero/gastos")
     suspend fun registrarGasto(@Body request: GastoRequest): Response<GastoResultado>
 
+    @PUT("financiero/gastos/{id}")
+    suspend fun actualizarGasto(@Path("id") id: Int, @Body request: GastoRequest): Response<GastoResultado>
+
     @GET("financiero/gastos")
     suspend fun listarGastos(
         @Query("idSede") idSede: Int?,
@@ -459,6 +462,9 @@ interface ApiService {
 
     @POST("Financiero/ingresos")
     suspend fun registrarIngreso(@Body request: IngresoRequest): IngresoResultado
+
+    @PUT("Financiero/ingresos/{id}")
+    suspend fun actualizarIngreso(@Path("id") id: Int, @Body request: IngresoRequest): IngresoResultado
 
     @DELETE("Financiero/ingresos/{id}")
     suspend fun eliminarIngreso(@Path("id") id: Int): IngresoResultado

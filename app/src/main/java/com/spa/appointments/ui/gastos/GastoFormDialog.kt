@@ -22,6 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.spa.appointments.domain.model.GastoRequest
+import com.spa.appointments.domain.model.GastoResponse
 import com.spa.appointments.domain.model.MetodoPago
 import com.spa.appointments.domain.model.MetodoPagoDetalle
 import com.spa.appointments.domain.model.Sede
@@ -32,16 +33,31 @@ import java.time.LocalDate
 fun GastoFormDialog(
     metodosPago: List<MetodoPago>,
     sedes: List<Sede>,
+    gastoAEditar: GastoResponse? = null,
     onDismiss: () -> Unit,
     onConfirmar: (GastoRequest) -> Unit
 ) {
     val context = LocalContext.current
-    var concepto by remember { mutableStateOf("") }
-    var valor by remember { mutableStateOf("") }
-    var fechaGasto by remember { mutableStateOf(LocalDate.now().toString()) }
-    var sedeSeleccionada by remember { mutableStateOf<Sede?>(null) }
-    var metodoPagoSeleccionado by remember { mutableStateOf<MetodoPago?>(null) }
-    var detalleSeleccionado by remember { mutableStateOf<MetodoPagoDetalle?>(null) }
+    var concepto by remember(gastoAEditar) { mutableStateOf(gastoAEditar?.concepto ?: "") }
+    var valor by remember(gastoAEditar) {
+        mutableStateOf(
+            gastoAEditar?.let {
+                if (it.valor % 1.0 == 0.0) it.valor.toLong().toString() else it.valor.toString()
+            } ?: ""
+        )
+    }
+    var fechaGasto by remember(gastoAEditar) { mutableStateOf(gastoAEditar?.fechaGasto ?: LocalDate.now().toString()) }
+    var sedeSeleccionada by remember(gastoAEditar, sedes) {
+        mutableStateOf(sedes.find { it.id == gastoAEditar?.idSede })
+    }
+    var metodoPagoSeleccionado by remember(gastoAEditar, metodosPago) {
+        mutableStateOf(metodosPago.find { it.id == gastoAEditar?.idMetodoPago })
+    }
+    var detalleSeleccionado by remember(gastoAEditar, metodoPagoSeleccionado) {
+        mutableStateOf(
+            metodoPagoSeleccionado?.detalles?.find { it.id == gastoAEditar?.idMetodoPagoDetalle }
+        )
+    }
     var expandedSede by remember { mutableStateOf(false) }
     var expandedMetodo by remember { mutableStateOf(false) }
     var expandedDetalle by remember { mutableStateOf(false) }
@@ -95,12 +111,12 @@ fun GastoFormDialog(
                     }
                     Column {
                         Text(
-                            text = "Registrar Gasto",
+                            text = if (gastoAEditar != null) "Editar Gasto" else "Registrar Gasto",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = "Completa los datos del nuevo gasto",
+                            text = if (gastoAEditar != null) "Modifica los datos del gasto" else "Completa los datos del nuevo gasto",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -314,9 +330,10 @@ fun GastoFormDialog(
                         modifier = Modifier
                             .weight(1f)
                             .height(48.dp),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(12.dp),
+                        contentPadding = PaddingValues(horizontal = 8.dp)
                     ) {
-                        Text("Cancelar", fontWeight = FontWeight.SemiBold)
+                        Text("Cancelar", fontWeight = FontWeight.SemiBold, maxLines = 1)
                     }
                     Button(
                         enabled = formularioValido,
@@ -335,9 +352,10 @@ fun GastoFormDialog(
                         modifier = Modifier
                             .weight(1f)
                             .height(48.dp),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(12.dp),
+                        contentPadding = PaddingValues(horizontal = 8.dp)
                     ) {
-                        Text("Guardar", fontWeight = FontWeight.Bold)
+                        Text("Guardar", fontWeight = FontWeight.Bold, maxLines = 1)
                     }
                 }
             }

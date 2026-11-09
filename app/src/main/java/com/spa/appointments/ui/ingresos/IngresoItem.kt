@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -24,6 +25,7 @@ import com.spa.appointments.domain.model.IngresoResponse
 @Composable
 fun IngresoItem(
     ingreso: IngresoResponse,
+    onEditar: () -> Unit,
     onEliminar: () -> Unit
 ) {
     var mostrarConfirmacion by remember { mutableStateOf(false) }
@@ -163,13 +165,21 @@ fun IngresoItem(
                     }
                 }
 
-                // Botón eliminar
-                IconButton(onClick = { mostrarConfirmacion = true }) {
-                    Icon(
-                        imageVector = Icons.Outlined.Delete,
-                        contentDescription = "Eliminar",
-                        tint = deleteIconColor
-                    )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onEditar) {
+                        Icon(
+                            imageVector = Icons.Outlined.Edit,
+                            contentDescription = "Editar",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    IconButton(onClick = { mostrarConfirmacion = true }) {
+                        Icon(
+                            imageVector = Icons.Outlined.Delete,
+                            contentDescription = "Eliminar",
+                            tint = deleteIconColor
+                        )
+                    }
                 }
             }
         }

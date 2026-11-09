@@ -104,6 +104,20 @@ class IngresoViewModel @Inject constructor(
         }
     }
 
+    fun actualizarIngreso(id: Int, request: IngresoRequest, onSuccess: () -> Unit) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            repository.actualizarIngreso(id, request)
+                .onSuccess {
+                    _mensaje.value = it.mensaje
+                    cargarIngresos()
+                    onSuccess()
+                }
+                .onFailure { _mensaje.value = it.message }
+            _isLoading.value = false
+        }
+    }
+
     fun eliminarIngreso(id: Int) {
         viewModelScope.launch {
             _isLoading.value = true

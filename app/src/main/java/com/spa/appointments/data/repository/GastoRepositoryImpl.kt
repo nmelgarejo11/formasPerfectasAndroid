@@ -25,6 +25,18 @@ class GastoRepositoryImpl(
         }
     }
 
+    override suspend fun actualizarGasto(id: Int, request: GastoRequest): Result<GastoResultado> {
+        return try {
+            val response = api.actualizarGasto(id, request)
+            if (response.isSuccessful)
+                Result.success(response.body()!!)
+            else
+                Result.failure(Exception("Error ${response.code()}: ${response.message()}"))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     override suspend fun listarGastos(
         idSede: Int?, fechaDesde: String?, fechaHasta: String?
     ): Result<List<GastoResponse>> {

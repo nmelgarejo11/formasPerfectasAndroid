@@ -33,6 +33,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.spa.appointments.domain.model.GastoResponse
 import java.util.Calendar
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -50,6 +51,7 @@ fun GastoScreen(
 
     val context = LocalContext.current
     var mostrarFormulario by remember { mutableStateOf(false) }
+    var gastoAEditar by remember { mutableStateOf<GastoResponse?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
 
     // Configuración del Selector de Fecha
@@ -169,7 +171,10 @@ fun GastoScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             ExtendedFloatingActionButton(
-                onClick = { mostrarFormulario = true },
+                onClick = {
+                    gastoAEditar = null
+                    mostrarFormulario = true
+                },
                 icon = { Icon(Icons.Default.Add, contentDescription = null) },
                 text = { Text("Nuevo gasto", fontWeight = FontWeight.Bold) },
                 containerColor = MaterialTheme.colorScheme.primary,
@@ -280,6 +285,10 @@ fun GastoScreen(
                         ) {
                             GastoItem(
                                 gasto = gasto,
+                                onEditar = {
+                                    gastoAEditar = gasto
+                                    mostrarFormulario = true
+                                },
                                 onEliminar = { viewModel.eliminarGasto(gasto.id) }
                             )
                         }
@@ -292,10 +301,22 @@ fun GastoScreen(
             GastoFormDialog(
                 metodosPago = metodosPago,
                 sedes = sedes,
-                onDismiss = { mostrarFormulario = false },
+                gastoAEditar = gastoAEditar,
+                onDismiss = {
+                    mostrarFormulario = false
+                    gastoAEditar = null
+                },
                 onConfirmar = { request ->
-                    viewModel.registrarGasto(request) {
-                        mostrarFormulario = false
+                    val aEditar = gastoAEditar
+                    if (aEditar != null) {
+                        viewModel.actualizarGasto(aEditar.id, request) {
+                            mostrarFormulario = false
+                            gastoAEditar = null
+                        }
+                    } else {
+                        viewModel.registrarGasto(request) {
+                            mostrarFormulario = false
+                        }
                     }
                 }
             )
