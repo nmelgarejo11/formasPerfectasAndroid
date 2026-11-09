@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.spa.appointments.data.repository.CitasRepository
 import com.spa.appointments.domain.model.Cita
 import com.spa.appointments.domain.model.EstadoCita
+import com.spa.appointments.domain.model.Profesional
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -12,13 +13,14 @@ import java.time.LocalDate
 import javax.inject.Inject
 
 data class FiltrosHistorial(
-    val nombreCliente : String? = null,
-    val fechaDesde    : String? = null,
-    val fechaHasta    : String? = null,
-    val idProfesional : Int?    = null,
-    val idEstado      : Int?    = null,
-    val nombreEstado  : String? = null,
-    val esFiltroManual: Boolean = false   // ← nuevo
+    val nombreCliente     : String? = null,
+    val fechaDesde        : String? = null,
+    val fechaHasta        : String? = null,
+    val idProfesional     : Int?    = null,
+    val nombreProfesional : String? = null,
+    val idEstado          : Int?    = null,
+    val nombreEstado      : String? = null,
+    val esFiltroManual    : Boolean = false
 ) {
     val activo: Boolean get() = esFiltroManual
 }
@@ -47,6 +49,9 @@ class HistorialViewModel @Inject constructor(
     private val _estados        = MutableStateFlow<List<EstadoCita>>(emptyList())
     val estados: StateFlow<List<EstadoCita>> = _estados.asStateFlow()
 
+    private val _profesionales  = MutableStateFlow<List<Profesional>>(emptyList())
+    val profesionales: StateFlow<List<Profesional>> = _profesionales.asStateFlow()
+
     private val _modoVista      = MutableStateFlow(ModoVistaCitas.CALENDARIO_DIA)
     val modoVista: StateFlow<ModoVistaCitas> = _modoVista.asStateFlow()
 
@@ -60,7 +65,15 @@ class HistorialViewModel @Inject constructor(
 
     init {
         cargarEstados()
+        cargarProfesionales()
         cargar()
+    }
+
+    fun cargarProfesionales(idSede: Int? = null, idServicio: Int? = null) {
+        viewModelScope.launch {
+            runCatching { repo.getProfesionales(idSede = idSede, idServicio = idServicio) }
+                .onSuccess { _profesionales.value = it }
+        }
     }
 
     fun toggleModoVista() {

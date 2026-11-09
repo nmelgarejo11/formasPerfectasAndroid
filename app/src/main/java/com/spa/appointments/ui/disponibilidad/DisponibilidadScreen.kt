@@ -46,11 +46,17 @@ fun DisponibilidadScreen(
     sharedVm:     ReservaSharedViewModel,
     vm: DisponibilidadViewModel = hiltViewModel()
 ) {
-    LaunchedEffect(servicio, sharedVm.cantidadPersonas) {
+    val profActual = if (sharedVm.esGrupal && sharedVm.asistentesGrupales.isNotEmpty() && sharedVm.asistenteActualIndex < sharedVm.asistentesGrupales.size) {
+        sharedVm.asistentesGrupales[sharedVm.asistenteActualIndex].profesional ?: profesional
+    } else {
+        profesional
+    }
+
+    LaunchedEffect(servicio, sharedVm.cantidadPersonas, sharedVm.asistenteActualIndex) {
         vm.servicio    = servicio
-        vm.profesional = profesional
+        vm.profesional = profActual
         vm.cargarPrecioServicio(servicio.id, sharedVm.cantidadPersonas)
-        vm.seleccionarFecha(LocalDate.now())
+        vm.seleccionarFecha(LocalDate.now(), sharedVm)
     }
 
     val uiState           by vm.uiState.collectAsState()
@@ -63,6 +69,8 @@ fun DisponibilidadScreen(
     var notas          by remember { mutableStateOf("") }
     var mostrarDialogo by remember { mutableStateOf(false) }
     var mostrarExito   by remember { mutableStateOf(false) }
+
+    val esUltimoAsistente = !sharedVm.esGrupal || (sharedVm.asistenteActualIndex >= sharedVm.cantidadPersonas - 1)
 
     LaunchedEffect(uiState) {
         if (uiState is DisponibilidadUiState.CitaCreada) mostrarExito = true
@@ -91,7 +99,7 @@ fun DisponibilidadScreen(
             },
             title = {
                 Text(
-                    text       = if (sharedVm.esGrupal) "Confirmar Cita Grupal" else "Confirmar Reserva",
+                    text       = if (sharedVm.esGrupal) "Confirmar Citas Grupales" else "Confirmar Reserva",
                     fontWeight = FontWeight.Bold,
                     textAlign  = TextAlign.Center,
                     modifier   = Modifier.fillMaxWidth(),
@@ -112,31 +120,56 @@ fun DisponibilidadScreen(
                         valor = sharedVm.clienteSeleccionado?.nombreCompleto ?: sharedVm.responsableNombre
                     )
 
-                    ConfirmacionFila(
-                        icono = Icons.Default.Badge,
-                        label = "Profesional",
-                        valor = profesional?.nombreCompleto ?: "Asignación abierta (Grupal)"
-                    )
+                    if (!sharedVm.esGrupal) {
+                        ConfirmacionFila(
+                            icono = Icons.Default.Badge,
+                            label = "Profesional",
+                            valor = profActual?.nombreCompleto ?: "Asignación abierta"
+                        )
 
-                    if (sharedVm.esGrupal) {
+                        ConfirmacionFila(
+                            icono = Icons.Default.CalendarToday,
+                            label = "Fecha",
+                            valor = fechaSeleccionada.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+                        )
+
+                        ConfirmacionFila(
+                            icono = Icons.Default.Schedule,
+                            label = "Hora",
+                            valor = "${formatearHora12h(slotSeleccionado?.horaInicio ?: "")} – ${formatearHora12h(slotSeleccionado?.horaFin ?: "")}"
+                        )
+                    } else {
                         ConfirmacionFila(
                             icono = Icons.Default.Group,
                             label = "Asistentes",
-                            valor = "${sharedVm.cantidadPersonas} personas"
+                            valor = "${sharedVm.cantidadPersonas} personas (${sharedVm.asistentesGrupales.size} citas)"
                         )
+
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
+                        sharedVm.asistentesGrupales.forEachIndexed { idx, config ->
+                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Text(
+                                    text = "Asistente ${idx + 1}:",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    text = "• Profesional: ${config.profesional?.nombreCompleto ?: "Sin asignar"}",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                                Text(
+                                    text = "• Fecha: ${config.fecha?.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) ?: "-"}",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                                Text(
+                                    text = "• Hora: ${formatearHora12h(config.slot?.horaInicio ?: "")} – ${formatearHora12h(config.slot?.horaFin ?: "")}",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                        }
                     }
-
-                    ConfirmacionFila(
-                        icono = Icons.Default.CalendarToday,
-                        label = "Fecha",
-                        valor = fechaSeleccionada.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
-                    )
-
-                    ConfirmacionFila(
-                        icono = Icons.Default.Schedule,
-                        label = "Hora",
-                        valor = "${formatearHora12h(slotSeleccionado?.horaInicio ?: "")} – ${formatearHora12h(slotSeleccionado?.horaFin ?: "")}"
-                    )
 
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
@@ -153,11 +186,15 @@ fun DisponibilidadScreen(
                 Button(
                     onClick = {
                         mostrarDialogo = false
-                        vm.confirmarCita(sharedVm, notas.ifBlank { null })
+                        if (sharedVm.esGrupal) {
+                            vm.confirmarCitasGrupales(sharedVm, notas.ifBlank { null })
+                        } else {
+                            vm.confirmarCita(sharedVm, notas.ifBlank { null })
+                        }
                     },
                     shape    = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth()
-                ) { Text("Confirmar cita", fontWeight = FontWeight.SemiBold) }
+                ) { Text(if (sharedVm.esGrupal) "Guardar ${sharedVm.cantidadPersonas} citas" else "Confirmar cita", fontWeight = FontWeight.SemiBold) }
             },
             dismissButton = {
                 OutlinedButton(
@@ -189,7 +226,7 @@ fun DisponibilidadScreen(
             },
             title = {
                 Text(
-                    "¡Cita reservada con éxito!",
+                    "¡Citas reservadas con éxito!",
                     fontWeight = FontWeight.Bold,
                     textAlign  = TextAlign.Center,
                     modifier   = Modifier.fillMaxWidth(),
@@ -198,7 +235,7 @@ fun DisponibilidadScreen(
             },
             text = {
                 Text(
-                    text      = (uiState as? DisponibilidadUiState.CitaCreada)?.mensaje ?: "Tu cita fue creada exitosamente.",
+                    text      = (uiState as? DisponibilidadUiState.CitaCreada)?.mensaje ?: "Tus citas fueron creadas exitosamente.",
                     textAlign = TextAlign.Center,
                     color     = MaterialTheme.colorScheme.onSurfaceVariant,
                     style     = MaterialTheme.typography.bodyMedium,
@@ -224,6 +261,32 @@ fun DisponibilidadScreen(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             Column {
+                if (sharedVm.esGrupal) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Group,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                text = "Cita Grupal — Asistente ${sharedVm.asistenteActualIndex + 1} de ${sharedVm.cantidadPersonas}",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                    }
+                }
+
                 TopAppBar(
                     title = {
                         Column {
@@ -293,7 +356,21 @@ fun DisponibilidadScreen(
                     label       = "boton_reservar"
                 ) { slot ->
                     Button(
-                        onClick  = { mostrarDialogo = true },
+                        onClick  = {
+                            if (sharedVm.esGrupal && slot != null && sharedVm.asistentesGrupales.isNotEmpty()) {
+                                val config = sharedVm.asistentesGrupales[sharedVm.asistenteActualIndex]
+                                config.fecha = fechaSeleccionada
+                                config.slot = slot
+                                if (!esUltimoAsistente) {
+                                    sharedVm.asistenteActualIndex++
+                                    onBack() // vuelve a la pantalla de selección de profesional para el siguiente asistente
+                                } else {
+                                    mostrarDialogo = true
+                                }
+                            } else {
+                                mostrarDialogo = true
+                            }
+                        },
                         enabled  = botonHabilitado,
                         modifier = Modifier
                             .fillMaxWidth()
@@ -314,8 +391,14 @@ fun DisponibilidadScreen(
                                 modifier           = Modifier.size(20.dp)
                             )
                             Spacer(Modifier.width(8.dp))
+                            val textoBoton = when {
+                                slot == null -> "Selecciona un horario"
+                                !sharedVm.esGrupal -> "Confirmar a las ${formatearHora12h(slot.horaInicio)}"
+                                !esUltimoAsistente -> "Guardar Asistente ${sharedVm.asistenteActualIndex + 1} y continuar"
+                                else -> "Revisar y confirmar ${sharedVm.cantidadPersonas} citas"
+                            }
                             Text(
-                                text       = slot?.let { "Confirmar a las ${formatearHora12h(it.horaInicio)}" } ?: "Selecciona un horario",
+                                text       = textoBoton,
                                 fontWeight = FontWeight.Bold,
                                 fontSize   = 15.sp
                             )
@@ -332,13 +415,13 @@ fun DisponibilidadScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(bottom = 12.dp)
         ) {
-            ResumenReserva(servicio = servicio, profesional = profesional, precioTotal = precioMostrar)
+            ResumenReserva(servicio = servicio, profesional = profActual, precioTotal = precioMostrar)
 
             Spacer(Modifier.height(8.dp))
 
             SelectorFecha(
                 fechaSeleccionada   = fechaSeleccionada,
-                onFechaSeleccionada = { vm.seleccionarFecha(it) }
+                onFechaSeleccionada = { vm.seleccionarFecha(it, sharedVm) }
             )
 
             Spacer(Modifier.height(16.dp))

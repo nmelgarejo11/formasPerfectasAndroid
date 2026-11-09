@@ -13,5 +13,7 @@ data class Servicio(
     @Json(name = "icono")           val icono: String?,
     @Json(name = "idCategoria")     val idCategoria: Int,
     @Json(name = "categoria")       val categoria: String,
-    @Json(name = "esGrupal")        val esGrupal: Boolean
+    @Json(name = "esGrupal")        val esGrupal: Boolean,
+    @Json(name = "maxPersonas")      val maxPersonas: Int? = null,
+    @Json(name = "mensajeWhatsApp") val mensajeWhatsApp: String? = null
 )

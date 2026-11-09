@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.spa.appointments.domain.model.Cita
 import com.spa.appointments.domain.model.EstadoCita
+import com.spa.appointments.domain.model.Profesional
 import com.spa.appointments.ui.citas.components.CalendarioDiaView
 import java.util.Calendar
 import java.util.Locale
@@ -44,6 +45,7 @@ fun HistorialScreen(
     val uiState         by vm.uiState.collectAsState()
     val filtros         by vm.filtros.collectAsState()
     val estados         by vm.estados.collectAsState()
+    val profesionales   by vm.profesionales.collectAsState()
     val showFiltros     by vm.mostrarFiltros.collectAsState()
     val modoVista       by vm.modoVista.collectAsState()
     val fechaCalendario by vm.fechaCalendario.collectAsState()
@@ -191,11 +193,12 @@ fun HistorialScreen(
                 exit    = shrinkVertically() + fadeOut()
             ) {
                 FiltrosPanel(
-                    filtros   = filtrosTemp,
-                    estados   = estados,
-                    onChange  = { filtrosTemp = it },
-                    onAplicar = { vm.aplicarFiltros(filtrosTemp) },
-                    onCerrar  = { vm.toggleFiltros() }
+                    filtros       = filtrosTemp,
+                    estados       = estados,
+                    profesionales = profesionales,
+                    onChange      = { filtrosTemp = it },
+                    onAplicar     = { vm.aplicarFiltros(filtrosTemp) },
+                    onCerrar      = { vm.toggleFiltros() }
                 )
             }
 
@@ -374,11 +377,12 @@ fun HistorialScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun FiltrosPanel(
-    filtros:   FiltrosHistorial,
-    estados:   List<EstadoCita>,
-    onChange:  (FiltrosHistorial) -> Unit,
-    onAplicar: () -> Unit,
-    onCerrar:  () -> Unit
+    filtros:       FiltrosHistorial,
+    estados:       List<EstadoCita>,
+    profesionales: List<Profesional>,
+    onChange:      (FiltrosHistorial) -> Unit,
+    onAplicar:     () -> Unit,
+    onCerrar:      () -> Unit
 ) {
     Surface(
         color    = MaterialTheme.colorScheme.surfaceContainerLow,
@@ -441,6 +445,15 @@ private fun FiltrosPanel(
                 seleccionadoNombre = filtros.nombreEstado,
                 onSelect           = { id, nombre ->
                     onChange(filtros.copy(idEstado = id, nombreEstado = nombre))
+                }
+            )
+
+            ProfesionalDropdown(
+                profesionales      = profesionales,
+                seleccionadoId     = filtros.idProfesional,
+                seleccionadoNombre = filtros.nombreProfesional,
+                onSelect           = { id, nombre ->
+                    onChange(filtros.copy(idProfesional = id, nombreProfesional = nombre))
                 }
             )
 
@@ -612,6 +625,67 @@ private fun EstadoDropdown(
                     },
                     leadingIcon = {
                         if (seleccionadoId == estado.id)
+                            Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp))
+                    }
+                )
+            }
+        }
+    }
+}
+
+// ─── Dropdown de Profesional ──────────────────────────────────────────────────
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ProfesionalDropdown(
+    profesionales:      List<Profesional>,
+    seleccionadoId:     Int?,
+    seleccionadoNombre: String?,
+    onSelect:           (Int?, String?) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    ExposedDropdownMenuBox(
+        expanded         = expanded,
+        onExpandedChange = { expanded = !expanded }
+    ) {
+        OutlinedTextField(
+            value         = seleccionadoNombre ?: "Todos los profesionales",
+            onValueChange = {},
+            readOnly      = true,
+            label         = { Text("Profesional") },
+            shape         = RoundedCornerShape(12.dp),
+            trailingIcon  = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+            modifier      = Modifier
+                .fillMaxWidth()
+                .menuAnchor()
+        )
+        ExposedDropdownMenu(
+            expanded         = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            DropdownMenuItem(
+                text = { Text("Todos los profesionales") },
+                onClick = {
+                    onSelect(null, null)
+                    expanded = false
+                },
+                leadingIcon = {
+                    if (seleccionadoId == null)
+                        Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp))
+                }
+            )
+            if (profesionales.isNotEmpty()) HorizontalDivider()
+            profesionales.forEach { prof ->
+                val nombreMostrar = prof.nombreCompleto.ifBlank { "${prof.nombre} ${prof.apellido}" }
+                DropdownMenuItem(
+                    text = { Text(nombreMostrar) },
+                    onClick = {
+                        onSelect(prof.id, nombreMostrar)
+                        expanded = false
+                    },
+                    leadingIcon = {
+                        if (seleccionadoId == prof.id)
                             Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp))
                     }
                 )

@@ -215,6 +215,11 @@ interface ApiService {
         @Body request: ServicioRequest
     )
 
+    @POST("admin/servicios/copiar-mensaje-whatsapp")
+    suspend fun copiarMensajeWhatsApp(
+        @Body request: CopiarMensajeRequest
+    ): ResponseBody
+
     @PATCH("admin/servicios/{id}/estado")
     suspend fun toggleEstadoServicio(@Path("id") id: Int): EstadoResponse
 

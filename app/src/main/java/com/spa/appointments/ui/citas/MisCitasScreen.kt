@@ -495,11 +495,12 @@ fun MisCitasContent(
 
             AnimatedVisibility(visible = showFiltros && modoVista == ModoVistaCitas.LISTA, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
                 FiltrosMisCitasPanel(
-                    filtros   = filtrosTemp,
-                    estados   = estados,
-                    onChange  = { filtrosTemp = it },
-                    onAplicar = { onAplicarFiltros(filtrosTemp) },
-                    onCerrar  = onToggleFiltros
+                    filtros       = filtrosTemp,
+                    estados       = estados,
+                    profesionales = profesionales,
+                    onChange      = { filtrosTemp = it },
+                    onAplicar     = { onAplicarFiltros(filtrosTemp) },
+                    onCerrar      = onToggleFiltros
                 )
             }
 
@@ -679,11 +680,12 @@ fun MisCitasContent(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun FiltrosMisCitasPanel(
-    filtros:   FiltrosMisCitas,
-    estados:   List<EstadoCita>,
-    onChange:  (FiltrosMisCitas) -> Unit,
-    onAplicar: () -> Unit,
-    onCerrar:  () -> Unit
+    filtros:       FiltrosMisCitas,
+    estados:       List<EstadoCita>,
+    profesionales: List<Profesional>,
+    onChange:      (FiltrosMisCitas) -> Unit,
+    onAplicar:     () -> Unit,
+    onCerrar:      () -> Unit
 ) {
     Surface(
         color = MaterialTheme.colorScheme.surfaceContainerLow,
@@ -737,6 +739,14 @@ private fun FiltrosMisCitasPanel(
                 estadoIdSeleccionado = filtros.idEstado,
                 estadoNombreSeleccionado = filtros.nombreEstado,
                 onSelect = { id, nom -> onChange(filtros.copy(idEstado = id, nombreEstado = nom)) }
+            )
+
+            // Filtro: Profesional Dropdown
+            MisCitasProfesionalDropdown(
+                profesionales = profesionales,
+                profesionalIdSeleccionado = filtros.idProfesional,
+                profesionalNombreSeleccionado = filtros.nombreProfesional,
+                onSelect = { id, nom -> onChange(filtros.copy(idProfesional = id, nombreProfesional = nom)) }
             )
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
@@ -813,6 +823,7 @@ private fun MisCitasEstadoDropdown(
             value = textoDisplay,
             onValueChange = {},
             readOnly = true,
+            label = { Text("Estado") },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
             modifier = Modifier.menuAnchor().fillMaxWidth(),
             shape = RoundedCornerShape(12.dp)
@@ -823,12 +834,75 @@ private fun MisCitasEstadoDropdown(
         ) {
             DropdownMenuItem(
                 text = { Text("Todos los estados") },
-                onClick = { onSelect(null, null); expanded = false }
+                onClick = { onSelect(null, null); expanded = false },
+                leadingIcon = {
+                    if (estadoIdSeleccionado == null)
+                        Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp))
+                }
             )
+            if (estados.isNotEmpty()) HorizontalDivider()
             estados.forEach { est ->
                 DropdownMenuItem(
                     text = { Text(est.nombre) },
-                    onClick = { onSelect(est.id, est.nombre); expanded = false }
+                    onClick = { onSelect(est.id, est.nombre); expanded = false },
+                    leadingIcon = {
+                        if (estadoIdSeleccionado == est.id)
+                            Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp))
+                    }
+                )
+            }
+        }
+    }
+}
+
+// ─── Selector de Profesional para Filtros ──────────────────────────────────────
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun MisCitasProfesionalDropdown(
+    profesionales:                 List<Profesional>,
+    profesionalIdSeleccionado:     Int?,
+    profesionalNombreSeleccionado: String?,
+    onSelect:                      (Int?, String?) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val textoDisplay = profesionalNombreSeleccionado ?: "Todos los profesionales"
+
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it }
+    ) {
+        OutlinedTextField(
+            value = textoDisplay,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("Profesional") },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            modifier = Modifier.menuAnchor().fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp)
+        )
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            DropdownMenuItem(
+                text = { Text("Todos los profesionales") },
+                onClick = { onSelect(null, null); expanded = false },
+                leadingIcon = {
+                    if (profesionalIdSeleccionado == null)
+                        Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp))
+                }
+            )
+            if (profesionales.isNotEmpty()) HorizontalDivider()
+            profesionales.forEach { prof ->
+                val nombreMostrar = prof.nombreCompleto.ifBlank { "${prof.nombre} ${prof.apellido}" }
+                DropdownMenuItem(
+                    text = { Text(nombreMostrar) },
+                    onClick = { onSelect(prof.id, nombreMostrar); expanded = false },
+                    leadingIcon = {
+                        if (profesionalIdSeleccionado == prof.id)
+                            Icon(Icons.Default.Check, null, modifier = Modifier.size(16.dp))
+                    }
                 )
             }
         }

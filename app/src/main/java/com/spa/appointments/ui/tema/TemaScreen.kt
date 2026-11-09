@@ -5,6 +5,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -518,7 +519,7 @@ private fun PaletaPreview(
 // ── Mensaje WhatsApp con Chips y Burbuja M3 ───────────────────────────────────
 
 @Composable
-private fun MensajeWhatsAppField(
+internal fun MensajeWhatsAppField(
     value:              TextFieldValue,
     onValueChange:      (TextFieldValue) -> Unit,
     variables:          List<String>,
@@ -567,9 +568,11 @@ private fun MensajeWhatsAppField(
 
         Spacer(Modifier.height(10.dp))
 
-        // Chips de variables
+        // Chips de variables (Scrollable horizontalmente)
         Row(
-            modifier              = Modifier.fillMaxWidth(),
+            modifier              = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             variables.forEach { variable ->
@@ -577,6 +580,8 @@ private fun MensajeWhatsAppField(
                     variable.contains("Nombre") -> "+ Nombre"
                     variable.contains("Fecha") -> "+ Fecha"
                     variable.contains("Hora") -> "+ Hora"
+                    variable.contains("Duracion") -> "+ Duración"
+                    variable.contains("Asistentes") -> "+ Asistentes"
                     else -> "+ $variable"
                 }
                 SuggestionChip(
@@ -605,6 +610,8 @@ private fun MensajeWhatsAppField(
             .replace("{NombreCliente}", "María García")
             .replace("{Fecha}", "15/05/2026")
             .replace("{Hora}", "10:30 AM")
+            .replace("{Duracion}", "1 Hora 30 Minutos")
+            .replace("{Asistentes}", "4 personas")
 
         if (preview.isNotBlank()) {
             Box(

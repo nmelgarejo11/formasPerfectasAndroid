@@ -17,6 +17,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Badge
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.People
@@ -34,13 +35,15 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.spa.appointments.domain.model.Profesional
+import com.spa.appointments.ui.reserva.ReservaSharedViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfesionalesScreen(
     onBack:                   () -> Unit,
     onSeleccionarProfesional: (Profesional) -> Unit,
-    vm: ProfesionalesViewModel = hiltViewModel()
+    vm: ProfesionalesViewModel = hiltViewModel(),
+    sharedVm: ReservaSharedViewModel? = null
 ) {
     val uiState by vm.uiState.collectAsState()
     var busqueda by remember { mutableStateOf("") }
@@ -49,6 +52,32 @@ fun ProfesionalesScreen(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             Column {
+                if (sharedVm != null && sharedVm.esGrupal) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Group,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                text = "Cita Grupal — Asistente ${sharedVm.asistenteActualIndex + 1} de ${sharedVm.cantidadPersonas}",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                    }
+                }
+
                 TopAppBar(
                     title = {
                         Column {

@@ -1,6 +1,7 @@
 package com.spa.appointments.ui.reserva
 
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -8,8 +9,17 @@ import androidx.lifecycle.ViewModel
 import com.spa.appointments.domain.model.Cliente
 import com.spa.appointments.domain.model.Profesional
 import com.spa.appointments.domain.model.Servicio
+import com.spa.appointments.domain.model.SlotDisponible
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.time.LocalDate
 import javax.inject.Inject
+
+data class AsistenteCitaConfig(
+    val numeroAsistente: Int,
+    var profesional: Profesional? = null,
+    var fecha: LocalDate? = null,
+    var slot: SlotDisponible? = null
+)
 
 @HiltViewModel
 class ReservaSharedViewModel @Inject constructor() : ViewModel() {
@@ -28,6 +38,23 @@ class ReservaSharedViewModel @Inject constructor() : ViewModel() {
     var responsableCorreo by mutableStateOf("")
     var cantidadPersonas by mutableStateOf(1)
 
+    val asistentesGrupales = mutableStateListOf<AsistenteCitaConfig>()
+    var asistenteActualIndex by mutableIntStateOf(0)
+
+    fun prepararCitaGrupal(cliente: Cliente, personas: Int) {
+        clienteSeleccionado = cliente
+        responsableNombre = cliente.nombreCompleto
+        responsableTelefono = cliente.telefono ?: ""
+        responsableCorreo = cliente.email ?: ""
+        cantidadPersonas = personas
+
+        asistentesGrupales.clear()
+        for (i in 1..personas) {
+            asistentesGrupales.add(AsistenteCitaConfig(numeroAsistente = i))
+        }
+        asistenteActualIndex = 0
+    }
+
     fun limpiarReserva() {
         clienteSeleccionado = null
         servicioSeleccionado = null
@@ -39,5 +66,7 @@ class ReservaSharedViewModel @Inject constructor() : ViewModel() {
         responsableTelefono = ""
         responsableCorreo = ""
         cantidadPersonas = 1
+        asistentesGrupales.clear()
+        asistenteActualIndex = 0
     }
 }

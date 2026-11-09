@@ -58,6 +58,7 @@ data class Cita(
     @Json(name = "fechaHoraInicioOriginal")   val fechaHoraInicioOriginal: String?,
     @Json(name = "nombreCliente")             val nombreCliente: String?,
     @Json(name = "cantidadPersonas")          val cantidadPersonas: Int? = null,
+    @Json(name = "maxPersonas")               val maxPersonas: Int? = null,
     @Json(name = "idSede")                    val idSede: Int
 )
 

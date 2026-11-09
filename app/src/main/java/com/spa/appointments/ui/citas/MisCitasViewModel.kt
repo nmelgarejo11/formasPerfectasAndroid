@@ -37,13 +37,14 @@ sealed class AccionUiState {
 }
 
 data class FiltrosMisCitas(
-    val nombreCliente : String? = null,
-    val fechaDesde    : String? = null,
-    val fechaHasta    : String? = null,
-    val idProfesional : Int?    = null,
-    val idEstado      : Int?    = null,
-    val nombreEstado  : String? = null,
-    val esFiltroManual: Boolean = false
+    val nombreCliente     : String? = null,
+    val fechaDesde        : String? = null,
+    val fechaHasta        : String? = null,
+    val idProfesional     : Int?    = null,
+    val nombreProfesional : String? = null,
+    val idEstado          : Int?    = null,
+    val nombreEstado      : String? = null,
+    val esFiltroManual    : Boolean = false
 ) {
     val activo: Boolean get() = esFiltroManual
 }
@@ -101,6 +102,7 @@ class MisCitasViewModel @Inject constructor(
     init {
         cargarEstados()
         cargarMetodosPago()
+        cargarProfesionales()
         _filtros.value = filtroHoy()
         cargar()
     }
@@ -317,7 +319,7 @@ class MisCitasViewModel @Inject constructor(
         }
     }
 
-    fun cargarProfesionales(idSede: Int, idServicio: Int? = null) {
+    fun cargarProfesionales(idSede: Int? = null, idServicio: Int? = null) {
         viewModelScope.launch {
             runCatching { repo.getProfesionales(idSede = idSede, idServicio = idServicio) }
                 .onSuccess { _profesionales.value = it }

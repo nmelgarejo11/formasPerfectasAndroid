@@ -30,6 +30,9 @@ class CatalogosAdminRepository @Inject constructor(
     suspend fun editarServicio(id: Int, req: ServicioRequest) =
         api.editarServicio(id, req)
 
+    suspend fun copiarMensajeWhatsApp(req: CopiarMensajeRequest) =
+        api.copiarMensajeWhatsApp(req)
+
     suspend fun toggleEstadoServicio(id: Int): Boolean =
         api.toggleEstadoServicio(id).estado
 

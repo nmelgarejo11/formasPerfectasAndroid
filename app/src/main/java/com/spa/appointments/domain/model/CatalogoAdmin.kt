@@ -32,7 +32,9 @@ data class ServicioAdmin(
     @Json(name = "precioBase")      val precioBase: Double,
     @Json(name = "icono")           val icono: String?,
     @Json(name = "estado")          val estado: Boolean,
-    @Json(name = "esGrupal")        val esGrupal: Boolean
+    @Json(name = "esGrupal")        val esGrupal: Boolean,
+    @Json(name = "maxPersonas")      val maxPersonas: Int? = null,
+    @Json(name = "mensajeWhatsApp") val mensajeWhatsApp: String? = null
 )
 
 @JsonClass(generateAdapter = true)
@@ -43,7 +45,15 @@ data class ServicioRequest(
     @Json(name = "duracionMinutos") val duracionMinutos: Int,
     @Json(name = "precioBase")      val precioBase: Double,
     @Json(name = "icono")           val icono: String?,
-    @Json(name = "esGrupal")        val esGrupal: Boolean
+    @Json(name = "esGrupal")        val esGrupal: Boolean,
+    @Json(name = "maxPersonas")      val maxPersonas: Int? = null,
+    @Json(name = "mensajeWhatsApp") val mensajeWhatsApp: String? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class CopiarMensajeRequest(
+    @Json(name = "mensajeWhatsApp") val mensajeWhatsApp: String?,
+    @Json(name = "idsServiciosDestino") val idsServiciosDestino: List<Int>
 )
 
 // ─── Respuestas genéricas ─────────────────────────────────

@@ -41,6 +41,9 @@ fun AsignarCitaGrupalClienteDialog(
 
     val selectedProfesionales = remember { mutableStateListOf<Int>() }
 
+    val cantInt = cantidadPersonas.toIntOrNull() ?: 0
+    val excedeMax = cita.maxPersonas != null && cita.maxPersonas > 0 && cantInt > cita.maxPersonas
+
     AlertDialog(
         onDismissRequest = onDismiss,
         shape = RoundedCornerShape(20.dp),
@@ -184,6 +187,17 @@ fun AsignarCitaGrupalClienteDialog(
                     value = cantidadPersonas,
                     onValueChange = { cantidadPersonas = it.filter { c -> c.isDigit() } },
                     label = { Text("Número de personas") },
+                    isError = excedeMax,
+                    supportingText = {
+                        if (excedeMax) {
+                            Text(
+                                "El número de personas no puede superar el límite del servicio (${cita.maxPersonas}).",
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        } else if (cita.maxPersonas != null && cita.maxPersonas > 0) {
+                            Text("Máximo permitido: ${cita.maxPersonas} personas")
+                        }
+                    },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
@@ -196,11 +210,11 @@ fun AsignarCitaGrupalClienteDialog(
                 onClick = {
                     val cli = clienteSeleccionado
                     val cant = cantidadPersonas.toIntOrNull() ?: 2
-                    if (cli != null) {
+                    if (cli != null && !excedeMax) {
                         onConfirmar(cita.id, cli.id, cant, selectedProfesionales.toList().ifEmpty { null })
                     }
                 },
-                enabled = clienteSeleccionado != null && (cantidadPersonas.toIntOrNull() ?: 0) >= 1,
+                enabled = clienteSeleccionado != null && (cantidadPersonas.toIntOrNull() ?: 0) >= 1 && !excedeMax,
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {

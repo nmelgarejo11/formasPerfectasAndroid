@@ -103,6 +103,25 @@ class CatalogosViewModel @Inject constructor(
         }
     }
 
+    fun copiarMensajeWhatsApp(mensaje: String?, idsServiciosDestino: List<Int>, onSuccess: () -> Unit) {
+        viewModelScope.launch {
+            _uiState.value = CatalogosUiState.Loading
+            try {
+                repo.copiarMensajeWhatsApp(
+                    CopiarMensajeRequest(
+                        mensajeWhatsApp = mensaje,
+                        idsServiciosDestino = idsServiciosDestino
+                    )
+                )
+                cargarServicios()
+                _uiState.value = CatalogosUiState.Success
+                onSuccess()
+            } catch (e: Exception) {
+                _uiState.value = CatalogosUiState.Error(e.message ?: "Error al copiar mensaje")
+            }
+        }
+    }
+
     fun toggleServicio(id: Int) {
         viewModelScope.launch {
             try {

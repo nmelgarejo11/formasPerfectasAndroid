@@ -35,20 +35,28 @@ import com.spa.appointments.ui.disponibilidad.DisponibilidadUiState
 import kotlinx.coroutines.flow.StateFlow
 
 private const val MIN_PERSONAS = 1
-private const val MAX_PERSONAS = 20
+private const val MAX_PERSONAS_DEFAULT = 20
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ResponsableGrupalScreen(
     onBack: () -> Unit,
     onContinuar: (cliente: Cliente, personas: Int) -> Unit,
+    maxPersonasPermitido: Int? = null,
     clienteVm: SeleccionarClienteViewModel = hiltViewModel()
 ) {
     val clienteUiState by clienteVm.uiState.collectAsState()
     val textoBusqueda by clienteVm.textoBusqueda.collectAsState()
 
+    val limiteMaximo = (maxPersonasPermitido ?: MAX_PERSONAS_DEFAULT).coerceAtLeast(MIN_PERSONAS)
     var clienteSeleccionado by remember { mutableStateOf<Cliente?>(null) }
     var cantidadPersonas by remember { mutableIntStateOf(MIN_PERSONAS) }
+
+    LaunchedEffect(limiteMaximo) {
+        if (cantidadPersonas > limiteMaximo) {
+            cantidadPersonas = limiteMaximo
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -287,7 +295,9 @@ fun ResponsableGrupalScreen(
                 // ── SECCIÓN 2: CANTIDAD DE ASISTENTES ─────────────────────────
                 PersonasSelectorCard(
                     cantidad = cantidadPersonas,
-                    onIncrement = { if (cantidadPersonas < MAX_PERSONAS) cantidadPersonas++ },
+                    limiteMaximo = limiteMaximo,
+                    maxPersonasPermitido = maxPersonasPermitido,
+                    onIncrement = { if (cantidadPersonas < limiteMaximo) cantidadPersonas++ },
                     onDecrement = { if (cantidadPersonas > MIN_PERSONAS) cantidadPersonas-- }
                 )
 
@@ -297,14 +307,14 @@ fun ResponsableGrupalScreen(
                 Button(
                     onClick = {
                         val c = clienteSeleccionado
-                        if (c != null) {
+                        if (c != null && cantidadPersonas <= limiteMaximo) {
                             onContinuar(c, cantidadPersonas)
                         }
                     },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(52.dp),
-                    enabled = clienteSeleccionado != null,
+                    enabled = clienteSeleccionado != null && cantidadPersonas <= limiteMaximo,
                     shape = RoundedCornerShape(14.dp)
                 ) {
                     Text(
@@ -321,15 +331,18 @@ fun ResponsableGrupalScreen(
 @Composable
 private fun PersonasSelectorCard(
     cantidad: Int,
+    limiteMaximo: Int,
+    maxPersonasPermitido: Int?,
     onIncrement: () -> Unit,
     onDecrement: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
         ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(
@@ -339,52 +352,104 @@ private fun PersonasSelectorCard(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
                 Text(
-                    "Cantidad de asistentes",
+                    text = "Cantidad de asistentes",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
-                    "Incluyendo al responsable",
+                    text = if (maxPersonasPermitido != null)
+                        "Máximo del servicio: $maxPersonasPermitido personas"
+                    else
+                        "Incluyendo al responsable",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = if (cantidad >= limiteMaximo && maxPersonasPermitido != null)
+                        MaterialTheme.colorScheme.tertiary
+                    else
+                        MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = if (cantidad >= limiteMaximo && maxPersonasPermitido != null)
+                        FontWeight.Bold
+                    else
+                        FontWeight.Normal
                 )
             }
 
+            Spacer(Modifier.width(12.dp))
+
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                FilledTonalIconButton(
+                // Botón Disminuir (-)
+                val puedeDisminuir = cantidad > MIN_PERSONAS
+                Surface(
                     onClick = onDecrement,
-                    enabled = cantidad > MIN_PERSONAS,
-                    modifier = Modifier.size(36.dp)
+                    enabled = puedeDisminuir,
+                    shape = CircleShape,
+                    color = if (puedeDisminuir)
+                        MaterialTheme.colorScheme.secondaryContainer
+                    else
+                        MaterialTheme.colorScheme.surfaceContainerHigh,
+                    contentColor = if (puedeDisminuir)
+                        MaterialTheme.colorScheme.onSecondaryContainer
+                    else
+                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f),
+                    modifier = Modifier.size(38.dp)
                 ) {
-                    Icon(Icons.Default.Remove, contentDescription = "Disminuir", modifier = Modifier.size(18.dp))
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Default.Remove,
+                            contentDescription = "Disminuir",
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
 
+                // Número de personas
                 Box(
                     modifier = Modifier
-                        .size(44.dp)
+                        .widthIn(min = 44.dp)
+                        .height(38.dp)
                         .clip(RoundedCornerShape(10.dp))
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+                        .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = cantidad.toString(),
-                        style = MaterialTheme.typography.titleLarge,
+                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.padding(horizontal = 8.dp)
                     )
                 }
 
-                FilledTonalIconButton(
+                // Botón Aumentar (+)
+                val puedeAumentar = cantidad < limiteMaximo
+                Surface(
                     onClick = onIncrement,
-                    enabled = cantidad < MAX_PERSONAS,
-                    modifier = Modifier.size(36.dp)
+                    enabled = puedeAumentar,
+                    shape = CircleShape,
+                    color = if (puedeAumentar)
+                        MaterialTheme.colorScheme.primaryContainer
+                    else
+                        MaterialTheme.colorScheme.surfaceContainerHigh,
+                    contentColor = if (puedeAumentar)
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                    else
+                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f),
+                    modifier = Modifier.size(38.dp)
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = "Aumentar", modifier = Modifier.size(18.dp))
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = "Aumentar",
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
             }
         }

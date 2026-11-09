@@ -188,13 +188,17 @@ fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
                 onBack = { nav.popBackStack() },
                 onSeleccionarProfesional = { profesional ->
                     sharedVm.profesionalSeleccionado = profesional
+                    if (sharedVm.esGrupal && sharedVm.asistentesGrupales.isNotEmpty() && sharedVm.asistenteActualIndex < sharedVm.asistentesGrupales.size) {
+                        sharedVm.asistentesGrupales[sharedVm.asistenteActualIndex].profesional = profesional
+                    }
                     if (sharedVm.clienteSeleccionado != null) {
                         nav.navigate(Routes.DISPONIBILIDAD)
                     } else {
                         nav.navigate(Routes.SELECCIONAR_CLIENTE)
                     }
                 },
-                vm = profVm
+                vm = profVm,
+                sharedVm = sharedVm
             )
         }
 
@@ -221,16 +225,14 @@ fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
             }
             val sharedVm = hiltViewModel<ReservaSharedViewModel>(backEntry)
 
+            val maxPersonas = sharedVm.servicioSeleccionado?.maxPersonas
+                ?: sharedVm.serviciosSeleccionados.filter { s -> s.esGrupal }.mapNotNull { s -> s.maxPersonas }.minOrNull()
+
             ResponsableGrupalScreen(
                 onBack = { nav.popBackStack() },
+                maxPersonasPermitido = maxPersonas,
                 onContinuar = { cliente, personas ->
-                    sharedVm.clienteSeleccionado = cliente
-                    sharedVm.responsableNombre = cliente.nombreCompleto
-                    sharedVm.responsableTelefono = cliente.telefono ?: ""
-                    sharedVm.responsableCorreo = cliente.email ?: ""
-                    sharedVm.cantidadPersonas = personas
-
-                    // Navegar a la selección de profesional
+                    sharedVm.prepararCitaGrupal(cliente, personas)
                     nav.navigate(Routes.PROFESIONALES)
                 }
             )
