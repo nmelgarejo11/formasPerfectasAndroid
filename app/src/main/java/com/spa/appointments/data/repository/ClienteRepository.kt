@@ -11,8 +11,16 @@ import javax.inject.Inject
 class ClienteRepository @Inject constructor(
     private val api: ApiService
 ) {
-    suspend fun buscarClientes(busqueda: String): List<Cliente> =
-        api.buscarClientes(busqueda)
+    suspend fun buscarClientes(
+        busqueda: String? = null,
+        pagina: Int = 1,
+        tamanoPagina: Int = 20
+    ): List<Cliente> =
+        api.buscarClientes(
+            busqueda = busqueda?.ifBlank { null },
+            pagina = pagina,
+            tamanoPagina = tamanoPagina
+        )
 
     suspend fun crearCliente(request: CrearClienteRequest): Cliente =
         api.crearCliente(request)

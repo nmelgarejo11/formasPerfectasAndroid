@@ -217,16 +217,35 @@ fun ClientesScreen(
                     }
 
                     is ClientesUiState.Results -> {
-                        val clientes = (listState as ClientesUiState.Results).clientes
+                        val resultsState = listState as ClientesUiState.Results
+                        val clientes = resultsState.clientes
+                        val cargandoMas = resultsState.cargandoMas
 
                         if (clientes.isEmpty()) {
                             ClienteEmptyState(
                                 icon = Icons.Outlined.SearchOff,
                                 titulo = "Sin resultados",
-                                subtitulo = "No encontramos clientes que coincidan\ncon \"$query\"."
+                                subtitulo = if (query.isBlank()) "No hay clientes registrados." else "No encontramos clientes que coincidan\ncon \"$query\"."
                             )
                         } else {
+                            val lazyListState = androidx.compose.foundation.lazy.rememberLazyListState()
+                            val shouldLoadMore by remember {
+                                derivedStateOf {
+                                    val layoutInfo = lazyListState.layoutInfo
+                                    val totalItems = layoutInfo.totalItemsCount
+                                    val lastVisibleItem = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+                                    totalItems > 0 && lastVisibleItem >= totalItems - 3
+                                }
+                            }
+
+                            LaunchedEffect(shouldLoadMore) {
+                                if (shouldLoadMore) {
+                                    viewModel.cargarMasClientes()
+                                }
+                            }
+
                             LazyColumn(
+                                state = lazyListState,
                                 contentPadding = PaddingValues(
                                     start = 16.dp,
                                     end = 16.dp,
@@ -248,6 +267,23 @@ fun ClientesScreen(
                                         }
                                     )
                                 }
+
+                                if (cargandoMas) {
+                                    item {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(16.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.size(24.dp),
+                                                strokeWidth = 2.dp,
+                                                color = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -264,10 +300,7 @@ fun ClientesScreen(
             onDismiss = {
                 showClienteDialog = false
                 clienteSeleccionadoId = null
-
-                if (query.length >= 2) {
-                    viewModel.onQueryChange(query)
-                }
+                viewModel.cargarClientes(reset = true)
             }
         )
     }

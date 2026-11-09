@@ -9,6 +9,7 @@ import com.spa.appointments.data.repository.ClienteRepository
 import com.spa.appointments.domain.model.ActualizarClienteRequest
 import com.spa.appointments.domain.model.Cliente
 import com.spa.appointments.domain.model.CrearClienteRequest
+import com.spa.appointments.domain.model.ordenarAlfabeticamente
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -20,7 +21,11 @@ import javax.inject.Inject
 sealed class ClientesUiState {
     object Idle : ClientesUiState()
     object Loading : ClientesUiState()
-    data class Results(val clientes: List<Cliente>) : ClientesUiState()
+    data class Results(
+        val clientes: List<Cliente>,
+        val cargandoMas: Boolean = false,
+        val finDeResultados: Boolean = false
+    ) : ClientesUiState()
     data class Error(val mensaje: String) : ClientesUiState()
 }
 
@@ -43,6 +48,10 @@ class ClientesViewModel @Inject constructor(
     private val repository: ClienteRepository
 ) : ViewModel() {
 
+    companion object {
+        private const val TAMANO_PAGINA = 20
+    }
+
     var estaEscuchandoVoz by mutableStateOf(false)
     var cargandoParserVoz by mutableStateOf(false)
         private set
@@ -59,21 +68,87 @@ class ClientesViewModel @Inject constructor(
     var query by mutableStateOf("")
         private set
 
+    private var paginaActual = 1
+    private var finDeResultados = false
+    private var cargandoMas = false
+    private var clientesAcumulados = mutableListOf<Cliente>()
+
     private var searchJob: Job? = null
+
+    init {
+        cargarClientes(reset = true)
+    }
+
+    fun cargarClientes(reset: Boolean = false) {
+        if (reset) {
+            paginaActual = 1
+            finDeResultados = false
+            cargandoMas = false
+            clientesAcumulados.clear()
+            _listState.value = ClientesUiState.Loading
+        }
+
+        viewModelScope.launch {
+            runCatching {
+                repository.buscarClientes(
+                    busqueda = query.ifBlank { null },
+                    pagina = paginaActual,
+                    tamanoPagina = TAMANO_PAGINA
+                )
+            }
+                .onSuccess { nuevosClientes ->
+                    if (nuevosClientes.size < TAMANO_PAGINA) {
+                        finDeResultados = true
+                    }
+
+                    if (reset) {
+                        clientesAcumulados = nuevosClientes.toMutableList()
+                    } else {
+                        val idsExistentes = clientesAcumulados.map { it.id }.toSet()
+                        clientesAcumulados.addAll(nuevosClientes.filterNot { it.id in idsExistentes })
+                    }
+
+                    val listaOrdenada = clientesAcumulados.ordenarAlfabeticamente()
+                    cargandoMas = false
+                    _listState.value = ClientesUiState.Results(
+                        clientes = listaOrdenada,
+                        cargandoMas = false,
+                        finDeResultados = finDeResultados
+                    )
+                }
+                .onFailure { error ->
+                    cargandoMas = false
+                    if (reset) {
+                        _listState.value = ClientesUiState.Error(error.message ?: "Error al cargar clientes")
+                    } else {
+                        val listaOrdenada = clientesAcumulados.ordenarAlfabeticamente()
+                        _listState.value = ClientesUiState.Results(
+                            clientes = listaOrdenada,
+                            cargandoMas = false,
+                            finDeResultados = finDeResultados
+                        )
+                    }
+                }
+        }
+    }
+
+    fun cargarMasClientes() {
+        if (cargandoMas || finDeResultados) return
+        val current = _listState.value
+        if (current !is ClientesUiState.Results) return
+
+        cargandoMas = true
+        _listState.value = current.copy(cargandoMas = true)
+        paginaActual++
+        cargarClientes(reset = false)
+    }
 
     fun onQueryChange(value: String) {
         query = value
         searchJob?.cancel()
-        if (value.length < 2) {
-            _listState.value = ClientesUiState.Idle
-            return
-        }
         searchJob = viewModelScope.launch {
             delay(400)
-            _listState.value = ClientesUiState.Loading
-            runCatching { repository.buscarClientes(value) }
-                .onSuccess { _listState.value = ClientesUiState.Results(it) }
-                .onFailure { _listState.value = ClientesUiState.Error(it.message ?: "Error") }
+            cargarClientes(reset = true)
         }
     }
 

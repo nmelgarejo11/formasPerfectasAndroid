@@ -141,7 +141,9 @@ interface ApiService {
     // ── Clientes ──────────────────────────────────────
     @GET("Clientes/buscar")
     suspend fun buscarClientes(
-        @Query("busqueda") busqueda: String
+        @Query("busqueda") busqueda: String? = null,
+        @Query("pagina") pagina: Int = 1,
+        @Query("tamanoPagina") tamanoPagina: Int = 20
     ): List<Cliente>
 
     @POST("Clientes")

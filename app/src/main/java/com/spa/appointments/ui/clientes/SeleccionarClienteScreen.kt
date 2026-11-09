@@ -215,15 +215,52 @@ fun SeleccionarClienteScreen(
                     }
 
                     is SeleccionarClienteUiState.Resultados -> {
+                        val clientes = state.clientes
+                        val cargandoMas = state.cargandoMas
+
+                        val lazyListState = androidx.compose.foundation.lazy.rememberLazyListState()
+                        val shouldLoadMore by remember {
+                            derivedStateOf {
+                                val layoutInfo = lazyListState.layoutInfo
+                                val totalItems = layoutInfo.totalItemsCount
+                                val lastVisibleItem = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+                                totalItems > 0 && lastVisibleItem >= totalItems - 3
+                            }
+                        }
+
+                        LaunchedEffect(shouldLoadMore) {
+                            if (shouldLoadMore) {
+                                vm.cargarMasClientes()
+                            }
+                        }
+
                         LazyColumn(
+                            state               = lazyListState,
                             contentPadding      = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
                             verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            items(state.clientes, key = { it.id }) { cliente ->
+                            items(clientes, key = { it.id }) { cliente ->
                                 ClienteSelectItem(
                                     cliente = cliente,
                                     onClick = { onClienteSeleccionado(cliente) }
                                 )
+                            }
+
+                            if (cargandoMas) {
+                                item {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(24.dp),
+                                            strokeWidth = 2.dp,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
