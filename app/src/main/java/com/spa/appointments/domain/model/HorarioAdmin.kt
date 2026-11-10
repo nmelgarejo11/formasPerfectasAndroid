@@ -5,20 +5,24 @@ import com.squareup.moshi.JsonClass
 
 @JsonClass(generateAdapter = true)
 data class HorarioItem(
-    @Json(name = "id")         val id: Int,
-    @Json(name = "idSede")     val idSede: Int,
-    @Json(name = "diaSemana")  val diaSemana: Int,
-    @Json(name = "horaInicio") val horaInicio: String,
-    @Json(name = "horaFin")    val horaFin: String,
-    @Json(name = "estado")     val estado: Boolean
+    @Json(name = "id")          val id: Int,
+    @Json(name = "idSede")      val idSede: Int,
+    @Json(name = "diaSemana")   val diaSemana: Int,
+    @Json(name = "horaInicio")  val horaInicio: String,
+    @Json(name = "horaFin")     val horaFin: String,
+    @Json(name = "horaInicio2") val horaInicio2: String? = null,
+    @Json(name = "horaFin2")    val horaFin2: String? = null,
+    @Json(name = "estado")      val estado: Boolean
 )
 
 @JsonClass(generateAdapter = true)
 data class HorarioItemRequest(
-    @Json(name = "diaSemana")  val diaSemana: Int,
-    @Json(name = "horaInicio") val horaInicio: String,
-    @Json(name = "horaFin")    val horaFin: String,
-    @Json(name = "estado")     val estado: Boolean
+    @Json(name = "diaSemana")   val diaSemana: Int,
+    @Json(name = "horaInicio")  val horaInicio: String,
+    @Json(name = "horaFin")     val horaFin: String,
+    @Json(name = "horaInicio2") val horaInicio2: String? = null,
+    @Json(name = "horaFin2")    val horaFin2: String? = null,
+    @Json(name = "estado")      val estado: Boolean
 )
 
 @JsonClass(generateAdapter = true)

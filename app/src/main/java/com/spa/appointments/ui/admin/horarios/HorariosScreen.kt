@@ -200,32 +200,30 @@ fun HorariosScreen(
 
                             HorizontalDivider(
                                 color    = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
-                                modifier = Modifier.padding(bottom = 8.dp)
+                                modifier = Modifier.padding(bottom = 12.dp)
                             )
 
-                            diasHorario.forEach { dia ->
-                                DiaHorarioRow(
-                                    dia      = dia,
-                                    onToggle = { viewModel.toggleDia(dia.diaSemana, it) },
-                                    onHoras  = { inicio, fin ->
-                                        viewModel.actualizarHora(dia.diaSemana, inicio, fin)
-                                    }
-                                )
-                                if (dia != diasHorario.last()) {
-                                    HorizontalDivider(
-                                        color    = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
-                                        modifier = Modifier.padding(vertical = 4.dp)
+                            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                diasHorario.forEach { dia ->
+                                    DiaHorarioRow(
+                                        dia             = dia,
+                                        onToggle        = { viewModel.toggleDia(dia.diaSemana, it) },
+                                        onHoras1        = { inicio, fin -> viewModel.actualizarHora1(dia.diaSemana, inicio, fin) },
+                                        onToggleFranja2 = { viewModel.toggleFranja2(dia.diaSemana, it) },
+                                        onHoras2        = { inicio, fin -> viewModel.actualizarHora2(dia.diaSemana, inicio, fin) }
                                     )
                                 }
                             }
 
                             Spacer(Modifier.height(16.dp))
 
+                            val todosValidos = diasHorario.all { !it.activo || it.esValido }
+
                             Button(
                                 onClick  = {
                                     viewModel.guardarHorario(idProfesional, idSedeSeleccionada)
                                 },
-                                enabled  = uiState !is HorariosUiState.Loading,
+                                enabled  = uiState !is HorariosUiState.Loading && todosValidos,
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(48.dp),
@@ -418,66 +416,281 @@ fun HorariosScreen(
 
 @Composable
 private fun DiaHorarioRow(
-    dia:      DiaHorario,
-    onToggle: (Boolean) -> Unit,
-    onHoras:  (inicio: String, fin: String) -> Unit
+    dia:             DiaHorario,
+    onToggle:        (Boolean) -> Unit,
+    onHoras1:        (inicio: String, fin: String) -> Unit,
+    onToggleFranja2: (Boolean) -> Unit,
+    onHoras2:        (inicio: String, fin: String) -> Unit
 ) {
     var showTimePicker by remember { mutableStateOf<String?>(null) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp)
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape    = RoundedCornerShape(14.dp),
+        color    = if (dia.activo)
+            MaterialTheme.colorScheme.surfaceContainer
+        else
+            MaterialTheme.colorScheme.surfaceContainerLowest,
+        border   = BorderStroke(
+            1.dp,
+            if (dia.activo)
+                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+            else
+                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
+        )
     ) {
-        Row(
-            modifier          = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 10.dp)
         ) {
-            Checkbox(
-                checked         = dia.activo,
-                onCheckedChange = onToggle
-            )
-            Text(
-                text       = dia.nombreDia,
-                style      = MaterialTheme.typography.titleMedium,
-                fontWeight = if (dia.activo) FontWeight.Bold else FontWeight.Normal,
-                color      = if (dia.activo) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier   = Modifier.weight(1f)
-            )
-            if (dia.activo) {
-                FilledTonalButton(
-                    onClick        = { showTimePicker = "inicio" },
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                    modifier       = Modifier.height(34.dp),
-                    shape          = RoundedCornerShape(10.dp)
-                ) {
-                    Text(formatearHora12h(dia.horaInicio), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
-                }
-                Text(
-                    " – ",
-                    style    = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 4.dp)
+            // Header Row: Checkbox + Nombre del Día + Badge de Estado
+            Row(
+                modifier          = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Checkbox(
+                    checked         = dia.activo,
+                    onCheckedChange = onToggle
                 )
-                FilledTonalButton(
-                    onClick        = { showTimePicker = "fin" },
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                    modifier       = Modifier.height(34.dp),
-                    shape          = RoundedCornerShape(10.dp)
+                Text(
+                    text       = dia.nombreDia,
+                    style      = MaterialTheme.typography.titleMedium,
+                    fontWeight = if (dia.activo) FontWeight.Bold else FontWeight.Normal,
+                    color      = if (dia.activo) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines   = 1,
+                    modifier   = Modifier.weight(1f)
+                )
+
+                if (dia.activo) {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = if (dia.tieneFranja2)
+                            MaterialTheme.colorScheme.secondaryContainer
+                        else
+                            MaterialTheme.colorScheme.primaryContainer
+                    ) {
+                        Text(
+                            text     = if (dia.tieneFranja2) "Horario partido" else "Jornada continua",
+                            style    = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color    = if (dia.tieneFranja2)
+                                MaterialTheme.colorScheme.onSecondaryContainer
+                            else
+                                MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+            }
+
+            // Si el día está activo, mostramos las franjas horarias perfectamente alineadas
+            if (dia.activo) {
+                Spacer(Modifier.height(8.dp))
+                HorizontalDivider(
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+                )
+                Spacer(Modifier.height(8.dp))
+
+                Column(
+                    modifier            = Modifier.fillMaxWidth().padding(start = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text(formatearHora12h(dia.horaFin), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                    // Franja 1
+                    Row(
+                        modifier          = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text       = "Franja 1",
+                            style      = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color      = MaterialTheme.colorScheme.primary,
+                            modifier   = Modifier.width(65.dp)
+                        )
+
+                        Spacer(Modifier.width(8.dp))
+
+                        FilledTonalButton(
+                            onClick        = { showTimePicker = "inicio1" },
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                            modifier       = Modifier.height(34.dp),
+                            shape          = RoundedCornerShape(10.dp)
+                        ) {
+                            Text(
+                                formatearHora12h(dia.horaInicio),
+                                style      = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        Text(
+                            "–",
+                            style    = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color    = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 6.dp)
+                        )
+
+                        FilledTonalButton(
+                            onClick        = { showTimePicker = "fin1" },
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                            modifier       = Modifier.height(34.dp),
+                            shape          = RoundedCornerShape(10.dp)
+                        ) {
+                            Text(
+                                formatearHora12h(dia.horaFin),
+                                style      = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+
+                    // Franja 2
+                    if (dia.tieneFranja2) {
+                        Row(
+                            modifier          = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text       = "Franja 2",
+                                style      = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color      = MaterialTheme.colorScheme.secondary,
+                                modifier   = Modifier.width(65.dp)
+                            )
+
+                            Spacer(Modifier.width(8.dp))
+
+                            FilledTonalButton(
+                                onClick        = { showTimePicker = "inicio2" },
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                modifier       = Modifier.height(34.dp),
+                                shape          = RoundedCornerShape(10.dp)
+                            ) {
+                                Text(
+                                    formatearHora12h(dia.horaInicio2),
+                                    style      = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+
+                            Text(
+                                "–",
+                                style    = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color    = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 6.dp)
+                            )
+
+                            FilledTonalButton(
+                                onClick        = { showTimePicker = "fin2" },
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                modifier       = Modifier.height(34.dp),
+                                shape          = RoundedCornerShape(10.dp)
+                            ) {
+                                Text(
+                                    formatearHora12h(dia.horaFin2),
+                                    style      = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+
+                            Spacer(Modifier.weight(1f))
+
+                            IconButton(
+                                onClick  = { onToggleFranja2(false) },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Close,
+                                    contentDescription = "Quitar franja 2",
+                                    tint               = MaterialTheme.colorScheme.error,
+                                    modifier           = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                    } else {
+                        // Botón para agregar Franja 2
+                        OutlinedButton(
+                            onClick        = { onToggleFranja2(true) },
+                            shape          = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                            border         = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)),
+                            modifier       = Modifier.height(30.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Add,
+                                contentDescription = null,
+                                modifier           = Modifier.size(14.dp),
+                                tint               = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                "+ Añadir 2da franja (almuerzo)",
+                                style      = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color      = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (dia.activo && !dia.esValido && dia.mensajeError != null) {
+                Spacer(Modifier.height(6.dp))
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.errorContainer
+                ) {
+                    Row(
+                        modifier          = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.ErrorOutline, null,
+                            tint     = MaterialTheme.colorScheme.onErrorContainer,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text       = dia.mensajeError!!,
+                            color      = MaterialTheme.colorScheme.onErrorContainer,
+                            style      = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
                 }
             }
         }
     }
 
     if (showTimePicker != null) {
+        val horaActual = when (showTimePicker) {
+            "inicio1" -> dia.horaInicio
+            "fin1"    -> dia.horaFin
+            "inicio2" -> dia.horaInicio2
+            "fin2"    -> dia.horaFin2
+            else      -> "08:00"
+        }
+        val titulo = when (showTimePicker) {
+            "inicio1" -> "Franja 1: Hora de inicio"
+            "fin1"    -> "Franja 1: Hora de fin"
+            "inicio2" -> "Franja 2: Hora de inicio"
+            "fin2"    -> "Franja 2: Hora de fin"
+            else      -> "Hora"
+        }
+
         HoraPickerDialog(
-            horaActual = if (showTimePicker == "inicio") dia.horaInicio else dia.horaFin,
-            titulo     = if (showTimePicker == "inicio") "Hora de inicio" else "Hora de fin",
+            horaActual = horaActual,
+            titulo     = titulo,
             onConfirm  = { hora ->
-                if (showTimePicker == "inicio") onHoras(hora, dia.horaFin)
-                else onHoras(dia.horaInicio, hora)
+                when (showTimePicker) {
+                    "inicio1" -> onHoras1(hora, dia.horaFin)
+                    "fin1"    -> onHoras1(dia.horaInicio, hora)
+                    "inicio2" -> onHoras2(hora, dia.horaFin2)
+                    "fin2"    -> onHoras2(dia.horaInicio2, hora)
+                }
                 showTimePicker = null
             },
             onDismiss = { showTimePicker = null }
