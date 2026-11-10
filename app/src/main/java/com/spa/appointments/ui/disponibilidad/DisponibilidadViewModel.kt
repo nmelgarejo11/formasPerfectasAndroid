@@ -196,6 +196,11 @@ class DisponibilidadViewModel @Inject constructor(
         return startB.isBefore(endA) && startA.isBefore(endB)
     }
 
+    private fun normalizarHora(hora: String): String {
+        val trimmed = hora.trim()
+        return if (trimmed.length == 5) "$trimmed:00" else trimmed
+    }
+
     fun confirmarCita(sharedVm: ReservaSharedViewModel, notas: String?) {
         if (!sharedVm.esMultiple && servicio == null) return
         if (sharedVm.esMultiple && sharedVm.serviciosSeleccionados.isEmpty()) return
@@ -218,8 +223,10 @@ class DisponibilidadViewModel @Inject constructor(
                         _uiState.value = DisponibilidadUiState.Error("Debe seleccionar un horario")
                         return@launch
                     }
-                    val fechaInicio = LocalDateTime.parse("${fecha} ${slot.horaInicio}", DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
-                    val fechaFin = LocalDateTime.parse("${fecha} ${slot.horaFin}", DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+                    val horaInicioSlot = normalizarHora(slot.horaInicio)
+                    val horaFinSlot = normalizarHora(slot.horaFin)
+                    val fechaInicio = LocalDateTime.parse("${fecha} $horaInicioSlot", DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+                    val fechaFin = LocalDateTime.parse("${fecha} $horaFinSlot", DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
 
                     fechaInicioStr = formatter.format(fechaInicio)
                     fechaFinStr = formatter.format(fechaFin)
@@ -341,8 +348,10 @@ class DisponibilidadViewModel @Inject constructor(
                         return@launch
                     }
 
-                    val fechaInicio = LocalDateTime.parse("${fecha} ${slot.horaInicio}", DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
-                    val fechaFin = LocalDateTime.parse("${fecha} ${slot.horaFin}", DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+                    val horaInicioSlot = normalizarHora(slot.horaInicio)
+                    val horaFinSlot = normalizarHora(slot.horaFin)
+                    val fechaInicio = LocalDateTime.parse("${fecha} $horaInicioSlot", DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+                    val fechaFin = LocalDateTime.parse("${fecha} $horaFinSlot", DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
 
                     val fechaInicioStr = formatter.format(fechaInicio)
                     val fechaFinStr = formatter.format(fechaFin)

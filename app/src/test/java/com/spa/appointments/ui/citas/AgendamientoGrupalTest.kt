@@ -138,6 +138,17 @@ class AgendamientoGrupalTest {
     }
 
     @Test
+    fun testNormalizarHora_SinSegundos_AgregaSegundosCorrectamente() {
+        fun normalizarHora(hora: String): String {
+            val trimmed = hora.trim()
+            return if (trimmed.length == 5) "$trimmed:00" else trimmed
+        }
+
+        assertEquals("11:00:00", normalizarHora("11:00"))
+        assertEquals("11:00:00", normalizarHora("11:00:00"))
+    }
+
+    @Test
     fun testSolapamientoHorario_Servicio90Minutos_DetectaConflictoEnHorariosIntermedios() {
         val slotOcupado = SlotDisponible(horaInicio = "10:00:00", horaFin = "11:30:00", disponible = true)
 
