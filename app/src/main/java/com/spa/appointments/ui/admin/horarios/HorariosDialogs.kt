@@ -36,7 +36,7 @@ fun HoraPickerDialog(
     val state  = rememberTimePickerState(
         initialHour   = partes.getOrNull(0) ?: 8,
         initialMinute = partes.getOrNull(1) ?: 0,
-        is24Hour      = true
+        is24Hour      = false
     )
 
     BasicAlertDialog(onDismissRequest = onDismiss) {
