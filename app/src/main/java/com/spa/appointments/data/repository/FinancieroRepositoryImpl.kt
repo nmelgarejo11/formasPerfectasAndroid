@@ -2,10 +2,13 @@ package com.spa.appointments.data.repository
 
 import com.spa.appointments.data.remote.ApiService
 import com.spa.appointments.domain.model.CierreCajaResponse
+import com.spa.appointments.domain.model.GastoResponse
+import com.spa.appointments.domain.model.IngresoResponse
 import com.spa.appointments.domain.model.IngresosVsGastosResponse
+import com.spa.appointments.domain.model.MetodoPago
+import com.spa.appointments.domain.model.Profesional
 import com.spa.appointments.domain.model.Sede
 import com.spa.appointments.domain.repository.FinancieroRepository
-import retrofit2.Response
 import java.time.LocalDate
 import javax.inject.Inject
 
@@ -16,7 +19,7 @@ class FinancieroRepositoryImpl @Inject constructor(
     override suspend fun getCierreCaja(idSede: Int, fecha: LocalDate?): CierreCajaResponse {
         return api.getCierreCaja(
             idSede = idSede,
-            fecha  = fecha?.toString() // "2025-07-10"
+            fecha  = fecha?.toString()
         )
     }
 
@@ -53,5 +56,32 @@ class FinancieroRepositoryImpl @Inject constructor(
 
         response.body()?.bytes()
             ?: throw Exception("Respuesta vacía del servidor")
+    }
+
+    override suspend fun listarIngresos(
+        idSede: Int?,
+        fechaDesde: String?,
+        fechaHasta: String?
+    ): List<IngresoResponse> {
+        return runCatching { api.listarIngresos(idSede, fechaDesde, fechaHasta) }.getOrDefault(emptyList())
+    }
+
+    override suspend fun listarGastos(
+        idSede: Int?,
+        fechaDesde: String?,
+        fechaHasta: String?
+    ): List<GastoResponse> {
+        return runCatching {
+            val res = api.listarGastos(idSede, fechaDesde, fechaHasta)
+            if (res.isSuccessful) res.body() ?: emptyList() else emptyList()
+        }.getOrDefault(emptyList())
+    }
+
+    override suspend fun getMetodosPago(): List<MetodoPago> {
+        return runCatching { api.getMetodosPago() }.getOrDefault(emptyList())
+    }
+
+    override suspend fun getProfesionales(idSede: Int?): List<Profesional> {
+        return runCatching { api.getProfesionales(idSede = idSede, idServicio = null) }.getOrDefault(emptyList())
     }
 }
