@@ -1,6 +1,7 @@
 // Ruta: app/src/main/java/com/spa/appointments/ui/admin/horarios/HorariosDialogs.kt
 package com.spa.appointments.ui.admin.horarios
 
+import android.app.DatePickerDialog
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -11,16 +12,19 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.CopyAll
 import androidx.compose.material.icons.filled.EventBusy
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.spa.appointments.domain.model.ProfesionalAdmin
+import java.util.Calendar
 
 // ─── Selector de Hora M3 ──────────────────────────────────────────────────────
 
@@ -262,16 +266,19 @@ fun BloqueoDialog(
     onGuardar: (fechaInicio: String, fechaFin: String, motivo: String) -> Unit,
     onDismiss: () -> Unit
 ) {
-    var motivo       by remember { mutableStateOf("") }
-    var fechaInicio  by remember { mutableStateOf("") }
-    var fechaFin     by remember { mutableStateOf("") }
-    var showPickerInicio by remember { mutableStateOf(false) }
-    var showPickerFin    by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    var motivo           by remember { mutableStateOf("") }
+    var fechaInicioDate  by remember { mutableStateOf("") }
+    var horaInicioTime   by remember { mutableStateOf("08:00") }
+    var fechaFinDate     by remember { mutableStateOf("") }
+    var horaFinTime      by remember { mutableStateOf("18:00") }
 
-    val estadoInicio = rememberDatePickerState()
-    val estadoFin    = rememberDatePickerState()
+    var showPickerInicio     by remember { mutableStateOf(false) }
+    var showPickerFin        by remember { mutableStateOf(false) }
+    var showTimePickerInicio by remember { mutableStateOf(false) }
+    var showTimePickerFin    by remember { mutableStateOf(false) }
 
-    val esValido = motivo.isNotBlank() && fechaInicio.isNotBlank() && fechaFin.isNotBlank()
+    val esValido = motivo.isNotBlank() && fechaInicioDate.isNotBlank() && fechaFinDate.isNotBlank()
 
     AlertDialog(
         onDismissRequest = { if (!guardando) onDismiss() },
@@ -290,7 +297,7 @@ fun BloqueoDialog(
                 )
             }
         },
-        title = { Text("Nuevo Bloqueo", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
+        title = { Text("Nuevo Bloqueo / Ausencia", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
         text  = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
@@ -299,7 +306,7 @@ fun BloqueoDialog(
                     label         = { Text("Motivo *") },
                     modifier      = Modifier.fillMaxWidth(),
                     singleLine    = true,
-                    placeholder   = { Text("Ej: Vacaciones, Incapacidad...") },
+                    placeholder   = { Text("Ej: Vacaciones, Cita médica...") },
                     shape         = RoundedCornerShape(14.dp),
                     colors        = OutlinedTextFieldDefaults.colors(
                         focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
@@ -307,38 +314,94 @@ fun BloqueoDialog(
                     )
                 )
 
-                // Fecha inicio M3
-                OutlinedButton(
-                    onClick  = { showPickerInicio = true },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape    = RoundedCornerShape(14.dp)
+                Text(
+                    text       = "Inicio del bloqueo",
+                    style      = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color      = MaterialTheme.colorScheme.primary
+                )
+
+                Row(
+                    modifier              = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Icon(Icons.Outlined.CalendarMonth, null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = if (fechaInicio.isBlank()) "Fecha de inicio *" else "Inicio: $fechaInicio",
-                        fontWeight = FontWeight.SemiBold
-                    )
+                    OutlinedButton(
+                        onClick  = { showPickerInicio = true },
+                        modifier = Modifier.weight(1.2f),
+                        shape    = RoundedCornerShape(14.dp)
+                    ) {
+                        Icon(Icons.Outlined.CalendarMonth, null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text       = if (fechaInicioDate.isBlank()) "Fecha *" else fechaInicioDate,
+                            style      = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+
+                    OutlinedButton(
+                        onClick  = { showTimePickerInicio = true },
+                        modifier = Modifier.weight(1f),
+                        shape    = RoundedCornerShape(14.dp)
+                    ) {
+                        Icon(Icons.Default.Schedule, null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text       = formatearHora12hSimple(horaInicioTime),
+                            style      = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
                 }
 
-                // Fecha fin M3
-                OutlinedButton(
-                    onClick  = { showPickerFin = true },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape    = RoundedCornerShape(14.dp)
+                Text(
+                    text       = "Fin del bloqueo",
+                    style      = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color      = MaterialTheme.colorScheme.primary
+                )
+
+                Row(
+                    modifier              = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Icon(Icons.Outlined.CalendarMonth, null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = if (fechaFin.isBlank()) "Fecha de fin *" else "Fin: $fechaFin",
-                        fontWeight = FontWeight.SemiBold
-                    )
+                    OutlinedButton(
+                        onClick  = { showPickerFin = true },
+                        modifier = Modifier.weight(1.2f),
+                        shape    = RoundedCornerShape(14.dp)
+                    ) {
+                        Icon(Icons.Outlined.CalendarMonth, null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text       = if (fechaFinDate.isBlank()) "Fecha *" else fechaFinDate,
+                            style      = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+
+                    OutlinedButton(
+                        onClick  = { showTimePickerFin = true },
+                        modifier = Modifier.weight(1f),
+                        shape    = RoundedCornerShape(14.dp)
+                    ) {
+                        Icon(Icons.Default.Schedule, null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text       = formatearHora12hSimple(horaFinTime),
+                            style      = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
                 }
             }
         },
         confirmButton = {
             Button(
-                onClick  = { onGuardar(fechaInicio, fechaFin, motivo.trim()) },
+                onClick  = {
+                    val fullInicio = "${fechaInicioDate}T${horaInicioTime}:00"
+                    val fullFin    = "${fechaFinDate}T${horaFinTime}:00"
+                    onGuardar(fullInicio, fullFin, motivo.trim())
+                },
                 enabled  = esValido && !guardando,
                 shape    = RoundedCornerShape(12.dp),
                 modifier = Modifier.fillMaxWidth()
@@ -360,55 +423,105 @@ fun BloqueoDialog(
         }
     )
 
-    // Date picker inicio
+    // Date picker nativo Android inicio
     if (showPickerInicio) {
-        DatePickerDialog(
-            onDismissRequest = { showPickerInicio = false },
-            confirmButton = {
-                Button(onClick = {
-                    estadoInicio.selectedDateMillis?.let {
-                        fechaInicio = millisToFecha(it)
-                    }
-                    showPickerInicio = false
-                }) { Text("Aceptar") }
+        val cal = Calendar.getInstance()
+        if (fechaInicioDate.isNotBlank() && fechaInicioDate.contains("-")) {
+            try {
+                val partes = fechaInicioDate.split("-")
+                cal.set(partes[0].toInt(), partes[1].toInt() - 1, partes[2].toInt())
+            } catch (_: Exception) {}
+        }
+        val dpd = DatePickerDialog(
+            context,
+            { _, year, month, dayOfMonth ->
+                fechaInicioDate = "%04d-%02d-%02d".format(year, month + 1, dayOfMonth)
+                if (fechaFinDate.isBlank()) {
+                    fechaFinDate = fechaInicioDate
+                }
+                showPickerInicio = false
             },
-            dismissButton = {
-                TextButton(onClick = { showPickerInicio = false }) { Text("Cancelar") }
-            }
-        ) {
-            DatePicker(state = estadoInicio)
+            cal.get(Calendar.YEAR),
+            cal.get(Calendar.MONTH),
+            cal.get(Calendar.DAY_OF_MONTH)
+        )
+        dpd.setOnCancelListener { showPickerInicio = false }
+        dpd.setOnDismissListener { showPickerInicio = false }
+        LaunchedEffect(Unit) {
+            dpd.show()
         }
     }
 
-    // Date picker fin
-    if (showPickerFin) {
-        DatePickerDialog(
-            onDismissRequest = { showPickerFin = false },
-            confirmButton = {
-                Button(onClick = {
-                    estadoFin.selectedDateMillis?.let {
-                        fechaFin = millisToFecha(it)
-                    }
-                    showPickerFin = false
-                }) { Text("Aceptar") }
+    // Time picker inicio
+    if (showTimePickerInicio) {
+        HoraPickerDialog(
+            horaActual = horaInicioTime,
+            titulo     = "Hora de Inicio",
+            onConfirm  = {
+                horaInicioTime = it
+                showTimePickerInicio = false
             },
-            dismissButton = {
-                TextButton(onClick = { showPickerFin = false }) { Text("Cancelar") }
-            }
-        ) {
-            DatePicker(state = estadoFin)
+            onDismiss  = { showTimePickerInicio = false }
+        )
+    }
+
+    // Date picker nativo Android fin
+    if (showPickerFin) {
+        val cal = Calendar.getInstance()
+        if (fechaFinDate.isNotBlank() && fechaFinDate.contains("-")) {
+            try {
+                val partes = fechaFinDate.split("-")
+                cal.set(partes[0].toInt(), partes[1].toInt() - 1, partes[2].toInt())
+            } catch (_: Exception) {}
         }
+        val dpd = DatePickerDialog(
+            context,
+            { _, year, month, dayOfMonth ->
+                fechaFinDate = "%04d-%02d-%02d".format(year, month + 1, dayOfMonth)
+                showPickerFin = false
+            },
+            cal.get(Calendar.YEAR),
+            cal.get(Calendar.MONTH),
+            cal.get(Calendar.DAY_OF_MONTH)
+        )
+        dpd.setOnCancelListener { showPickerFin = false }
+        dpd.setOnDismissListener { showPickerFin = false }
+        LaunchedEffect(Unit) {
+            dpd.show()
+        }
+    }
+
+    // Time picker fin
+    if (showTimePickerFin) {
+        HoraPickerDialog(
+            horaActual = horaFinTime,
+            titulo     = "Hora de Fin",
+            onConfirm  = {
+                horaFinTime = it
+                showTimePickerFin = false
+            },
+            onDismiss  = { showTimePickerFin = false }
+        )
     }
 }
 
 // ─── Utilidad ─────────────────────────────────────────────────────────────────
 
-private fun millisToFecha(millis: Long): String {
-    val calendar = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC"))
-    calendar.timeInMillis = millis
-    return "%04d-%02d-%02d".format(
-        calendar.get(java.util.Calendar.YEAR),
-        calendar.get(java.util.Calendar.MONTH) + 1,
-        calendar.get(java.util.Calendar.DAY_OF_MONTH)
-    )
+private fun formatearHora12hSimple(horaStr: String): String {
+    if (horaStr.isBlank()) return ""
+    return try {
+        val cleanStr = if (horaStr.contains("T")) horaStr.substring(11, 16) else horaStr.trim()
+        val partes = cleanStr.split(":")
+        val h = partes[0].toInt()
+        val m = partes[1]
+        val amPm = if (h >= 12) "PM" else "AM"
+        val h12 = when {
+            h == 0 -> 12
+            h > 12 -> h - 12
+            else -> h
+        }
+        String.format(java.util.Locale.US, "%02d:%s %s", h12, m, amPm)
+    } catch (_: Exception) {
+        horaStr.take(5)
+    }
 }

@@ -1,5 +1,6 @@
 package com.spa.appointments.ui.citas.components
 
+import android.app.DatePickerDialog
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -12,6 +13,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.EditCalendar
 import androidx.compose.material.icons.filled.EventBusy
 import androidx.compose.material.icons.filled.Person
@@ -21,6 +23,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -28,6 +31,7 @@ import androidx.compose.ui.unit.sp
 import com.spa.appointments.domain.model.Cita
 import com.spa.appointments.domain.model.Profesional
 import com.spa.appointments.domain.model.ServicioCita
+import java.util.Calendar
 import com.spa.appointments.domain.model.SlotDisponible
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
@@ -141,15 +145,38 @@ fun ReagendarCitaDirectoDialog(
                     }
                 }
 
-                // 2. Selector de Fecha (Carrusel de días idéntico a DisponibilidadScreen)
-                Text(
-                    text = "Selecciona la fecha:",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+                // 2. Selector de Fecha (Carrusel de días + Botón Calendario)
+                val context = LocalContext.current
+                var mostrarDatePickerDialog by remember { mutableStateOf(false) }
 
-                val dias = remember { (0..29).map { LocalDate.now().plusDays(it.toLong()) } }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Selecciona la fecha:",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    IconButton(
+                        onClick = { mostrarDatePickerDialog = true },
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CalendarMonth,
+                            contentDescription = "Elegir fecha",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+
+                val baseDate = if (fechaSeleccionada.isBefore(LocalDate.now())) LocalDate.now() else fechaSeleccionada
+                val dias = remember(baseDate) {
+                    val inicio = if (baseDate.minusDays(3).isBefore(LocalDate.now())) LocalDate.now() else baseDate.minusDays(3)
+                    (0..29).map { inicio.plusDays(it.toLong()) }
+                }
                 val today = LocalDate.now()
 
                 LazyRow(
@@ -194,6 +221,27 @@ fun ReagendarCitaDirectoDialog(
                                 )
                             }
                         }
+                    }
+                }
+
+                if (mostrarDatePickerDialog) {
+                    val cal = Calendar.getInstance()
+                    cal.set(fechaSeleccionada.year, fechaSeleccionada.monthValue - 1, fechaSeleccionada.dayOfMonth)
+
+                    val dpd = DatePickerDialog(
+                        context,
+                        { _, year, month, dayOfMonth ->
+                            fechaSeleccionada = LocalDate.of(year, month + 1, dayOfMonth)
+                            mostrarDatePickerDialog = false
+                        },
+                        cal.get(Calendar.YEAR),
+                        cal.get(Calendar.MONTH),
+                        cal.get(Calendar.DAY_OF_MONTH)
+                    )
+                    dpd.setOnCancelListener { mostrarDatePickerDialog = false }
+                    dpd.setOnDismissListener { mostrarDatePickerDialog = false }
+                    LaunchedEffect(Unit) {
+                        dpd.show()
                     }
                 }
 

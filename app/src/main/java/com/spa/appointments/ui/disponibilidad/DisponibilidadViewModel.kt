@@ -97,24 +97,46 @@ class DisponibilidadViewModel @Inject constructor(
     }
 
     fun cargarSlots(fecha: LocalDate, sharedVm: ReservaSharedViewModel? = null) {
-        val prof = profesional ?: return
-        val serv = servicio    ?: return
+        val serv = servicio ?: return
+        val prof = profesional
 
         viewModelScope.launch {
             _uiState.value = DisponibilidadUiState.LoadingSlots
             try {
-                var slots = repo.getDisponibilidad(
-                    idProfesional = prof.id,
-                    idSede        = prof.idSede,
-                    fecha         = fecha.toString(),
-                    duracion      = serv.duracionMinutos
-                )
+                var slots: List<SlotDisponible> = if (prof != null) {
+                    repo.getDisponibilidad(
+                        idProfesional = prof.id,
+                        idSede        = prof.idSede,
+                        fecha         = fecha.toString(),
+                        duracion      = serv.duracionMinutos
+                    )
+                } else {
+                    val todosProfs = try { repo.getProfesionales(idSede = null, idServicio = serv.id) } catch (_: Exception) { emptyList<Profesional>() }
+                    if (todosProfs.isEmpty()) {
+                        emptyList()
+                    } else {
+                        val mapaSlots = mutableMapOf<String, SlotDisponible>()
+                        for (p in todosProfs) {
+                            val pSlots = try {
+                                repo.getDisponibilidad(p.id, p.idSede, fecha.toString(), serv.duracionMinutos)
+                            } catch (_: Exception) { emptyList() }
+
+                            for (s in pSlots) {
+                                val actual = mapaSlots[s.horaInicio]
+                                if (actual == null || s.disponible) {
+                                    mapaSlots[s.horaInicio] = s
+                                }
+                            }
+                        }
+                        mapaSlots.values.sortedBy { it.horaInicio }
+                    }
+                }
 
                 // Si es cita grupal, filtrar los cupos que se solapen con citas de asistentes anteriores en este mismo flujo
                 if (sharedVm != null && sharedVm.esGrupal && sharedVm.asistentesGrupales.isNotEmpty()) {
                     val asistentesPrevios = sharedVm.asistentesGrupales.take(sharedVm.asistenteActualIndex)
                     val slotsOcupadosEnFlujo = asistentesPrevios
-                        .filter { it.profesional?.id == prof.id && it.fecha == fecha && it.slot != null }
+                        .filter { (prof == null || it.profesional?.id == prof.id) && it.fecha == fecha && it.slot != null }
                         .mapNotNull { it.slot }
 
                     if (slotsOcupadosEnFlujo.isNotEmpty()) {

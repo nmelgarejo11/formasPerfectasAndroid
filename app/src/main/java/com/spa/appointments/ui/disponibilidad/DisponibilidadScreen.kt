@@ -1,6 +1,7 @@
 // Ruta: app/src/main/java/com/spa/appointments/ui/disponibilidad/DisponibilidadScreen.kt
 package com.spa.appointments.ui.disponibilidad
 
+import android.app.DatePickerDialog
 import androidx.compose.animation.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -22,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -34,6 +36,7 @@ import com.spa.appointments.ui.reserva.ReservaSharedViewModel
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
+import java.util.Calendar
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -612,16 +615,38 @@ private fun ResumenReserva(servicio: Servicio, profesional: Profesional?, precio
 
 @Composable
 private fun SelectorFecha(fechaSeleccionada: LocalDate, onFechaSeleccionada: (LocalDate) -> Unit) {
-    val dias  = (0..29).map { LocalDate.now().plusDays(it.toLong()) }
+    val context = LocalContext.current
+    var mostrarDatePicker by remember { mutableStateOf(false) }
+
+    val baseDate = if (fechaSeleccionada.isBefore(LocalDate.now())) LocalDate.now() else fechaSeleccionada
+    val dias = remember(baseDate) {
+        val inicio = if (baseDate.minusDays(3).isBefore(LocalDate.now())) LocalDate.now() else baseDate.minusDays(3)
+        (0..29).map { inicio.plusDays(it.toLong()) }
+    }
     val today = LocalDate.now()
 
     Column {
-        Text(
-            text       = "Selecciona la fecha",
-            style      = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Bold,
-            modifier   = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text       = "Selecciona la fecha",
+                style      = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold
+            )
+            IconButton(onClick = { mostrarDatePicker = true }) {
+                Icon(
+                    imageVector = Icons.Default.CalendarMonth,
+                    contentDescription = "Elegir fecha en calendario",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
+
         LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             items(dias) { dia ->
                 val seleccionado = dia == fechaSeleccionada
@@ -662,6 +687,28 @@ private fun SelectorFecha(fechaSeleccionada: LocalDate, onFechaSeleccionada: (Lo
                     }
                 }
             }
+        }
+    }
+
+    if (mostrarDatePicker) {
+        val cal = Calendar.getInstance()
+        cal.set(fechaSeleccionada.year, fechaSeleccionada.monthValue - 1, fechaSeleccionada.dayOfMonth)
+
+        val dpd = DatePickerDialog(
+            context,
+            { _, year, month, dayOfMonth ->
+                val fechaElegida = LocalDate.of(year, month + 1, dayOfMonth)
+                onFechaSeleccionada(fechaElegida)
+                mostrarDatePicker = false
+            },
+            cal.get(Calendar.YEAR),
+            cal.get(Calendar.MONTH),
+            cal.get(Calendar.DAY_OF_MONTH)
+        )
+        dpd.setOnCancelListener { mostrarDatePicker = false }
+        dpd.setOnDismissListener { mostrarDatePicker = false }
+        LaunchedEffect(Unit) {
+            dpd.show()
         }
     }
 }

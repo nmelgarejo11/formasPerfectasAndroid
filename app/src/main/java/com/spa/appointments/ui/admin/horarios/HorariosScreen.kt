@@ -742,7 +742,7 @@ private fun BloqueoRow(
                 )
                 Spacer(Modifier.width(4.dp))
                 Text(
-                    text  = "${bloqueo.fechaInicio.take(10)} → ${bloqueo.fechaFin.take(10)}",
+                    text  = formatearRangoBloqueo(bloqueo.fechaInicio, bloqueo.fechaFin),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -762,13 +762,30 @@ private fun BloqueoRow(
     }
 }
 
-private fun formatearHora12h(horaStr: String): String {
-    if (horaStr.isBlank()) return ""
+private fun extraerFecha(fechaStr: String): String {
+    if (fechaStr.isBlank()) return ""
+    val limpia = fechaStr.trim()
+    return when {
+        limpia.contains("T") -> limpia.substringBefore("T")
+        limpia.contains(" ") -> limpia.substringBefore(" ")
+        else -> limpia.take(10)
+    }
+}
+
+private fun extraerHora12h(fechaStr: String): String {
+    if (fechaStr.isBlank()) return ""
+    val limpia = fechaStr.trim()
+    val horaParte = when {
+        limpia.contains("T") -> limpia.substringAfter("T")
+        limpia.contains(" ") -> limpia.substringAfter(" ")
+        limpia.contains(":") -> limpia
+        else -> return ""
+    }
     return try {
-        val cleanStr = if (horaStr.contains("T")) horaStr.substring(11, 16) else horaStr.trim()
-        val partes = cleanStr.split(":")
+        val partes = horaParte.split(":")
+        if (partes.size < 2) return ""
         val h = partes[0].toInt()
-        val m = partes[1]
+        val m = partes[1].take(2)
         val amPm = if (h >= 12) "PM" else "AM"
         val h12 = when {
             h == 0 -> 12
@@ -777,6 +794,32 @@ private fun formatearHora12h(horaStr: String): String {
         }
         String.format(java.util.Locale.US, "%02d:%s %s", h12, m, amPm)
     } catch (_: Exception) {
-        horaStr.take(5)
+        ""
     }
 }
+
+private fun formatearRangoBloqueo(fechaInicioIso: String, fechaFinIso: String): String {
+    val dateInicio = extraerFecha(fechaInicioIso)
+    val timeInicio = extraerHora12h(fechaInicioIso)
+
+    val dateFin = extraerFecha(fechaFinIso)
+    val timeFin = extraerHora12h(fechaFinIso)
+
+    return if (dateInicio.isNotBlank() && dateInicio == dateFin) {
+        if (timeInicio.isNotBlank() && timeFin.isNotBlank()) {
+            "$dateInicio ($timeInicio - $timeFin)"
+        } else {
+            dateInicio
+        }
+    } else {
+        val inicioStr = if (timeInicio.isNotBlank()) "$dateInicio $timeInicio" else dateInicio
+        val finStr = if (timeFin.isNotBlank()) "$dateFin $timeFin" else dateFin
+        if (finStr.isNotBlank() && finStr != inicioStr) {
+            "$inicioStr → $finStr"
+        } else {
+            inicioStr
+        }
+    }
+}
+
+private fun formatearHora12h(horaStr: String): String = extraerHora12h(horaStr)

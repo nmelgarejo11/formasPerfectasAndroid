@@ -5,8 +5,12 @@ import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -29,6 +33,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -299,19 +304,36 @@ fun MisCitasContent(
         )
     }
 
-    // ── Diálogo: Asignar Horario/Profesional Grupal ──────────────────────────
+    // ── Diálogo: Asignar Horario/Profesional ──────────────────────────
     if (mostrarAsignar && citaAccion != null) {
-        AsignarCitaGrupalClienteDialog(
-            cita = citaAccion!!,
-            clientesDisponibles = clientesEncontrados,
-            profesionales = profesionales,
-            onBuscarCliente = onBuscarClientes,
-            onConfirmar = { idCita, idCliente, cantidadPersonas, idsProfesionales ->
-                mostrarAsignar = false
-                onAsignarCitaGrupal(idCita, idsProfesionales, null, null)
-            },
-            onDismiss = { mostrarAsignar = false }
-        )
+        val c = citaAccion!!
+        if (c.cantidadPersonas != null && c.cantidadPersonas > 1 && c.nombreCliente?.contains("Cliente por Asignar", ignoreCase = true) == true) {
+            AsignarCitaGrupalClienteDialog(
+                cita = c,
+                clientesDisponibles = clientesEncontrados,
+                profesionales = profesionales,
+                onBuscarCliente = onBuscarClientes,
+                onConfirmar = { idCita, idCliente, cantidadPersonas, idsProfesionales ->
+                    mostrarAsignar = false
+                    onAsignarCitaGrupal(idCita, idsProfesionales, null, null)
+                },
+                onDismiss = { mostrarAsignar = false }
+            )
+        } else {
+            AsignarCitaGrupalDialog(
+                cita = c,
+                profesionales = profesionales,
+                slotsDisponibles = slotsDisponibles,
+                cargandoSlots = cargandoSlots,
+                onCargarProfesionales = { idSede -> onCargarProfesionales(idSede, null) },
+                onCargarDisponibilidad = onCargarDisponibilidad,
+                onConfirm = { ids, inicioIso, finIso ->
+                    mostrarAsignar = false
+                    onAsignarCitaGrupal(c.id, ids, inicioIso, finIso)
+                },
+                onDismiss = { mostrarAsignar = false }
+            )
+        }
     }
 
     // ── Pop-Up Detalle Cita (Desde vista Calendario) ────────────────────────
@@ -1545,7 +1567,10 @@ private fun parsearServicios(json: String?): List<ServicioCita> {
 private fun AsignarCitaGrupalDialog(
     cita:                  Cita,
     profesionales:         List<Profesional>,
+    slotsDisponibles:      List<SlotDisponible>,
+    cargandoSlots:         Boolean,
     onCargarProfesionales: (Int) -> Unit,
+    onCargarDisponibilidad:(idProfesional: Int, idSede: Int, fecha: String, duracion: Int) -> Unit,
     onConfirm:             (idsProfesionales: List<Int>?, fechaHoraInicio: String?, fechaHoraFin: String?) -> Unit,
     onDismiss:             () -> Unit
 ) {
@@ -1553,46 +1578,19 @@ private fun AsignarCitaGrupalDialog(
     val servicios = remember(cita.servicios) { parsearServicios(cita.servicios) }
     val duracion  = servicios.firstOrNull()?.duracion ?: 60
 
-    val hoyUtcMillis = remember {
-        Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply {
-            val local = Calendar.getInstance()
-            clear()
-            set(local.get(Calendar.YEAR), local.get(Calendar.MONTH), local.get(Calendar.DAY_OF_MONTH))
-        }.timeInMillis
-    }
-
-    val datePickerState = rememberDatePickerState(
-        selectableDates = object : SelectableDates {
-            override fun isSelectableDate(utcTimeMillis: Long): Boolean {
-                return utcTimeMillis >= hoyUtcMillis
-            }
-        }
-    )
-
-    val ahoraInstante   = remember { Calendar.getInstance() }
-    val timePickerState = rememberTimePickerState(
-        initialHour   = ahoraInstante.get(Calendar.HOUR_OF_DAY),
-        initialMinute = ahoraInstante.get(Calendar.MINUTE),
-        is24Hour      = false
-    )
-
-    var mostrarDatePicker by remember { mutableStateOf(false) }
-    var mostrarTimePicker by remember { mutableStateOf(false) }
-
     var fechaSeleccionada by remember { mutableStateOf<String?>(null) }
     var horaSeleccionada  by remember { mutableStateOf<String?>(null) }
     var profesionalesSel  by remember { mutableStateOf<List<Int>>(emptyList()) }
+
+    var mostrarDatePicker by remember { mutableStateOf(false) }
+    var mostrarTimePicker by remember { mutableStateOf(false) }
     var mostrarSelProf    by remember { mutableStateOf(false) }
 
-    LaunchedEffect(datePickerState.selectedDateMillis) {
-        datePickerState.selectedDateMillis?.let { millis ->
-            val cal = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply { timeInMillis = millis }
-            fechaSeleccionada = "%04d-%02d-%02d".format(
-                cal.get(Calendar.YEAR),
-                cal.get(Calendar.MONTH) + 1,
-                cal.get(Calendar.DAY_OF_MONTH)
-            )
+    LaunchedEffect(fechaSeleccionada) {
+        val f = fechaSeleccionada
+        if (!f.isNullOrBlank()) {
             horaSeleccionada = null
+            onCargarDisponibilidad(cita.idProfesional, cita.idSede, f, duracion)
         }
     }
 
@@ -1692,54 +1690,92 @@ private fun AsignarCitaGrupalDialog(
     )
 
     if (mostrarDatePicker) {
-        DatePickerDialog(
-            onDismissRequest = { mostrarDatePicker = false },
-            confirmButton = {
-                TextButton(onClick = { mostrarDatePicker = false }) { Text("Aceptar") }
+        val cal = Calendar.getInstance()
+        if (fechaSeleccionada != null && fechaSeleccionada!!.contains("-")) {
+            try {
+                val partes = fechaSeleccionada!!.split("-")
+                cal.set(partes[0].toInt(), partes[1].toInt() - 1, partes[2].toInt())
+            } catch (_: Exception) {}
+        }
+        val dpd = android.app.DatePickerDialog(
+            context,
+            { _, year, month, dayOfMonth ->
+                fechaSeleccionada = "%04d-%02d-%02d".format(year, month + 1, dayOfMonth)
+                horaSeleccionada = null
+                mostrarDatePicker = false
             },
-            dismissButton = {
-                TextButton(onClick = { mostrarDatePicker = false }) { Text("Cancelar") }
-            }
-        ) {
-            DatePicker(state = datePickerState)
+            cal.get(Calendar.YEAR),
+            cal.get(Calendar.MONTH),
+            cal.get(Calendar.DAY_OF_MONTH)
+        )
+        dpd.setOnCancelListener { mostrarDatePicker = false }
+        dpd.setOnDismissListener { mostrarDatePicker = false }
+        LaunchedEffect(Unit) {
+            dpd.show()
         }
     }
 
     if (mostrarTimePicker) {
+        val disponibles = slotsDisponibles.filter { it.disponible }
         AlertDialog(
             onDismissRequest = { mostrarTimePicker = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    val horaElegida   = timePickerState.hour
-                    val minutoElegido = timePickerState.minute
-
-                    val esHoy = datePickerState.selectedDateMillis?.let {
-                        val calSel    = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply { timeInMillis = it }
-                        val calActual = Calendar.getInstance()
-                        calSel.get(Calendar.YEAR) == calActual.get(Calendar.YEAR) &&
-                                calSel.get(Calendar.DAY_OF_YEAR) == calActual.get(Calendar.DAY_OF_YEAR)
-                    } ?: false
-
-                    if (esHoy) {
-                        val ahora        = Calendar.getInstance()
-                        val horaActual   = ahora.get(Calendar.HOUR_OF_DAY)
-                        val minutoActual = ahora.get(Calendar.MINUTE)
-
-                        if (horaElegida < horaActual || (horaElegida == horaActual && minutoElegido < minutoActual)) {
-                            Toast.makeText(context, "No puedes elegir una hora pasada", Toast.LENGTH_SHORT).show()
-                            return@TextButton
-                        }
-                    }
-
-                    horaSeleccionada = "%02d:%02d".format(horaElegida, minutoElegido)
-                    mostrarTimePicker = false
-                }) { Text("Aceptar") }
-            },
-            dismissButton = {
-                TextButton(onClick = { mostrarTimePicker = false }) { Text("Cancelar") }
+            shape            = RoundedCornerShape(20.dp),
+            containerColor   = MaterialTheme.colorScheme.surface,
+            title = {
+                Text(
+                    "Horarios Disponibles",
+                    fontWeight = FontWeight.Bold,
+                    textAlign  = TextAlign.Center,
+                    modifier   = Modifier.fillMaxWidth(),
+                    style      = MaterialTheme.typography.titleMedium
+                )
             },
             text = {
-                TimePicker(state = timePickerState)
+                if (cargandoSlots) {
+                    Box(Modifier.fillMaxWidth().height(100.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                    }
+                } else if (disponibles.isEmpty()) {
+                    Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                        Text(
+                            "No hay horarios disponibles para esta fecha.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                } else {
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(3),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth().heightIn(max = 220.dp)
+                    ) {
+                        items(disponibles) { slot ->
+                            val esSeleccionado = horaSeleccionada == slot.horaInicio
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = if (esSeleccionado) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerLow,
+                                modifier = Modifier.clickable {
+                                    horaSeleccionada = slot.horaInicio
+                                    mostrarTimePicker = false
+                                }
+                            ) {
+                                Text(
+                                    text = formatearHora(slot.horaInicio),
+                                    textAlign = TextAlign.Center,
+                                    fontSize = 12.sp,
+                                    fontWeight = if (esSeleccionado) FontWeight.Bold else FontWeight.Medium,
+                                    color = if (esSeleccionado) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                                    modifier = Modifier.padding(vertical = 10.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { mostrarTimePicker = false }) { Text("Cancelar") }
             }
         )
     }
