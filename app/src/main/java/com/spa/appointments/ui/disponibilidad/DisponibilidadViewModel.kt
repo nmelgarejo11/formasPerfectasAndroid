@@ -323,7 +323,7 @@ class DisponibilidadViewModel @Inject constructor(
             _uiState.value = DisponibilidadUiState.CreandoCita
             try {
                 val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")
-                var creadasExitosas = 0
+                val citasItems = mutableListOf<CrearCitaGrupalItem>()
 
                 val precioPorAsistente = if (_precioCalculado.value > 0.0) {
                     _precioCalculado.value / sharedVm.cantidadPersonas
@@ -354,36 +354,40 @@ class DisponibilidadViewModel @Inject constructor(
                         }
                     }
 
-                    val request = CrearCitaRequest(
-                        idSede              = prof.idSede,
-                        idCliente           = clienteFinal.id,
-                        idProfesional       = prof.id,
-                        fechaInicio         = fechaInicioStr,
-                        fechaFin            = fechaFinStr,
-                        notas               = notaAsistente,
-                        cantidadPersonas    = sharedVm.cantidadPersonas,
-                        responsableNombre   = sharedVm.responsableNombre.ifBlank { null },
-                        responsableTelefono = sharedVm.responsableTelefono.ifBlank { null },
-                        responsableEmail    = sharedVm.responsableCorreo.ifBlank { null },
-                        servicios           = listOf(
-                            ServicioDetalle(
-                                idServicio = serv.id,
-                                precio     = precioPorAsistente,
-                                duracion   = serv.duracionMinutos
+                    citasItems.add(
+                        CrearCitaGrupalItem(
+                            idProfesional = prof.id,
+                            fechaInicio = fechaInicioStr,
+                            fechaFin = fechaFinStr,
+                            notas = notaAsistente,
+                            servicios = listOf(
+                                ServicioDetalle(
+                                    idServicio = serv.id,
+                                    precio     = precioPorAsistente,
+                                    duracion   = serv.duracionMinutos
+                                )
                             )
                         )
                     )
-
-                    val response = repo.crearCita(request)
-                    if (response.idCita > 0) {
-                        creadasExitosas++
-                    } else {
-                        _uiState.value = DisponibilidadUiState.Error("Error al crear la cita del asistente ${index + 1}: ${response.mensaje}")
-                        return@launch
-                    }
                 }
 
-                _uiState.value = DisponibilidadUiState.CitaCreada("Se agendaron con éxito $creadasExitosas citas independientes para el grupo de ${sharedVm.cantidadPersonas} personas.")
+                val primerProf = sharedVm.asistentesGrupales.firstOrNull()?.profesional
+                val request = CrearCitasGrupalesRequest(
+                    idSede              = primerProf?.idSede ?: profesional?.idSede ?: Constants.ID_SEDE_DEFAULT,
+                    idCliente           = clienteFinal.id,
+                    cantidadPersonas    = sharedVm.cantidadPersonas,
+                    responsableNombre   = sharedVm.responsableNombre.ifBlank { null },
+                    responsableTelefono = sharedVm.responsableTelefono.ifBlank { null },
+                    responsableEmail    = sharedVm.responsableCorreo.ifBlank { null },
+                    citas               = citasItems
+                )
+
+                val response = repo.crearCitasGrupales(request)
+                if (response.idCita > 0) {
+                    _uiState.value = DisponibilidadUiState.CitaCreada("Se agendaron con éxito ${sharedVm.cantidadPersonas} citas para el grupo y se ha enviado un único correo de confirmación.")
+                } else {
+                    _uiState.value = DisponibilidadUiState.Error(response.mensaje)
+                }
 
             } catch (e: Exception) {
                 _uiState.value = DisponibilidadUiState.Error(

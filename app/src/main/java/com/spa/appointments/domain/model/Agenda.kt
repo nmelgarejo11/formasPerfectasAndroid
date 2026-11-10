@@ -33,6 +33,26 @@ data class CrearCitaRequest(
 )
 
 @JsonClass(generateAdapter = true)
+data class CrearCitaGrupalItem(
+    @Json(name = "idProfesional") val idProfesional: Int,
+    @Json(name = "fechaInicio")   val fechaInicio: String,
+    @Json(name = "fechaFin")      val fechaFin: String,
+    @Json(name = "notas")         val notas: String?,
+    @Json(name = "servicios")     val servicios: List<ServicioDetalle>
+)
+
+@JsonClass(generateAdapter = true)
+data class CrearCitasGrupalesRequest(
+    @Json(name = "idSede")              val idSede: Int,
+    @Json(name = "idCliente")           val idCliente: Int,
+    @Json(name = "cantidadPersonas")    val cantidadPersonas: Int,
+    @Json(name = "responsableNombre")   val responsableNombre: String?,
+    @Json(name = "responsableTelefono") val responsableTelefono: String?,
+    @Json(name = "responsableEmail")    val responsableEmail: String?,
+    @Json(name = "citas")               val citas: List<CrearCitaGrupalItem>
+)
+
+@JsonClass(generateAdapter = true)
 data class CrearCitaResponse(
     @Json(name = "idCita")  val idCita: Int,
     @Json(name = "mensaje") val mensaje: String

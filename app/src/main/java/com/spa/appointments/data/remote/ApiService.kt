@@ -45,6 +45,9 @@ interface ApiService {
     @POST("Citas")
     suspend fun crearCita(@Body request: CrearCitaRequest): CrearCitaResponse
 
+    @POST("Citas/grupo")
+    suspend fun crearCitasGrupales(@Body request: CrearCitasGrupalesRequest): CrearCitaResponse
+
     @GET("Citas/activas")
     suspend fun getCitasActivas(
         @Query("nombreCliente")  nombreCliente:  String? = null,

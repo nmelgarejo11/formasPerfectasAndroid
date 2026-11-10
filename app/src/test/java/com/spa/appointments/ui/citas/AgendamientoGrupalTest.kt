@@ -2,6 +2,8 @@ package com.spa.appointments.ui.citas
 
 import com.spa.appointments.domain.model.Cliente
 import com.spa.appointments.domain.model.CrearCitaRequest
+import com.spa.appointments.domain.model.CrearCitaGrupalItem
+import com.spa.appointments.domain.model.CrearCitasGrupalesRequest
 import com.spa.appointments.domain.model.Profesional
 import com.spa.appointments.domain.model.ServicioDetalle
 import com.spa.appointments.domain.model.SlotDisponible
@@ -104,6 +106,35 @@ class AgendamientoGrupalTest {
         assertTrue(json.contains("\"idProfesional\":10"))
         assertTrue(json.contains("\"cantidadPersonas\":3"))
         assertTrue(json.contains("\"notas\":\"Cita Grupal (Asistente 1 de 3)\""))
+    }
+
+    @Test
+    fun testCrearCitasGrupalesRequest_Serializacion() {
+        val request = CrearCitasGrupalesRequest(
+            idSede = 1,
+            idCliente = 5,
+            cantidadPersonas = 2,
+            responsableNombre = "Nicolas",
+            responsableTelefono = "3001234567",
+            responsableEmail = "nicolas@test.com",
+            citas = listOf(
+                CrearCitaGrupalItem(
+                    idProfesional = 10,
+                    fechaInicio = "2025-10-15T09:00:00",
+                    fechaFin = "2025-10-15T10:00:00",
+                    notas = "Cita Grupal (Asistente 1 de 2)",
+                    servicios = listOf(ServicioDetalle(idServicio = 2, precio = 50000.0, duracion = 60))
+                )
+            )
+        )
+
+        val adapter = moshi.adapter(CrearCitasGrupalesRequest::class.java)
+        val json = adapter.toJson(request)
+
+        assertNotNull(json)
+        assertTrue(json.contains("\"cantidadPersonas\":2"))
+        assertTrue(json.contains("\"responsableEmail\":\"nicolas@test.com\""))
+        assertTrue(json.contains("\"citas\":"))
     }
 
     @Test

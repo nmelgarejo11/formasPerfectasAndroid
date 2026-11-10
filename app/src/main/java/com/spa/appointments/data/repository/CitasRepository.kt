@@ -34,6 +34,9 @@ class CitasRepository @Inject constructor(
     suspend fun crearCita(request: CrearCitaRequest): CrearCitaResponse =
         api.crearCita(request)
 
+    suspend fun crearCitasGrupales(request: CrearCitasGrupalesRequest): CrearCitaResponse =
+        api.crearCitasGrupales(request)
+
     suspend fun getCitasActivas(
         nombreCliente:  String? = null,
         fechaDesde:     String? = null,
