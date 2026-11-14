@@ -132,23 +132,32 @@ class DisponibilidadViewModel @Inject constructor(
                     }
                 }
 
-                // Si es cita grupal, filtrar los cupos que se solapen con citas de asistentes anteriores en este mismo flujo
-                if (sharedVm != null && sharedVm.esGrupal && sharedVm.asistentesGrupales.isNotEmpty()) {
-                    val asistentesPrevios = sharedVm.asistentesGrupales.take(sharedVm.asistenteActualIndex)
-                    val slotsOcupadosEnFlujo = asistentesPrevios
-                        .filter { (prof == null || it.profesional?.id == prof.id) && it.fecha == fecha && it.slot != null }
-                        .mapNotNull { it.slot }
+                // Si es cita grupal o múltiple de servicios, filtrar los cupos que se solapen con citas/servicios anteriores en este mismo flujo
+                val slotsOcupadosEnFlujo = when {
+                    sharedVm != null && sharedVm.esGrupal && sharedVm.asistentesGrupales.isNotEmpty() -> {
+                        val asistentesPrevios = sharedVm.asistentesGrupales.take(sharedVm.asistenteActualIndex)
+                        asistentesPrevios
+                            .filter { (prof == null || it.profesional?.id == prof.id) && it.fecha == fecha && it.slot != null }
+                            .mapNotNull { it.slot }
+                    }
+                    sharedVm != null && sharedVm.esMultiple && sharedVm.serviciosConfigurados.isNotEmpty() -> {
+                        val serviciosPrevios = sharedVm.serviciosConfigurados.take(sharedVm.servicioActualIndex)
+                        serviciosPrevios
+                            .filter { (prof == null || it.profesional?.id == prof.id) && it.fecha == fecha && it.slot != null }
+                            .mapNotNull { it.slot }
+                    }
+                    else -> emptyList()
+                }
 
-                    if (slotsOcupadosEnFlujo.isNotEmpty()) {
-                        slots = slots.map { slotCandidato ->
-                            val hayConflicto = slotsOcupadosEnFlujo.any { slotOcupado ->
-                                haySolapamiento(slotOcupado, slotCandidato, serv.duracionMinutos)
-                            }
-                            if (hayConflicto) {
-                                slotCandidato.copy(disponible = false)
-                            } else {
-                                slotCandidato
-                            }
+                if (slotsOcupadosEnFlujo.isNotEmpty()) {
+                    slots = slots.map { slotCandidato ->
+                        val hayConflicto = slotsOcupadosEnFlujo.any { slotOcupado ->
+                            haySolapamiento(slotOcupado, slotCandidato, serv.duracionMinutos)
+                        }
+                        if (hayConflicto) {
+                            slotCandidato.copy(disponible = false)
+                        } else {
+                            slotCandidato
                         }
                     }
                 }
@@ -320,7 +329,7 @@ class DisponibilidadViewModel @Inject constructor(
     }
 
     fun confirmarCitasGrupales(sharedVm: ReservaSharedViewModel, notas: String?) {
-        val serv = servicio ?: return
+        val serv = servicio ?: sharedVm.servicioSeleccionado ?: sharedVm.serviciosSeleccionados.firstOrNull() ?: return
         val clienteFinal = clienteSeleccionado ?: sharedVm.clienteSeleccionado ?: run {
             _uiState.value = DisponibilidadUiState.Error("Debe seleccionar un cliente")
             return
@@ -363,19 +372,31 @@ class DisponibilidadViewModel @Inject constructor(
                         }
                     }
 
+                    val serviciosDetalleAsistente = if (sharedVm.esMultiple && sharedVm.serviciosSeleccionados.isNotEmpty()) {
+                        sharedVm.serviciosSeleccionados.map { item ->
+                            ServicioDetalle(
+                                idServicio = item.id,
+                                precio     = item.precioBase,
+                                duracion   = item.duracionMinutos
+                            )
+                        }
+                    } else {
+                        listOf(
+                            ServicioDetalle(
+                                idServicio = serv.id,
+                                precio     = precioPorAsistente,
+                                duracion   = serv.duracionMinutos
+                            )
+                        )
+                    }
+
                     citasItems.add(
                         CrearCitaGrupalItem(
                             idProfesional = prof.id,
                             fechaInicio = fechaInicioStr,
                             fechaFin = fechaFinStr,
                             notas = notaAsistente,
-                            servicios = listOf(
-                                ServicioDetalle(
-                                    idServicio = serv.id,
-                                    precio     = precioPorAsistente,
-                                    duracion   = serv.duracionMinutos
-                                )
-                            )
+                            servicios = serviciosDetalleAsistente
                         )
                     )
                 }
@@ -401,6 +422,87 @@ class DisponibilidadViewModel @Inject constructor(
             } catch (e: Exception) {
                 _uiState.value = DisponibilidadUiState.Error(
                     e.localizedMessage ?: "Error al crear las citas grupales"
+                )
+            }
+        }
+    }
+
+    fun confirmarCitasMultiplesServicios(sharedVm: ReservaSharedViewModel, notas: String?) {
+        val clienteFinal = clienteSeleccionado ?: sharedVm.clienteSeleccionado ?: run {
+            _uiState.value = DisponibilidadUiState.Error("Debe seleccionar un cliente")
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.value = DisponibilidadUiState.CreandoCita
+            try {
+                val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")
+                val citasItems = mutableListOf<CrearCitaGrupalItem>()
+
+                for ((index, itemConfig) in sharedVm.serviciosConfigurados.withIndex()) {
+                    val prof = itemConfig.profesional
+                    val fecha = itemConfig.fecha
+                    val slot = itemConfig.slot
+                    val servItem = itemConfig.servicio
+
+                    if (prof == null || fecha == null || slot == null) {
+                        _uiState.value = DisponibilidadUiState.Error("Falta información para el servicio '${servItem.nombre}'")
+                        return@launch
+                    }
+
+                    val horaInicioSlot = normalizarHora(slot.horaInicio)
+                    val horaFinSlot = normalizarHora(slot.horaFin)
+                    val fechaInicio = LocalDateTime.parse("${fecha} $horaInicioSlot", DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+                    val fechaFin = LocalDateTime.parse("${fecha} $horaFinSlot", DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+
+                    val fechaInicioStr = formatter.format(fechaInicio)
+                    val fechaFinStr = formatter.format(fechaFin)
+
+                    val notaServicio = buildString {
+                        append("Cita Servicio (${index + 1} de ${sharedVm.serviciosConfigurados.size}: ${servItem.nombre})")
+                        if (!notas.isNullOrBlank()) {
+                            append(" - ").append(notas)
+                        }
+                    }
+
+                    citasItems.add(
+                        CrearCitaGrupalItem(
+                            idProfesional = prof.id,
+                            fechaInicio = fechaInicioStr,
+                            fechaFin = fechaFinStr,
+                            notas = notaServicio,
+                            servicios = listOf(
+                                ServicioDetalle(
+                                    idServicio = servItem.id,
+                                    precio     = servItem.precioBase,
+                                    duracion   = servItem.duracionMinutos
+                                )
+                            )
+                        )
+                    )
+                }
+
+                val primerProf = sharedVm.serviciosConfigurados.firstOrNull()?.profesional
+                val request = CrearCitasGrupalesRequest(
+                    idSede              = primerProf?.idSede ?: profesional?.idSede ?: Constants.ID_SEDE_DEFAULT,
+                    idCliente           = clienteFinal.id,
+                    cantidadPersonas    = 1,
+                    responsableNombre   = clienteFinal.nombreCompleto,
+                    responsableTelefono = clienteFinal.telefono,
+                    responsableEmail    = clienteFinal.email,
+                    citas               = citasItems
+                )
+
+                val response = repo.crearCitasGrupales(request)
+                if (response.idCita > 0) {
+                    _uiState.value = DisponibilidadUiState.CitaCreada("Se agendaron con éxito los ${sharedVm.serviciosConfigurados.size} servicios solicitados para ${clienteFinal.nombreCompleto}.")
+                } else {
+                    _uiState.value = DisponibilidadUiState.Error(response.mensaje)
+                }
+
+            } catch (e: Exception) {
+                _uiState.value = DisponibilidadUiState.Error(
+                    e.localizedMessage ?: "Error al crear las citas de servicios múltiples"
                 )
             }
         }

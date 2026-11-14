@@ -49,13 +49,17 @@ fun DisponibilidadScreen(
     sharedVm:     ReservaSharedViewModel,
     vm: DisponibilidadViewModel = hiltViewModel()
 ) {
-    val profActual = if (sharedVm.esGrupal && sharedVm.asistentesGrupales.isNotEmpty() && sharedVm.asistenteActualIndex < sharedVm.asistentesGrupales.size) {
-        sharedVm.asistentesGrupales[sharedVm.asistenteActualIndex].profesional ?: profesional
-    } else {
-        profesional
+    val profActual = when {
+        sharedVm.esGrupal && sharedVm.asistentesGrupales.isNotEmpty() && sharedVm.asistenteActualIndex < sharedVm.asistentesGrupales.size -> {
+            sharedVm.asistentesGrupales[sharedVm.asistenteActualIndex].profesional ?: profesional
+        }
+        sharedVm.esMultiple && sharedVm.serviciosConfigurados.isNotEmpty() && sharedVm.servicioActualIndex < sharedVm.serviciosConfigurados.size -> {
+            sharedVm.serviciosConfigurados[sharedVm.servicioActualIndex].profesional ?: profesional
+        }
+        else -> profesional
     }
 
-    LaunchedEffect(servicio, sharedVm.cantidadPersonas, sharedVm.asistenteActualIndex) {
+    LaunchedEffect(servicio, sharedVm.cantidadPersonas, sharedVm.asistenteActualIndex, sharedVm.servicioActualIndex) {
         vm.servicio    = servicio
         vm.profesional = profActual
         vm.cargarPrecioServicio(servicio.id, sharedVm.cantidadPersonas)
@@ -67,13 +71,21 @@ fun DisponibilidadScreen(
     val slotSeleccionado  by vm.slotSeleccionado.collectAsState()
     val precioCalculado   by vm.precioCalculado.collectAsState()
 
-    val precioMostrar = if (precioCalculado > 0.0) precioCalculado else (if (sharedVm.esGrupal) servicio.precioBase * sharedVm.cantidadPersonas else servicio.precioBase)
+    val precioMostrar = when {
+        sharedVm.esMultiple && sharedVm.serviciosConfigurados.isNotEmpty() -> {
+            sharedVm.serviciosConfigurados.sumOf { it.servicio.precioBase }
+        }
+        precioCalculado > 0.0 -> precioCalculado
+        sharedVm.esGrupal -> servicio.precioBase * sharedVm.cantidadPersonas
+        else -> servicio.precioBase
+    }
 
     var notas          by remember { mutableStateOf("") }
     var mostrarDialogo by remember { mutableStateOf(false) }
     var mostrarExito   by remember { mutableStateOf(false) }
 
     val esUltimoAsistente = !sharedVm.esGrupal || (sharedVm.asistenteActualIndex >= sharedVm.cantidadPersonas - 1)
+    val esUltimoServicio  = !sharedVm.esMultiple || (sharedVm.servicioActualIndex >= sharedVm.serviciosConfigurados.size - 1)
 
     LaunchedEffect(uiState) {
         if (uiState is DisponibilidadUiState.CitaCreada) mostrarExito = true
@@ -102,7 +114,11 @@ fun DisponibilidadScreen(
             },
             title = {
                 Text(
-                    text       = if (sharedVm.esGrupal) "Confirmar Citas Grupales" else "Confirmar Reserva",
+                    text       = when {
+                        sharedVm.esGrupal -> "Confirmar Citas Grupales"
+                        sharedVm.esMultiple -> "Confirmar Citas Múltiples"
+                        else -> "Confirmar Reserva"
+                    },
                     fontWeight = FontWeight.Bold,
                     textAlign  = TextAlign.Center,
                     modifier   = Modifier.fillMaxWidth(),
@@ -111,19 +127,62 @@ fun DisponibilidadScreen(
             },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    ConfirmacionFila(
-                        icono = Icons.Default.Spa,
-                        label = "Servicio",
-                        valor = servicio.nombre
-                    )
+                    if (sharedVm.esMultiple && sharedVm.serviciosConfigurados.isNotEmpty()) {
+                        ConfirmacionFila(
+                            icono = Icons.Default.Person,
+                            label = "Cliente",
+                            valor = sharedVm.clienteSeleccionado?.nombreCompleto ?: sharedVm.responsableNombre
+                        )
 
-                    ConfirmacionFila(
-                        icono = Icons.Default.Person,
-                        label = "Cliente",
-                        valor = sharedVm.clienteSeleccionado?.nombreCompleto ?: sharedVm.responsableNombre
-                    )
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
-                    if (!sharedVm.esGrupal) {
+                        sharedVm.serviciosConfigurados.forEachIndexed { idx, config ->
+                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "Servicio ${idx + 1}: ${config.servicio.nombre}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                    Text(
+                                        text = "$%,.0f".format(config.servicio.precioBase),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                                Text(
+                                    text = "• Profesional: ${config.profesional?.nombreCompleto ?: "Sin asignar"}",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                                Text(
+                                    text = "• Fecha: ${config.fecha?.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) ?: "-"}",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                                Text(
+                                    text = "• Hora: ${formatearHora12h(config.slot?.horaInicio ?: "")} – ${formatearHora12h(config.slot?.horaFin ?: "")}",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                        }
+                    } else if (!sharedVm.esGrupal) {
+                        ConfirmacionFila(
+                            icono = Icons.Default.Spa,
+                            label = "Servicio",
+                            valor = servicio.nombre
+                        )
+
+                        ConfirmacionFila(
+                            icono = Icons.Default.Person,
+                            label = "Cliente",
+                            valor = sharedVm.clienteSeleccionado?.nombreCompleto ?: sharedVm.responsableNombre
+                        )
+
                         ConfirmacionFila(
                             icono = Icons.Default.Badge,
                             label = "Profesional",
@@ -142,6 +201,18 @@ fun DisponibilidadScreen(
                             valor = "${formatearHora12h(slotSeleccionado?.horaInicio ?: "")} – ${formatearHora12h(slotSeleccionado?.horaFin ?: "")}"
                         )
                     } else {
+                        ConfirmacionFila(
+                            icono = Icons.Default.Spa,
+                            label = "Servicio",
+                            valor = servicio.nombre
+                        )
+
+                        ConfirmacionFila(
+                            icono = Icons.Default.Person,
+                            label = "Cliente",
+                            valor = sharedVm.clienteSeleccionado?.nombreCompleto ?: sharedVm.responsableNombre
+                        )
+
                         ConfirmacionFila(
                             icono = Icons.Default.Group,
                             label = "Asistentes",
@@ -189,15 +260,15 @@ fun DisponibilidadScreen(
                 Button(
                     onClick = {
                         mostrarDialogo = false
-                        if (sharedVm.esGrupal) {
-                            vm.confirmarCitasGrupales(sharedVm, notas.ifBlank { null })
-                        } else {
-                            vm.confirmarCita(sharedVm, notas.ifBlank { null })
+                        when {
+                            sharedVm.esGrupal -> vm.confirmarCitasGrupales(sharedVm, notas.ifBlank { null })
+                            sharedVm.esMultiple -> vm.confirmarCitasMultiplesServicios(sharedVm, notas.ifBlank { null })
+                            else -> vm.confirmarCita(sharedVm, notas.ifBlank { null })
                         }
                     },
                     shape    = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth()
-                ) { Text(if (sharedVm.esGrupal) "Guardar ${sharedVm.cantidadPersonas} citas" else "Confirmar cita", fontWeight = FontWeight.SemiBold) }
+                ) { Text(if (sharedVm.esGrupal || sharedVm.esMultiple) "Guardar citas" else "Confirmar cita", fontWeight = FontWeight.SemiBold) }
             },
             dismissButton = {
                 OutlinedButton(
@@ -370,6 +441,16 @@ fun DisponibilidadScreen(
                                 } else {
                                     mostrarDialogo = true
                                 }
+                            } else if (sharedVm.esMultiple && slot != null && sharedVm.serviciosConfigurados.isNotEmpty()) {
+                                val config = sharedVm.serviciosConfigurados[sharedVm.servicioActualIndex]
+                                config.fecha = fechaSeleccionada
+                                config.slot = slot
+                                if (!esUltimoServicio) {
+                                    sharedVm.servicioActualIndex++
+                                    onBack() // vuelve a la pantalla de selección de profesional para el siguiente servicio
+                                } else {
+                                    mostrarDialogo = true
+                                }
                             } else {
                                 mostrarDialogo = true
                             }
@@ -396,9 +477,11 @@ fun DisponibilidadScreen(
                             Spacer(Modifier.width(8.dp))
                             val textoBoton = when {
                                 slot == null -> "Selecciona un horario"
-                                !sharedVm.esGrupal -> "Confirmar a las ${formatearHora12h(slot.horaInicio)}"
-                                !esUltimoAsistente -> "Guardar Asistente ${sharedVm.asistenteActualIndex + 1} y continuar"
-                                else -> "Revisar y confirmar ${sharedVm.cantidadPersonas} citas"
+                                sharedVm.esGrupal && !esUltimoAsistente -> "Guardar Asistente ${sharedVm.asistenteActualIndex + 1} y continuar"
+                                sharedVm.esGrupal -> "Revisar y confirmar ${sharedVm.cantidadPersonas} citas"
+                                sharedVm.esMultiple && !esUltimoServicio -> "Guardar Servicio ${sharedVm.servicioActualIndex + 1} y continuar"
+                                sharedVm.esMultiple -> "Revisar y confirmar ${sharedVm.serviciosConfigurados.size} servicios"
+                                else -> "Confirmar a las ${formatearHora12h(slot.horaInicio)}"
                             }
                             Text(
                                 text       = textoBoton,

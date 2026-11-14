@@ -21,6 +21,14 @@ data class AsistenteCitaConfig(
     var slot: SlotDisponible? = null
 )
 
+data class ServicioCitaConfig(
+    val servicio: Servicio,
+    val numeroServicio: Int,
+    var profesional: Profesional? = null,
+    var fecha: LocalDate? = null,
+    var slot: SlotDisponible? = null
+)
+
 @HiltViewModel
 class ReservaSharedViewModel @Inject constructor() : ViewModel() {
     var clienteSeleccionado: Cliente?         = null
@@ -30,6 +38,8 @@ class ReservaSharedViewModel @Inject constructor() : ViewModel() {
     // ── Control de Cita Múltiple ─────────────────────────────────────────
     val serviciosSeleccionados = mutableStateListOf<Servicio>()
     var esMultiple by mutableStateOf(false)
+    val serviciosConfigurados = mutableStateListOf<ServicioCitaConfig>()
+    var servicioActualIndex by mutableIntStateOf(0)
 
     // ── Control de Cita Grupal ───────────────────────────────────────────
     var esGrupal by mutableStateOf(false)
@@ -41,12 +51,30 @@ class ReservaSharedViewModel @Inject constructor() : ViewModel() {
     val asistentesGrupales = mutableStateListOf<AsistenteCitaConfig>()
     var asistenteActualIndex by mutableIntStateOf(0)
 
+    fun prepararCitaMultipleServicios(servicios: List<Servicio>) {
+        serviciosSeleccionados.clear()
+        serviciosSeleccionados.addAll(servicios)
+        esMultiple = true
+        esGrupal = false
+        serviciosConfigurados.clear()
+        servicios.forEachIndexed { index, s ->
+            serviciosConfigurados.add(
+                ServicioCitaConfig(
+                    servicio = s,
+                    numeroServicio = index + 1
+                )
+            )
+        }
+        servicioActualIndex = 0
+    }
+
     fun prepararCitaGrupal(cliente: Cliente, personas: Int) {
         clienteSeleccionado = cliente
         responsableNombre = cliente.nombreCompleto
         responsableTelefono = cliente.telefono ?: ""
         responsableCorreo = cliente.email ?: ""
         cantidadPersonas = personas
+        esGrupal = true
 
         asistentesGrupales.clear()
         for (i in 1..personas) {
@@ -68,5 +96,7 @@ class ReservaSharedViewModel @Inject constructor() : ViewModel() {
         cantidadPersonas = 1
         asistentesGrupales.clear()
         asistenteActualIndex = 0
+        serviciosConfigurados.clear()
+        servicioActualIndex = 0
     }
 }

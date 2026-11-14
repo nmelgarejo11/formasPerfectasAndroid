@@ -143,18 +143,20 @@ fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
                 onBack = { nav.popBackStack() },
                 onFinalizarSeleccion = { listaServicios ->
                     sharedVm.limpiarReserva()
-                    sharedVm.serviciosSeleccionados.addAll(listaServicios)
 
                     when {
                         // Escenario A: Selección múltiple de servicios
                         listaServicios.size > 1 -> {
-                            sharedVm.servicioSeleccionado = null
-                            sharedVm.esGrupal = false
-                            sharedVm.esMultiple = true
-                            nav.navigate(Routes.RESPONSABLE_GRUPAL)
+                            sharedVm.prepararCitaMultipleServicios(listaServicios)
+                            if (sharedVm.clienteSeleccionado != null) {
+                                nav.navigate(Routes.PROFESIONALES)
+                            } else {
+                                nav.navigate(Routes.SELECCIONAR_CLIENTE)
+                            }
                         }
                         // Escenario B: Un solo servicio y está configurado como Cita Grupal
                         listaServicios.size == 1 && listaServicios.first().esGrupal -> {
+                            sharedVm.serviciosSeleccionados.addAll(listaServicios)
                             sharedVm.servicioSeleccionado = listaServicios.first()
                             sharedVm.esGrupal = true
                             sharedVm.esMultiple = false
@@ -162,6 +164,7 @@ fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
                         }
                         // Escenario C: Un único servicio de modalidad individual tradicional
                         listaServicios.size == 1 -> {
+                            sharedVm.serviciosSeleccionados.addAll(listaServicios)
                             sharedVm.servicioSeleccionado = listaServicios.first()
                             sharedVm.esGrupal = false
                             sharedVm.esMultiple = false
@@ -180,8 +183,15 @@ fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
             val sharedVm = hiltViewModel<ReservaSharedViewModel>(backEntry)
             val profVm   = hiltViewModel<ProfesionalesViewModel>()
 
-            LaunchedEffect(sharedVm.servicioSeleccionado?.id) {
-                profVm.iniciar(sharedVm.servicioSeleccionado?.id)
+            val servicioIdParaFiltrar = when {
+                sharedVm.esMultiple && sharedVm.serviciosConfigurados.isNotEmpty() && sharedVm.servicioActualIndex < sharedVm.serviciosConfigurados.size -> {
+                    sharedVm.serviciosConfigurados[sharedVm.servicioActualIndex].servicio.id
+                }
+                else -> sharedVm.servicioSeleccionado?.id
+            }
+
+            LaunchedEffect(servicioIdParaFiltrar) {
+                profVm.iniciar(servicioIdParaFiltrar)
             }
 
             ProfesionalesScreen(
@@ -190,7 +200,10 @@ fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
                     sharedVm.profesionalSeleccionado = profesional
                     if (sharedVm.esGrupal && sharedVm.asistentesGrupales.isNotEmpty() && sharedVm.asistenteActualIndex < sharedVm.asistentesGrupales.size) {
                         sharedVm.asistentesGrupales[sharedVm.asistenteActualIndex].profesional = profesional
+                    } else if (sharedVm.esMultiple && sharedVm.serviciosConfigurados.isNotEmpty() && sharedVm.servicioActualIndex < sharedVm.serviciosConfigurados.size) {
+                        sharedVm.serviciosConfigurados[sharedVm.servicioActualIndex].profesional = profesional
                     }
+
                     if (sharedVm.clienteSeleccionado != null) {
                         nav.navigate(Routes.DISPONIBILIDAD)
                     } else {
@@ -213,7 +226,11 @@ fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
                 onBack = { nav.popBackStack() },
                 onClienteSeleccionado = { cliente ->
                     sharedVm.clienteSeleccionado = cliente
-                    nav.navigate(Routes.DISPONIBILIDAD) // Directo a confirmar la hora
+                    if (sharedVm.esMultiple && sharedVm.serviciosConfigurados.isNotEmpty()) {
+                        nav.navigate(Routes.PROFESIONALES)
+                    } else {
+                        nav.navigate(Routes.DISPONIBILIDAD) // Directo a confirmar la hora
+                    }
                 }
             )
         }
@@ -249,8 +266,19 @@ fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
             // Inyectamos el cliente al ViewModel si viene del flujo individual
             dispVm.clienteSeleccionado = sharedVm.clienteSeleccionado
 
-            val servicio    = sharedVm.servicioSeleccionado
-            val profesional = sharedVm.profesionalSeleccionado
+            val servicio = when {
+                sharedVm.esMultiple && sharedVm.serviciosConfigurados.isNotEmpty() && sharedVm.servicioActualIndex < sharedVm.serviciosConfigurados.size -> {
+                    sharedVm.serviciosConfigurados[sharedVm.servicioActualIndex].servicio
+                }
+                else -> sharedVm.servicioSeleccionado ?: sharedVm.serviciosSeleccionados.firstOrNull()
+            }
+
+            val profesional = when {
+                sharedVm.esMultiple && sharedVm.serviciosConfigurados.isNotEmpty() && sharedVm.servicioActualIndex < sharedVm.serviciosConfigurados.size -> {
+                    sharedVm.serviciosConfigurados[sharedVm.servicioActualIndex].profesional ?: sharedVm.profesionalSeleccionado
+                }
+                else -> sharedVm.profesionalSeleccionado
+            }
 
             if (servicio != null) {
                 DisponibilidadScreen(

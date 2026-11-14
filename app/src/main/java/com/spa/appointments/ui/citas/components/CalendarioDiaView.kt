@@ -269,106 +269,120 @@ fun CalendarioDiaView(
                         val duracionMinutos    = ((finTime.hour - inicioTime.hour) * 60 + (finTime.minute - inicioTime.minute)).coerceAtLeast(15)
 
                         val topOffset  = (minutosDesdeInicio * (72.0 / 60.0)).dp + 8.dp
-                        val bloqueAlto = (duracionMinutos * (72.0 / 60.0)).dp.coerceAtLeast(76.dp)
+                        val bloqueAlto = (duracionMinutos * (72.0 / 60.0)).dp.coerceAtLeast(84.dp)
 
                         val colWidth   = anchoDisponible / pos.totalColumns
                         val leftOffset = colWidth * pos.columnIndex
 
                         val colorBase  = parseColorHex(cita.colorEstado) ?: MaterialTheme.colorScheme.primaryContainer
 
-                        Surface(
-                            modifier = Modifier
-                                .width(colWidth)
-                                .offset(x = leftOffset, y = topOffset)
-                                .height(bloqueAlto)
-                                .padding(horizontal = 2.dp, vertical = 2.dp)
-                                .clickable { onCitaClick(cita) },
-                            shape  = RoundedCornerShape(12.dp),
-                            color  = colorBase.copy(alpha = 0.94f),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, colorBase)
-                        ) {
-                            Row(
+                        val isNarrow       = pos.totalColumns > 1
+                        val fontSizeHora   = if (isNarrow) 9.sp else 10.sp
+                        val fontSizeNombre = if (isNarrow) 10.sp else 10.5.sp
+                        val fontSizeSub    = if (isNarrow) 9.sp else 9.5.sp
+                        val padHorizontal  = if (isNarrow) 4.dp else 6.dp
+
+                        key(cita.id) {
+                            Surface(
                                 modifier = Modifier
-                                    .padding(horizontal = 6.dp, vertical = 6.dp)
-                                    .fillMaxSize(),
-                                verticalAlignment = Alignment.CenterVertically
+                                    .width(colWidth)
+                                    .offset(x = leftOffset, y = topOffset)
+                                    .height(bloqueAlto)
+                                    .padding(horizontal = 1.dp, vertical = 2.dp)
+                                    .clickable { onCitaClick(cita) },
+                                shape  = RoundedCornerShape(12.dp),
+                                color  = colorBase.copy(alpha = 0.94f),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, colorBase)
                             ) {
-                                // Borde indicador de estado
-                                Box(
+                                Row(
                                     modifier = Modifier
-                                        .width(4.dp)
-                                        .fillMaxHeight()
-                                        .clip(CircleShape)
-                                        .background(Color.White)
-                                )
-
-                                Spacer(Modifier.width(6.dp))
-
-                                Column(
-                                    verticalArrangement = Arrangement.spacedBy(1.dp, Alignment.CenterVertically),
-                                    modifier            = Modifier
-                                        .weight(1f)
-                                        .padding(vertical = 1.dp)
+                                        .padding(horizontal = padHorizontal, vertical = 4.dp)
+                                        .fillMaxSize(),
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Row(
-                                        modifier              = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment     = Alignment.CenterVertically
+                                    // Borde indicador de estado
+                                    Box(
+                                        modifier = Modifier
+                                            .width(3.dp)
+                                            .fillMaxHeight()
+                                            .clip(CircleShape)
+                                            .background(Color.White)
+                                    )
+
+                                    Spacer(Modifier.width(4.dp))
+
+                                    Column(
+                                        verticalArrangement = Arrangement.spacedBy(1.dp, Alignment.CenterVertically),
+                                        modifier            = Modifier
+                                            .weight(1f)
+                                            .padding(vertical = 1.dp)
                                     ) {
+                                        val horaFormateada = if (isNarrow) {
+                                            "${inicioTime.format(DateTimeFormatter.ofPattern("hh:mm"))}–${finTime.format(DateTimeFormatter.ofPattern("hh:mm a"))}"
+                                        } else {
+                                            "${inicioTime.format(DateTimeFormatter.ofPattern("hh:mm a"))} – ${finTime.format(DateTimeFormatter.ofPattern("hh:mm a"))}"
+                                        }
+
+                                        Row(
+                                            modifier              = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment     = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text       = horaFormateada,
+                                                style      = MaterialTheme.typography.labelSmall.copy(fontSize = fontSizeHora),
+                                                fontWeight = FontWeight.Bold,
+                                                color      = Color.White,
+                                                maxLines   = 1,
+                                                overflow   = TextOverflow.Ellipsis
+                                            )
+                                            if (pos.totalColumns == 1) {
+                                                Surface(
+                                                    shape = RoundedCornerShape(4.dp),
+                                                    color = Color.White.copy(alpha = 0.25f)
+                                                ) {
+                                                    Text(
+                                                        text       = cita.estado,
+                                                        style      = MaterialTheme.typography.labelSmall.copy(fontSize = 8.5.sp),
+                                                        fontWeight = FontWeight.Bold,
+                                                        color      = Color.White,
+                                                        modifier   = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                                    )
+                                                }
+                                            }
+                                        }
+
+                                        val cliente = cita.nombreCliente?.ifBlank { null } ?: "Cliente General"
                                         Text(
-                                            text       = "${inicioTime.format(DateTimeFormatter.ofPattern("hh:mm a"))} – ${finTime.format(DateTimeFormatter.ofPattern("hh:mm a"))}",
-                                            style      = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                                            text       = cliente,
+                                            style      = MaterialTheme.typography.bodySmall.copy(fontSize = fontSizeNombre),
                                             fontWeight = FontWeight.Bold,
                                             color      = Color.White,
                                             maxLines   = 1,
                                             overflow   = TextOverflow.Ellipsis
                                         )
-                                        if (pos.totalColumns == 1) {
-                                            Surface(
-                                                shape = RoundedCornerShape(4.dp),
-                                                color = Color.White.copy(alpha = 0.25f)
-                                            ) {
-                                                Text(
-                                                    text       = cita.estado,
-                                                    style      = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
-                                                    fontWeight = FontWeight.Bold,
-                                                    color      = Color.White,
-                                                    modifier   = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
-                                                )
-                                            }
+
+                                        val textoServicio = remember(cita.id, cita.servicios) { obtenerTextoServicios(cita.servicios) }
+                                        if (textoServicio.isNotBlank()) {
+                                            Text(
+                                                text     = textoServicio,
+                                                style    = MaterialTheme.typography.labelSmall.copy(fontSize = fontSizeSub),
+                                                color    = Color.White.copy(alpha = 0.95f),
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
                                         }
-                                    }
 
-                                    val cliente = cita.nombreCliente?.ifBlank { null } ?: "Cliente General"
-                                    Text(
-                                        text       = cliente,
-                                        style      = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                                        fontWeight = FontWeight.Bold,
-                                        color      = Color.White,
-                                        maxLines   = 1,
-                                        overflow   = TextOverflow.Ellipsis
-                                    )
-
-                                    val textoServicio = remember(cita.servicios) { obtenerTextoServicios(cita.servicios) }
-                                    if (textoServicio.isNotBlank()) {
-                                        Text(
-                                            text     = textoServicio,
-                                            style    = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                                            color    = Color.White.copy(alpha = 0.95f),
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                    }
-
-                                    if (cita.profesional.isNotBlank()) {
-                                        Text(
-                                            text     = "Prof: ${cita.profesional}",
-                                            style    = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                                            fontWeight = FontWeight.SemiBold,
-                                            color    = Color.White.copy(alpha = 0.9f),
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
+                                        if (cita.profesional.isNotBlank()) {
+                                            Text(
+                                                text     = cita.profesional,
+                                                style    = MaterialTheme.typography.labelSmall.copy(fontSize = fontSizeSub),
+                                                fontWeight = FontWeight.SemiBold,
+                                                color    = Color.White.copy(alpha = 0.9f),
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
                                     }
                                 }
                             }

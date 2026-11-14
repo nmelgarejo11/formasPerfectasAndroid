@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Spa
 import androidx.compose.material.icons.outlined.People
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -73,6 +74,31 @@ fun ProfesionalesScreen(
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                    }
+                } else if (sharedVm != null && sharedVm.esMultiple && sharedVm.serviciosConfigurados.isNotEmpty() && sharedVm.servicioActualIndex < sharedVm.serviciosConfigurados.size) {
+                    val configActual = sharedVm.serviciosConfigurados[sharedVm.servicioActualIndex]
+                    Surface(
+                        color = MaterialTheme.colorScheme.tertiaryContainer,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Spa,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                text = "Servicio ${configActual.numeroServicio} de ${sharedVm.serviciosConfigurados.size} — ${configActual.servicio.nombre}",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onTertiaryContainer
                             )
                         }
                     }

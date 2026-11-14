@@ -175,4 +175,20 @@ class AgendamientoGrupalTest {
         assertEquals(false, haySolapamiento(slotOcupado, slotPosteriorValido)) // 11:30 a 13:00 NO solapa
         assertEquals(false, haySolapamiento(slotOcupado, slotAnteriorValido))  // 08:30 a 10:00 NO solapa
     }
+
+    @Test
+    fun testPrepararCitaMultipleServicios_InicializaConfiguracionIndividualPorServicio() {
+        val sharedVm = ReservaSharedViewModel()
+        val serv1 = com.spa.appointments.domain.model.Servicio(id = 1, idCategoria = 1, categoria = "Depilacion", nombre = "Depilación Bikini", descripcion = null, duracionMinutos = 30, precioBase = 50000.0, icono = null, esGrupal = false, maxPersonas = null)
+        val serv2 = com.spa.appointments.domain.model.Servicio(id = 2, idCategoria = 1, categoria = "Depilacion", nombre = "Bigote", descripcion = null, duracionMinutos = 15, precioBase = 20000.0, icono = null, esGrupal = false, maxPersonas = null)
+
+        sharedVm.prepararCitaMultipleServicios(listOf(serv1, serv2))
+
+        assertTrue(sharedVm.esMultiple)
+        assertEquals(false, sharedVm.esGrupal)
+        assertEquals(2, sharedVm.serviciosConfigurados.size)
+        assertEquals("Depilación Bikini", sharedVm.serviciosConfigurados[0].servicio.nombre)
+        assertEquals("Bigote", sharedVm.serviciosConfigurados[1].servicio.nombre)
+        assertEquals(0, sharedVm.servicioActualIndex)
+    }
 }
