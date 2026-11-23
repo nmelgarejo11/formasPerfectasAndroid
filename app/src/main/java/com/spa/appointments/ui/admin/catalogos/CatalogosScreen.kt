@@ -128,7 +128,6 @@ fun ServiciosAdminScreen(
                     )
                 )
 
-                // 🎨 Canvas: Acento decorativo debajo de la TopAppBar
                 val primaryColor   = MaterialTheme.colorScheme.primary
                 val secondaryColor = MaterialTheme.colorScheme.secondary
                 Canvas(
@@ -422,6 +421,7 @@ private fun ServicioAdminCard(
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
+            // ── Fila Superior: Ícono, Información y Precio + Switch ─────────────
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier          = Modifier.fillMaxWidth()
@@ -448,23 +448,40 @@ private fun ServicioAdminCard(
                         text       = servicio.nombre,
                         style      = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color      = MaterialTheme.colorScheme.onSurface
+                        color      = MaterialTheme.colorScheme.onSurface,
+                        maxLines   = 1,
+                        overflow   = TextOverflow.Ellipsis
                     )
                     Text(
-                        text     = servicio.nombreCategoria,
-                        style    = MaterialTheme.typography.bodySmall,
-                        color    = MaterialTheme.colorScheme.primary,
+                        text       = servicio.nombreCategoria,
+                        style      = MaterialTheme.typography.bodySmall,
+                        color      = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
 
-                Switch(
-                    checked         = servicio.estado,
-                    onCheckedChange = { onToggle() },
-                    modifier        = Modifier.scale(0.85f)
-                )
+                Spacer(Modifier.width(8.dp))
+
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    Text(
+                        text       = "$${"%,.0f".format(servicio.precioBase)}",
+                        style      = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color      = MaterialTheme.colorScheme.primary,
+                        maxLines   = 1
+                    )
+                    Switch(
+                        checked         = servicio.estado,
+                        onCheckedChange = { onToggle() },
+                        modifier        = Modifier.scale(0.8f)
+                    )
+                }
             }
 
+            // ── Descripción (si existe) ─────────────────────────────────────────
             if (!servicio.descripcion.isNullOrBlank()) {
                 Spacer(Modifier.height(8.dp))
                 Text(
@@ -480,12 +497,18 @@ private fun ServicioAdminCard(
             HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
             Spacer(Modifier.height(10.dp))
 
+            // ── Fila Inferior: Badges (Izquierda) y Botones de Acción (Derecha) ──
             Row(
                 modifier              = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment     = Alignment.CenterVertically
             ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                // Badges (Duración, Max Personas, WhatsApp)
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment     = Alignment.CenterVertically,
+                    modifier              = Modifier.weight(1f, fill = false)
+                ) {
                     Surface(
                         shape = RoundedCornerShape(8.dp),
                         color = MaterialTheme.colorScheme.secondaryContainer
@@ -555,6 +578,7 @@ private fun ServicioAdminCard(
                     }
                 }
 
+                // Botones de acción (Rangos de precios y Editar)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (servicio.maxPersonas != null && servicio.maxPersonas > 1) {
                         IconButton(
@@ -581,14 +605,6 @@ private fun ServicioAdminCard(
                             modifier           = Modifier.size(20.dp)
                         )
                     }
-
-                    Text(
-                        text       = "$${"%,.0f".format(servicio.precioBase)}",
-                        style      = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color      = MaterialTheme.colorScheme.primary,
-                        modifier   = Modifier.padding(start = 6.dp)
-                    )
                 }
             }
         }
@@ -629,9 +645,9 @@ private fun ServicioDialog(
 
     val variablesWhatsApp = remember(esGrupal) {
         if (esGrupal) {
-            listOf("{NombreCliente}", "{Fecha}", "{Hora}", "{Duracion}", "{Asistentes}")
+            listOf("{Nombre}", "{Apellido}", "{NombreCliente}", "{Fecha}", "{Hora}", "{Duracion}", "{Asistentes}")
         } else {
-            listOf("{NombreCliente}", "{Fecha}", "{Hora}", "{Duracion}")
+            listOf("{Nombre}", "{Apellido}", "{NombreCliente}", "{Fecha}", "{Hora}", "{Duracion}")
         }
     }
 
