@@ -2,6 +2,7 @@ package com.spa.appointments.ui.financiero
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.spa.appointments.core.utils.ApiErrorMapper
 import com.spa.appointments.domain.model.CierreCajaResponse
 import com.spa.appointments.domain.model.Sede
 import com.spa.appointments.domain.repository.FinancieroRepository
@@ -13,10 +14,11 @@ import java.time.LocalDate
 import javax.inject.Inject
 
 sealed class FinancieroUiState {
-    object Idle    : FinancieroUiState()
-    object Loading : FinancieroUiState()
+    object Idle      : FinancieroUiState()
+    object Loading   : FinancieroUiState()
     data class Success(val data: CierreCajaResponse) : FinancieroUiState()
     data class Error(val mensaje: String)             : FinancieroUiState()
+    object Forbidden : FinancieroUiState()
 }
 
 @HiltViewModel
@@ -44,7 +46,6 @@ class FinancieroViewModel @Inject constructor(
             try {
                 val lista = repo.getSedes()
                 _sedes.value = lista
-                // Selecciona la primera sede automáticamente
                 if (_sedeSeleccionada.value == null && lista.isNotEmpty()) {
                     _sedeSeleccionada.value = lista.first()
                     cargarCierreCaja()
@@ -52,7 +53,11 @@ class FinancieroViewModel @Inject constructor(
                     _uiState.value = FinancieroUiState.Idle
                 }
             } catch (e: Exception) {
-                _uiState.value = FinancieroUiState.Error(e.message ?: "Error al cargar sedes")
+                if (ApiErrorMapper.esForbidden(e)) {
+                    _uiState.value = FinancieroUiState.Forbidden
+                } else {
+                    _uiState.value = FinancieroUiState.Error(ApiErrorMapper.parsearMensajeError(e))
+                }
             }
         }
     }
@@ -78,7 +83,11 @@ class FinancieroViewModel @Inject constructor(
                 )
                 _uiState.value = FinancieroUiState.Success(data)
             } catch (e: Exception) {
-                _uiState.value = FinancieroUiState.Error(e.message ?: "Error al cargar cierre de caja")
+                if (ApiErrorMapper.esForbidden(e)) {
+                    _uiState.value = FinancieroUiState.Forbidden
+                } else {
+                    _uiState.value = FinancieroUiState.Error(ApiErrorMapper.parsearMensajeError(e))
+                }
             }
         }
     }

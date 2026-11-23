@@ -3,7 +3,6 @@ package com.spa.appointments.ui.financiero
 
 import android.app.DatePickerDialog
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -16,7 +15,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -28,6 +26,7 @@ import com.spa.appointments.domain.model.CierreCajaGasto
 import com.spa.appointments.domain.model.CierreCajaProfesional
 import com.spa.appointments.domain.model.CierreCajaResumen
 import com.spa.appointments.domain.model.Sede
+import com.spa.appointments.ui.components.SinPermisoContent
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -91,103 +90,110 @@ fun FinancieroScreen(
         }
     ) { padding ->
 
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = 16.dp)
-        ) {
-            Spacer(Modifier.height(12.dp))
-
-            // ── Selector de sede ──────────────────────────────────────
-            SelectorSede(
-                sedes              = sedes,
-                sedeSeleccionada   = sedeSeleccionada,
-                onSedeSeleccionada = { vm.seleccionarSede(it) }
+        if (uiState is FinancieroUiState.Forbidden) {
+            SinPermisoContent(
+                modifier = Modifier.padding(padding),
+                onVolver = onBack
             )
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(horizontal = 16.dp)
+            ) {
+                Spacer(Modifier.height(12.dp))
 
-            Spacer(Modifier.height(10.dp))
+                // ── Selector de sede ──────────────────────────────────────
+                SelectorSede(
+                    sedes              = sedes,
+                    sedeSeleccionada   = sedeSeleccionada,
+                    onSedeSeleccionada = { vm.seleccionarSede(it) }
+                )
 
-            // ── Selector de fecha con calendario ─────────────────────
-            SelectorFechaCalendario(
-                fecha          = fechaSeleccionada,
-                onCambiarFecha = { vm.cambiarFecha(it) }
-            )
+                Spacer(Modifier.height(10.dp))
 
-            Spacer(Modifier.height(16.dp))
+                // ── Selector de fecha con calendario ─────────────────────
+                SelectorFechaCalendario(
+                    fecha          = fechaSeleccionada,
+                    onCambiarFecha = { vm.cambiarFecha(it) }
+                )
 
-            // ── Contenido ─────────────────────────────────────────────
-            when (val state = uiState) {
-                is FinancieroUiState.Loading -> {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            CircularProgressIndicator(
-                                color       = MaterialTheme.colorScheme.primary,
-                                trackColor  = MaterialTheme.colorScheme.primaryContainer,
-                                strokeWidth = 3.dp,
-                                modifier    = Modifier.size(36.dp)
-                            )
-                            Text(
-                                "Cargando resumen financiero…",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
-                is FinancieroUiState.Error -> {
-                    OutlinedCard(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 24.dp),
-                        shape  = RoundedCornerShape(24.dp),
-                        colors = CardDefaults.outlinedCardColors(
-                            containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
-                        )
-                    ) {
-                        Column(
-                            modifier            = Modifier.padding(32.dp).fillMaxWidth(),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(14.dp)
-                        ) {
-                            Surface(
-                                shape = CircleShape,
-                                color = MaterialTheme.colorScheme.errorContainer
+                Spacer(Modifier.height(16.dp))
+
+                // ── Contenido ─────────────────────────────────────────────
+                when (val state = uiState) {
+                    is FinancieroUiState.Loading -> {
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(16.dp)
                             ) {
-                                Icon(
-                                    Icons.Default.CloudOff, null,
-                                    modifier = Modifier.padding(16.dp).size(36.dp),
-                                    tint     = MaterialTheme.colorScheme.onErrorContainer
+                                CircularProgressIndicator(
+                                    color       = MaterialTheme.colorScheme.primary,
+                                    trackColor  = MaterialTheme.colorScheme.primaryContainer,
+                                    strokeWidth = 3.dp,
+                                    modifier    = Modifier.size(36.dp)
+                                )
+                                Text(
+                                    "Cargando resumen financiero…",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
-                            Text(
-                                text       = "Error al cargar",
-                                style      = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                text  = state.mensaje,
-                                color = MaterialTheme.colorScheme.error,
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                            Button(
-                                onClick = { vm.cargarCierreCaja() },
-                                shape   = RoundedCornerShape(12.dp)
-                            ) { Text("Reintentar") }
                         }
                     }
+                    is FinancieroUiState.Error -> {
+                        OutlinedCard(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 24.dp),
+                            shape  = RoundedCornerShape(24.dp),
+                            colors = CardDefaults.outlinedCardColors(
+                                containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
+                            )
+                        ) {
+                            Column(
+                                modifier            = Modifier.padding(32.dp).fillMaxWidth(),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(14.dp)
+                            ) {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = MaterialTheme.colorScheme.errorContainer
+                                ) {
+                                    Icon(
+                                        Icons.Default.CloudOff, null,
+                                        modifier = Modifier.padding(16.dp).size(36.dp),
+                                        tint     = MaterialTheme.colorScheme.onErrorContainer
+                                    )
+                                }
+                                Text(
+                                    text       = "Error al cargar",
+                                    style      = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text  = state.mensaje,
+                                    color = MaterialTheme.colorScheme.error,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                Button(
+                                    onClick = { vm.cargarCierreCaja() },
+                                    shape   = RoundedCornerShape(12.dp)
+                                ) { Text("Reintentar") }
+                            }
+                        }
+                    }
+                    is FinancieroUiState.Success -> {
+                        CierreCajaContent(
+                            resumen       = state.data.resumen,
+                            profesionales = state.data.profesionales,
+                            ultimosGastos = state.data.ultimosGastos
+                        )
+                    }
+                    else -> Unit
                 }
-                is FinancieroUiState.Success -> {
-                    CierreCajaContent(
-                        resumen       = state.data.resumen,
-                        profesionales = state.data.profesionales,
-                        ultimosGastos = state.data.ultimosGastos
-                    )
-                }
-                else -> Unit
             }
         }
     }

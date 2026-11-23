@@ -32,6 +32,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.spa.appointments.domain.model.IngresoResponse
+import com.spa.appointments.ui.components.SinPermisoContent
 import java.util.Calendar
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -42,6 +43,7 @@ fun IngresoScreen(
 ) {
     val ingresos by viewModel.ingresos.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val isForbidden by viewModel.isForbidden.collectAsState()
     val mensaje by viewModel.mensaje.collectAsState()
     val metodosPago by viewModel.metodosPago.collectAsState()
     val sedes by viewModel.sedes.collectAsState()
@@ -120,7 +122,7 @@ fun IngresoScreen(
                         }
                     },
                     actions = {
-                        AnimatedVisibility(visible = !isLoading) {
+                        AnimatedVisibility(visible = !isLoading && !isForbidden) {
                             Surface(
                                 shape = RoundedCornerShape(50),
                                 color = MaterialTheme.colorScheme.secondaryContainer,
@@ -168,127 +170,136 @@ fun IngresoScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = {
-                    ingresoAEditar = null
-                    mostrarFormulario = true
-                },
-                icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                text = { Text("Nuevo ingreso", fontWeight = FontWeight.Bold) },
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-                shape = RoundedCornerShape(16.dp)
-            )
+            if (!isForbidden) {
+                ExtendedFloatingActionButton(
+                    onClick = {
+                        ingresoAEditar = null
+                        mostrarFormulario = true
+                    },
+                    icon = { Icon(Icons.Default.Add, contentDescription = null) },
+                    text = { Text("Nuevo ingreso", fontWeight = FontWeight.Bold) },
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    shape = RoundedCornerShape(16.dp)
+                )
+            }
         }
     ) { padding ->
 
-        AnimatedContent(
-            targetState = isLoading,
-            transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(200)) },
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-            label = "ingresos_content"
-        ) { loading ->
-            if (loading) {
-                Box(modifier = Modifier.fillMaxSize()) {
-                    Column(
-                        modifier = Modifier.align(Alignment.Center),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        CircularProgressIndicator(
-                            color = MaterialTheme.colorScheme.primary,
-                            trackColor = MaterialTheme.colorScheme.primaryContainer,
-                            strokeWidth = 3.dp,
-                            modifier = Modifier.size(36.dp)
-                        )
-                        Text(
-                            text = "Cargando registros de ingresos…",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            } else if (ingresos.isEmpty()) {
-                val primaryColor = MaterialTheme.colorScheme.primary
-
-                OutlinedCard(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(24.dp),
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.outlinedCardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                    )
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .padding(32.dp)
-                            .fillMaxWidth(),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(14.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier.size(80.dp),
-                            contentAlignment = Alignment.Center
+        if (isForbidden) {
+            SinPermisoContent(
+                modifier = Modifier.padding(padding),
+                onVolver = onBack
+            )
+        } else {
+            AnimatedContent(
+                targetState = isLoading,
+                transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(200)) },
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                label = "ingresos_content"
+            ) { loading ->
+                if (loading) {
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        Column(
+                            modifier = Modifier.align(Alignment.Center),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            Canvas(modifier = Modifier.fillMaxSize()) {
-                                drawCircle(color = primaryColor.copy(alpha = 0.15f))
-                            }
-                            Surface(
-                                shape = CircleShape,
-                                color = MaterialTheme.colorScheme.surfaceContainerHigh
+                            CircularProgressIndicator(
+                                color = MaterialTheme.colorScheme.primary,
+                                trackColor = MaterialTheme.colorScheme.primaryContainer,
+                                strokeWidth = 3.dp,
+                                modifier = Modifier.size(36.dp)
+                            )
+                            Text(
+                                text = "Cargando registros de ingresos…",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                } else if (ingresos.isEmpty()) {
+                    val primaryColor = MaterialTheme.colorScheme.primary
+
+                    OutlinedCard(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        shape = RoundedCornerShape(24.dp),
+                        colors = CardDefaults.outlinedCardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .padding(32.dp)
+                                .fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(14.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier.size(80.dp),
+                                contentAlignment = Alignment.Center
                             ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.ReceiptLong,
-                                    contentDescription = null,
-                                    modifier = Modifier.padding(18.dp).size(36.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                Canvas(modifier = Modifier.fillMaxSize()) {
+                                    drawCircle(color = primaryColor.copy(alpha = 0.15f))
+                                }
+                                Surface(
+                                    shape = CircleShape,
+                                    color = MaterialTheme.colorScheme.surfaceContainerHigh
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.ReceiptLong,
+                                        contentDescription = null,
+                                        modifier = Modifier.padding(18.dp).size(36.dp),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                            Text(
+                                text = "Sin ingresos para hoy",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "Selecciona otra fecha o registra un nuevo ingreso.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center
+                            )
+                            Button(
+                                onClick = { datePickerDialog.show() },
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text("Cambiar fecha")
+                            }
+                        }
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(
+                            items = ingresos,
+                            key = { it.id }
+                        ) { ingreso ->
+                            AnimatedVisibility(
+                                visible = true,
+                                enter = slideInVertically(tween(300)) + fadeIn(tween(300))
+                            ) {
+                                IngresoItem(
+                                    ingreso = ingreso,
+                                    onEditar = {
+                                        ingresoAEditar = ingreso
+                                        mostrarFormulario = true
+                                    },
+                                    onEliminar = { viewModel.eliminarIngreso(ingreso.id) }
                                 )
                             }
-                        }
-                        Text(
-                            text = "Sin ingresos para hoy",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "Selecciona otra fecha o registra un nuevo ingreso.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center
-                        )
-                        Button(
-                            onClick = { datePickerDialog.show() },
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Text("Cambiar fecha")
-                        }
-                    }
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(
-                        items = ingresos,
-                        key = { it.id }
-                    ) { ingreso ->
-                        AnimatedVisibility(
-                            visible = true,
-                            enter = slideInVertically(tween(300)) + fadeIn(tween(300))
-                        ) {
-                            IngresoItem(
-                                ingreso = ingreso,
-                                onEditar = {
-                                    ingresoAEditar = ingreso
-                                    mostrarFormulario = true
-                                },
-                                onEliminar = { viewModel.eliminarIngreso(ingreso.id) }
-                            )
                         }
                     }
                 }

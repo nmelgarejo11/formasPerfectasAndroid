@@ -38,6 +38,7 @@ import com.spa.appointments.domain.model.MovimientoBalance
 import com.spa.appointments.domain.model.Profesional
 import com.spa.appointments.domain.model.Sede
 import com.spa.appointments.domain.model.TipoMovimientoFiltro
+import com.spa.appointments.ui.components.SinPermisoContent
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -247,12 +248,18 @@ fun IngresosVsGastosScreen(
             }
         }
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = 16.dp)
-        ) {
+        if (uiState is IngresosVsGastosUiState.Forbidden) {
+            SinPermisoContent(
+                modifier = Modifier.padding(padding),
+                onVolver = onBack
+            )
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(horizontal = 16.dp)
+            ) {
             Spacer(Modifier.height(12.dp))
 
             SelectorSede(
@@ -371,6 +378,7 @@ fun IngresosVsGastosScreen(
             }
         )
     }
+}
 }
 
 // ─── Barra de Filtros Activos ──────────────────────────────────────────────────

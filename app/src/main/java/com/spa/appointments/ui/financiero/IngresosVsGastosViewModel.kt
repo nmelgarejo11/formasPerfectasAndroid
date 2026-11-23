@@ -5,6 +5,7 @@ import android.net.Uri
 import android.os.Environment
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.spa.appointments.core.utils.ApiErrorMapper
 import com.spa.appointments.domain.model.FiltrosBalance
 import com.spa.appointments.domain.model.IngresosVsGastosDatos
 import com.spa.appointments.domain.model.IngresosVsGastosResponse
@@ -26,10 +27,11 @@ import java.time.LocalDate
 import javax.inject.Inject
 
 sealed class IngresosVsGastosUiState {
-    object Idle    : IngresosVsGastosUiState()
-    object Loading : IngresosVsGastosUiState()
+    object Idle      : IngresosVsGastosUiState()
+    object Loading   : IngresosVsGastosUiState()
     data class Success(val datos: IngresosVsGastosDatos) : IngresosVsGastosUiState()
     data class Error(val mensaje: String)                  : IngresosVsGastosUiState()
+    object Forbidden : IngresosVsGastosUiState()
 }
 
 sealed interface DescargaState {
@@ -104,7 +106,11 @@ class IngresosVsGastosViewModel @Inject constructor(
                     _uiState.value = IngresosVsGastosUiState.Idle
                 }
             } catch (e: Exception) {
-                _uiState.value = IngresosVsGastosUiState.Error(e.message ?: "Error al cargar sedes")
+                if (ApiErrorMapper.esForbidden(e)) {
+                    _uiState.value = IngresosVsGastosUiState.Forbidden
+                } else {
+                    _uiState.value = IngresosVsGastosUiState.Error(ApiErrorMapper.parsearMensajeError(e))
+                }
             }
         }
     }
@@ -203,9 +209,22 @@ class IngresosVsGastosViewModel @Inject constructor(
                 todosLosMovimientosCache = (movsIngresos + movsGastos).sortedByDescending { it.fecha }
                 procesarYEmitirState()
             } catch (e: Exception) {
-                _uiState.value = IngresosVsGastosUiState.Error(e.message ?: "Error al cargar datos")
+                if (ApiErrorMapper.esForbidden(e)) {
+                    _uiState.value = IngresosVsGastosUiState.Forbidden
+                } else {
+                    _uiState.value = IngresosVsGastosUiState.Error(ApiErrorMapper.parsearMensajeError(e))
+                }
             }
         }
+    }
+
+    private fun MovimientoBalance.cumpleFiltro(f: FiltrosBalance): Boolean {
+        if (f.tipoMovimiento != TipoMovimientoFiltro.TODOS && tipo != f.tipoMovimiento) return false
+        if (f.idMetodoPago != null && idMetodoPago != f.idMetodoPago) return false
+        if (f.conceptoCategoria.isNotBlank() && !concepto.contains(f.conceptoCategoria, ignoreCase = true)) return false
+        if (f.cliente.isNotBlank() && !(cliente?.contains(f.cliente, ignoreCase = true) ?: false)) return false
+        if (f.idProfesional != null && idProfesional != f.idProfesional) return false
+        return true
     }
 
     private fun procesarYEmitirState() {
@@ -218,16 +237,14 @@ class IngresosVsGastosViewModel @Inject constructor(
 
         val resumenFinal = if (currentFiltros.esFiltroActivo) {
             val totalIngresos = filtrados.filter { it.tipo == TipoMovimientoFiltro.INGRESO }.sumOf { it.valor }
-            val totalGastos   = filtrados.filter { it.tipo == TipoMovimientoFiltro.GASTO }.sumOf { it.valor }
-            val totalCitas    = filtrados.count { it.tipo == TipoMovimientoFiltro.INGRESO }
-            val utilidad      = totalIngresos - totalGastos
+            val totalGastos = filtrados.filter { it.tipo == TipoMovimientoFiltro.GASTO }.sumOf { it.valor }
             IngresosVsGastosResumen(
                 fechaInicio   = _fechaInicio.value.toString(),
                 fechaFin      = _fechaFin.value.toString(),
                 totalIngresos = totalIngresos,
                 totalGastos   = totalGastos,
-                totalCitas    = totalCitas,
-                utilidadNeta  = utilidad
+                totalCitas    = baseResponse.resumen.totalCitas,
+                utilidadNeta  = totalIngresos - totalGastos
             )
         } else {
             baseResponse.resumen
@@ -244,142 +261,66 @@ class IngresosVsGastosViewModel @Inject constructor(
         )
     }
 
-    private fun MovimientoBalance.cumpleFiltro(f: FiltrosBalance): Boolean {
-        if (f.tipoMovimiento != TipoMovimientoFiltro.TODOS && this.tipo != f.tipoMovimiento) {
-            return false
-        }
-        if (f.idMetodoPago != null && this.idMetodoPago != f.idMetodoPago) {
-            return false
-        }
-        if (!f.nombreMetodoPago.isNullOrBlank() && f.idMetodoPago == null) {
-            val queryMp = f.nombreMetodoPago.trim().lowercase()
-            val matchMp = this.metodoPago?.lowercase()?.contains(queryMp) == true
-            if (!matchMp) return false
-        }
-        if (f.conceptoCategoria.isNotBlank()) {
-            val query = f.conceptoCategoria.trim().lowercase()
-            val matchConcepto = this.concepto.lowercase().contains(query)
-            val matchCategoria = this.categoria?.lowercase()?.contains(query) == true
-            if (!matchConcepto && !matchCategoria) return false
-        }
-        if (f.cliente.isNotBlank()) {
-            val query = f.cliente.trim().lowercase()
-            val matchCliente = this.cliente?.lowercase()?.contains(query) == true ||
-                    this.concepto.lowercase().contains(query)
-            if (!matchCliente) return false
-        }
-        if (f.idProfesional != null) {
-            val matchProfId = (this.idProfesional == f.idProfesional)
-            val matchProfName = f.nombreProfesional != null &&
-                    this.profesional?.lowercase()?.contains(f.nombreProfesional.lowercase()) == true
-            if (!matchProfId && !matchProfName) return false
-        }
-        if (!f.nombreProfesional.isNullOrBlank() && f.idProfesional == null) {
-            val queryProf = f.nombreProfesional.trim().lowercase()
-            val matchProf = this.profesional?.lowercase()?.contains(queryProf) == true ||
-                    this.concepto.lowercase().contains(queryProf)
-            if (!matchProf) return false
-        }
-        return true
-    }
-
-    // ── Acción 1: Guardar en Downloads ────────────────────────────────────
     fun guardarExcel(context: Context) {
-        val sede   = _sedeSeleccionada.value ?: return
-        val inicio = _fechaInicio.value.toString()
-        val fin    = _fechaFin.value.toString()
-
+        val sede = _sedeSeleccionada.value ?: return
         viewModelScope.launch {
             _descargaState.value = DescargaState.Cargando
             try {
-                val uri = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                    val bytes = repo.exportarIngresosVsGastosExcel(
-                        idSede      = sede.id,
-                        fechaInicio = inicio,
-                        fechaFin    = fin
-                    )
-                    guardarEnDescargas(
-                        context = context,
-                        nombre  = "IngresosVsGastos_${inicio}_${fin}.xlsx",
-                        bytes   = bytes
-                    )
-                }
-                _descargaState.value = if (uri != null) DescargaState.Listo(uri)
-                else DescargaState.Error("No se pudo guardar el archivo")
+                val bytes = repo.exportarIngresosVsGastosExcel(
+                    idSede      = sede.id,
+                    fechaInicio = _fechaInicio.value.toString(),
+                    fechaFin    = _fechaFin.value.toString()
+                )
+                val fileName = "Reporte_Balance_${sede.nombre.replace(" ", "_")}_${_fechaInicio.value}_${_fechaFin.value}.xlsx"
+                val file = File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), fileName)
+                file.writeBytes(bytes)
+
+                val uri = androidx.core.content.FileProvider.getUriForFile(
+                    context,
+                    "${context.packageName}.fileprovider",
+                    file
+                )
+                _descargaState.value = DescargaState.Listo(uri)
             } catch (e: Exception) {
-                android.util.Log.e("DESCARGA_EXCEL", "Error: ${e::class.simpleName} → ${e.message}", e)
-                _descargaState.value = DescargaState.Error(e.message ?: "Error desconocido")
+                _descargaState.value = DescargaState.Error(ApiErrorMapper.parsearMensajeError(e))
             }
         }
     }
 
-    // ── Acción 2: Compartir (ShareSheet — WhatsApp, correo, Drive, etc) ───
     fun compartirExcel(context: Context) {
-        val sede   = _sedeSeleccionada.value ?: return
-        val inicio = _fechaInicio.value.toString()
-        val fin    = _fechaFin.value.toString()
-
+        val sede = _sedeSeleccionada.value ?: return
         viewModelScope.launch {
             _descargaState.value = DescargaState.Cargando
             try {
-                val uri = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                    val bytes = repo.exportarIngresosVsGastosExcel(
-                        idSede      = sede.id,
-                        fechaInicio = inicio,
-                        fechaFin    = fin
-                    )
-                    val cacheDir = File(context.cacheDir, "excel").also { it.mkdirs() }
-                    val archivo  = File(cacheDir, "IngresosVsGastos_${inicio}_${fin}.xlsx")
-                    archivo.writeBytes(bytes)
+                val bytes = repo.exportarIngresosVsGastosExcel(
+                    idSede      = sede.id,
+                    fechaInicio = _fechaInicio.value.toString(),
+                    fechaFin    = _fechaFin.value.toString()
+                )
+                val fileName = "Reporte_Balance_${sede.nombre.replace(" ", "_")}_${_fechaInicio.value}_${_fechaFin.value}.xlsx"
+                val file = File(context.cacheDir, fileName)
+                file.writeBytes(bytes)
 
-                    androidx.core.content.FileProvider.getUriForFile(
-                        context,
-                        "${context.packageName}.fileprovider",
-                        archivo
-                    )
+                val uri = androidx.core.content.FileProvider.getUriForFile(
+                    context,
+                    "${context.packageName}.fileprovider",
+                    file
+                )
+
+                val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                    type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                    addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 }
-
-                if (uri != null) {
-                    val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-                        type    = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                        putExtra(android.content.Intent.EXTRA_STREAM, uri)
-                        putExtra(android.content.Intent.EXTRA_SUBJECT,
-                            "Ingresos vs Gastos $inicio - $fin")
-                        addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    }
-                    context.startActivity(
-                        android.content.Intent.createChooser(intent, "Compartir reporte via…")
-                    )
-                    _descargaState.value = DescargaState.Idle
-                } else {
-                    _descargaState.value = DescargaState.Error("No se pudo generar el archivo")
-                }
-
+                context.startActivity(android.content.Intent.createChooser(intent, "Compartir reporte Excel"))
+                _descargaState.value = DescargaState.Idle
             } catch (e: Exception) {
-                android.util.Log.e("DESCARGA_EXCEL", "Error: ${e::class.simpleName} → ${e.message}", e)
-                _descargaState.value = DescargaState.Error(e.message ?: "Error desconocido")
+                _descargaState.value = DescargaState.Error(ApiErrorMapper.parsearMensajeError(e))
             }
         }
     }
 
-    fun resetDescarga() { _descargaState.value = DescargaState.Idle }
-
-    private fun guardarEnDescargas(context: Context, nombre: String, bytes: ByteArray): Uri? {
-        return try {
-            val dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-            if (!dir.exists()) dir.mkdirs()
-
-            val archivo = File(dir, nombre)
-            archivo.writeBytes(bytes)
-
-            androidx.core.content.FileProvider.getUriForFile(
-                context,
-                "${context.packageName}.fileprovider",
-                archivo
-            )
-        } catch (e: Exception) {
-            android.util.Log.e("DESCARGA_EXCEL", "Error guardando: ${e.message}", e)
-            null
-        }
+    fun resetDescarga() {
+        _descargaState.value = DescargaState.Idle
     }
 }

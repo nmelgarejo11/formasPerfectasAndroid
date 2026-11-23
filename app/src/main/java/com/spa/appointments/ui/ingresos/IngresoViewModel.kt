@@ -2,19 +2,20 @@ package com.spa.appointments.ui.ingresos
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.spa.appointments.core.utils.ApiErrorMapper
 import com.spa.appointments.domain.model.IngresoRequest
 import com.spa.appointments.domain.model.IngresoResponse
 import com.spa.appointments.domain.model.MetodoPago
 import com.spa.appointments.domain.model.Sede
 import com.spa.appointments.domain.repository.IngresoRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import javax.inject.Inject
-import kotlinx.coroutines.flow.MutableStateFlow
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import javax.inject.Inject
 
 @HiltViewModel
 class IngresoViewModel @Inject constructor(
@@ -39,6 +40,9 @@ class IngresoViewModel @Inject constructor(
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
 
+    private val _isForbidden = MutableStateFlow(false)
+    val isForbidden: StateFlow<Boolean> = _isForbidden
+
     private val _mensaje = MutableStateFlow<String?>(null)
     val mensaje: StateFlow<String?> = _mensaje
 
@@ -57,7 +61,13 @@ class IngresoViewModel @Inject constructor(
         viewModelScope.launch {
             repository.getSedes()
                 .onSuccess { _sedes.value = it }
-                .onFailure { _mensaje.value = it.message }
+                .onFailure {
+                    if (ApiErrorMapper.esForbidden(it)) {
+                        _isForbidden.value = true
+                    } else {
+                        _mensaje.value = ApiErrorMapper.parsearMensajeError(it)
+                    }
+                }
         }
     }
 
@@ -76,8 +86,17 @@ class IngresoViewModel @Inject constructor(
         viewModelScope.launch {
             _isLoading.value = true
             repository.listarIngresos(idSede, fechaDesde, fechaHasta)
-                .onSuccess { _ingresos.value = it }
-                .onFailure { _mensaje.value = it.message }
+                .onSuccess {
+                    _ingresos.value = it
+                    _isForbidden.value = false
+                }
+                .onFailure { exception ->
+                    if (ApiErrorMapper.esForbidden(exception)) {
+                        _isForbidden.value = true
+                    } else {
+                        _mensaje.value = ApiErrorMapper.parsearMensajeError(exception)
+                    }
+                }
             _isLoading.value = false
         }
     }
@@ -86,7 +105,11 @@ class IngresoViewModel @Inject constructor(
         viewModelScope.launch {
             repository.getMetodosPago()
                 .onSuccess { _metodosPago.value = it }
-                .onFailure { _mensaje.value = it.message }
+                .onFailure {
+                    if (!ApiErrorMapper.esForbidden(it)) {
+                        _mensaje.value = ApiErrorMapper.parsearMensajeError(it)
+                    }
+                }
         }
     }
 
@@ -99,7 +122,7 @@ class IngresoViewModel @Inject constructor(
                     cargarIngresos()
                     onSuccess()
                 }
-                .onFailure { _mensaje.value = it.message }
+                .onFailure { _mensaje.value = ApiErrorMapper.parsearMensajeError(it) }
             _isLoading.value = false
         }
     }
@@ -113,7 +136,7 @@ class IngresoViewModel @Inject constructor(
                     cargarIngresos()
                     onSuccess()
                 }
-                .onFailure { _mensaje.value = it.message }
+                .onFailure { _mensaje.value = ApiErrorMapper.parsearMensajeError(it) }
             _isLoading.value = false
         }
     }
@@ -126,7 +149,7 @@ class IngresoViewModel @Inject constructor(
                     _mensaje.value = it.mensaje
                     cargarIngresos()
                 }
-                .onFailure { _mensaje.value = it.message }
+                .onFailure { _mensaje.value = ApiErrorMapper.parsearMensajeError(it) }
             _isLoading.value = false
         }
     }

@@ -1,4 +1,3 @@
-// Ruta: app/src/main/java/com/spa/appointments/ui/metodopago/MetodoPagoScreen.kt
 package com.spa.appointments.ui.metodopago
 
 import androidx.compose.foundation.BorderStroke
@@ -23,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.spa.appointments.domain.model.MetodoPagoAdmin
+import com.spa.appointments.ui.components.SinPermisoContent
 
 // ─── Screen Principal ─────────────────────────────────────────────────────────
 
@@ -33,9 +33,10 @@ fun MetodoPagoScreen(
     viewModel: MetodoPagoViewModel = hiltViewModel(),
     onVerDetalles: (MetodoPagoAdmin) -> Unit
 ) {
-    val metodos by viewModel.metodos.collectAsStateWithLifecycle()
-    val loading by viewModel.loading.collectAsStateWithLifecycle()
-    val error   by viewModel.error.collectAsStateWithLifecycle()
+    val metodos     by viewModel.metodos.collectAsStateWithLifecycle()
+    val loading     by viewModel.loading.collectAsStateWithLifecycle()
+    val error       by viewModel.error.collectAsStateWithLifecycle()
+    val isForbidden by viewModel.isForbidden.collectAsStateWithLifecycle()
 
     var showDialog by remember { mutableStateOf(false) }
     var editando   by remember { mutableStateOf<MetodoPagoAdmin?>(null) }
@@ -69,7 +70,7 @@ fun MetodoPagoScreen(
                                 style      = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
-                            if (metodos.isNotEmpty()) {
+                            if (metodos.isNotEmpty() && !isForbidden) {
                                 Surface(
                                     shape    = RoundedCornerShape(50),
                                     color    = MaterialTheme.colorScheme.primaryContainer,
@@ -127,156 +128,165 @@ fun MetodoPagoScreen(
             }
         },
         floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick        = { editando = null; showDialog = true },
-                icon           = { Icon(Icons.Default.Add, contentDescription = null) },
-                text           = { Text("Nuevo método", fontWeight = FontWeight.Bold) },
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor   = MaterialTheme.colorScheme.onPrimary,
-                shape          = RoundedCornerShape(16.dp)
-            )
+            if (!isForbidden) {
+                ExtendedFloatingActionButton(
+                    onClick        = { editando = null; showDialog = true },
+                    icon           = { Icon(Icons.Default.Add, contentDescription = null) },
+                    text           = { Text("Nuevo método", fontWeight = FontWeight.Bold) },
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor   = MaterialTheme.colorScheme.onPrimary,
+                    shape          = RoundedCornerShape(16.dp)
+                )
+            }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
 
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
-            Spacer(Modifier.height(8.dp))
-
-            // ── Buscador M3 ───────────────────────────────────────────────
-            OutlinedTextField(
-                value         = busqueda,
-                onValueChange = { busqueda = it },
-                label         = { Text("Buscar método de pago") },
-                leadingIcon   = {
-                    Icon(
-                        imageVector        = Icons.Default.Search,
-                        contentDescription = null,
-                        tint               = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                },
-                trailingIcon  = {
-                    if (busqueda.isNotBlank()) {
-                        IconButton(
-                            onClick  = { busqueda = "" },
-                            modifier = Modifier.size(48.dp)
-                        ) {
-                            Icon(
-                                imageVector        = Icons.Default.Clear,
-                                contentDescription = "Limpiar búsqueda"
-                            )
-                        }
-                    }
-                },
-                modifier   = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 6.dp),
-                shape      = RoundedCornerShape(14.dp),
-                colors     = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                ),
-                singleLine = true
+        if (isForbidden) {
+            SinPermisoContent(
+                modifier = Modifier.padding(padding),
+                onVolver = onBack
             )
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+            ) {
+                Spacer(Modifier.height(8.dp))
 
-            Box(modifier = Modifier.fillMaxSize()) {
-                when {
-                    loading && metodos.isEmpty() -> {
-                        Column(
-                            modifier            = Modifier.align(Alignment.Center),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            CircularProgressIndicator(
-                                color       = MaterialTheme.colorScheme.primary,
-                                trackColor  = MaterialTheme.colorScheme.primaryContainer,
-                                strokeWidth = 3.dp,
-                                modifier    = Modifier.size(36.dp)
-                            )
-                            Text(
-                                text  = "Cargando métodos…",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-
-                    filtrados.isEmpty() -> {
-                        val primaryColor = MaterialTheme.colorScheme.primary
-
-                        OutlinedCard(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(24.dp)
-                                .align(Alignment.Center),
-                            shape  = RoundedCornerShape(24.dp),
-                            colors = CardDefaults.outlinedCardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                            )
-                        ) {
-                            Column(
-                                modifier            = Modifier.padding(32.dp).fillMaxWidth(),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(14.dp)
+                // ── Buscador M3 ───────────────────────────────────────────────
+                OutlinedTextField(
+                    value         = busqueda,
+                    onValueChange = { busqueda = it },
+                    label         = { Text("Buscar método de pago") },
+                    leadingIcon   = {
+                        Icon(
+                            imageVector        = Icons.Default.Search,
+                            contentDescription = null,
+                            tint               = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    },
+                    trailingIcon  = {
+                        if (busqueda.isNotBlank()) {
+                            IconButton(
+                                onClick  = { busqueda = "" },
+                                modifier = Modifier.size(48.dp)
                             ) {
-                                Box(
-                                    modifier         = Modifier.size(80.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Canvas(modifier = Modifier.fillMaxSize()) {
-                                        drawCircle(color = primaryColor.copy(alpha = 0.15f))
-                                    }
-                                    Surface(
-                                        shape = CircleShape,
-                                        color = MaterialTheme.colorScheme.surfaceContainerHigh
-                                    ) {
-                                        Icon(
-                                            imageVector        = if (busqueda.isBlank()) Icons.Default.CreditCard
-                                            else Icons.Default.SearchOff,
-                                            contentDescription = null,
-                                            modifier           = Modifier.padding(18.dp).size(36.dp),
-                                            tint               = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                }
-                                Text(
-                                    text       = if (busqueda.isBlank()) "Sin métodos aún" else "Sin resultados",
-                                    style      = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color      = MaterialTheme.colorScheme.onSurface
-                                )
-                                Text(
-                                    text      = if (busqueda.isBlank())
-                                        "Crea el primer método de pago con el botón inferior."
-                                    else
-                                        "Ningún método coincide con \"$busqueda\".",
-                                    style     = MaterialTheme.typography.bodyMedium,
-                                    color     = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    textAlign = TextAlign.Center
+                                Icon(
+                                    imageVector        = Icons.Default.Clear,
+                                    contentDescription = "Limpiar búsqueda"
                                 )
                             }
                         }
-                    }
+                    },
+                    modifier   = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                    shape      = RoundedCornerShape(14.dp),
+                    colors     = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                    ),
+                    singleLine = true
+                )
 
-                    else -> {
-                        LazyColumn(
-                            contentPadding      = PaddingValues(
-                                start  = 16.dp,
-                                end    = 16.dp,
-                                top    = 8.dp,
-                                bottom = 88.dp
-                            ),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            items(filtrados, key = { it.id }) { metodo ->
-                                MetodoPagoCard(
-                                    metodo        = metodo,
-                                    onEditar      = { editando = metodo; showDialog = true },
-                                    onVerDetalles = onVerDetalles
+                Box(modifier = Modifier.fillMaxSize()) {
+                    when {
+                        loading && metodos.isEmpty() -> {
+                            Column(
+                                modifier            = Modifier.align(Alignment.Center),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                CircularProgressIndicator(
+                                    color       = MaterialTheme.colorScheme.primary,
+                                    trackColor  = MaterialTheme.colorScheme.primaryContainer,
+                                    strokeWidth = 3.dp,
+                                    modifier    = Modifier.size(36.dp)
                                 )
+                                Text(
+                                    text  = "Cargando métodos…",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
+                        filtrados.isEmpty() -> {
+                            val primaryColor = MaterialTheme.colorScheme.primary
+
+                            OutlinedCard(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(24.dp)
+                                    .align(Alignment.Center),
+                                shape  = RoundedCornerShape(24.dp),
+                                colors = CardDefaults.outlinedCardColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                                )
+                            ) {
+                                Column(
+                                    modifier            = Modifier.padding(32.dp).fillMaxWidth(),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                                ) {
+                                    Box(
+                                        modifier         = Modifier.size(80.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Canvas(modifier = Modifier.fillMaxSize()) {
+                                            drawCircle(color = primaryColor.copy(alpha = 0.15f))
+                                        }
+                                        Surface(
+                                            shape = CircleShape,
+                                            color = MaterialTheme.colorScheme.surfaceContainerHigh
+                                        ) {
+                                            Icon(
+                                                imageVector        = if (busqueda.isBlank()) Icons.Default.CreditCard
+                                                else Icons.Default.SearchOff,
+                                                contentDescription = null,
+                                                modifier           = Modifier.padding(18.dp).size(36.dp),
+                                                tint               = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                    Text(
+                                        text       = if (busqueda.isBlank()) "Sin métodos aún" else "Sin resultados",
+                                        style      = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color      = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text      = if (busqueda.isBlank())
+                                            "Crea el primer método de pago con el botón inferior."
+                                        else
+                                            "Ningún método coincide con \"$busqueda\".",
+                                        style     = MaterialTheme.typography.bodyMedium,
+                                        color     = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        textAlign = TextAlign.Center
+                                    )
+                                }
+                            }
+                        }
+
+                        else -> {
+                            LazyColumn(
+                                contentPadding      = PaddingValues(
+                                    start  = 16.dp,
+                                    end    = 16.dp,
+                                    top    = 8.dp,
+                                    bottom = 88.dp
+                                ),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                items(filtrados, key = { it.id }) { metodo ->
+                                    MetodoPagoCard(
+                                        metodo        = metodo,
+                                        onEditar      = { editando = metodo; showDialog = true },
+                                        onVerDetalles = onVerDetalles
+                                    )
+                                }
                             }
                         }
                     }
