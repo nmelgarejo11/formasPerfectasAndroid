@@ -35,11 +35,11 @@ object JwtUtils {
                 Base64.URL_SAFE or Base64.NO_WRAP
             )
             val json = JSONObject(String(decoded))
-            // ClaimTypes.Name genera esta clave larga en .NET
-            json.optString(
-                "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name",
-                ""
-            )
+            val nombre = json.optString("NombreUsuario", "")
+                .ifBlank { json.optString("nombreUsuario", "") }
+                .ifBlank { json.optString("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name", "") }
+                .ifBlank { json.optString("name", "") }
+            nombre
         } catch (e: Exception) {
             ""
         }

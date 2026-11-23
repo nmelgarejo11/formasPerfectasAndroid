@@ -55,11 +55,13 @@ class TokenAuthenticator(
                 try {
                     val refreshResponse = authApi.refresh(RefreshRequest(refreshToken))
                     val idEmpresa = JwtUtils.getIdEmpresa(refreshResponse.accessToken)
+                    val nombrePersonalizado = JwtUtils.getNombreUsuario(refreshResponse.accessToken)
+                        .ifBlank { tokenStorage.getUser() ?: "" }
 
                     tokenStorage.saveSession(
                         accessToken  = refreshResponse.accessToken,
                         refreshToken = refreshToken,
-                        user         = tokenStorage.getUser() ?: "",
+                        user         = nombrePersonalizado,
                         idEmpresa    = idEmpresa
                     )
 

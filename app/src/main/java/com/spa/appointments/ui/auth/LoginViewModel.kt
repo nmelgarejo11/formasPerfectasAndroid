@@ -39,11 +39,12 @@ class LoginViewModel @Inject constructor(
                 val response = repo.login(user, pass)
 
                 val idEmpresa = JwtUtils.getIdEmpresa(response.accessToken)
+                val nombrePersonalizado = JwtUtils.getNombreUsuario(response.accessToken).ifBlank { user }
 
                 tokenStorage.saveSession(
                     accessToken = response.accessToken,
                     refreshToken = response.refreshToken,
-                    user = user,
+                    user = nombrePersonalizado,
                     idEmpresa    = idEmpresa
                 )
 
