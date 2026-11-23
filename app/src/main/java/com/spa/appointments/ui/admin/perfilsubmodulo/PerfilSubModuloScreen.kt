@@ -29,6 +29,10 @@ fun PerfilSubModuloScreen(
     onVolver: () -> Unit,
     viewModel: PerfilSubModuloViewModel = hiltViewModel()
 ) {
+    LaunchedEffect(Unit) {
+        viewModel.cargarPerfiles()
+    }
+
     val perfiles     = viewModel.perfiles
     val subModulos   = viewModel.subModulos
     val seleccionado = viewModel.perfilSeleccionado

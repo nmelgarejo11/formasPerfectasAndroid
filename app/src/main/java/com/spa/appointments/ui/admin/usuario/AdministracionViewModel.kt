@@ -80,7 +80,24 @@ class AdministracionViewModel @Inject constructor(
         viewModelScope.launch {
             uiState = uiState.copy(cargando = true)
             repo.crearPerfil(CrearPerfilRequest(nombre, descripcion, seleccionados))
-                .onSuccess { uiState = uiState.copy(cargando = false, exitoPerfil = true) }
+                .onSuccess {
+                    repo.obtenerPerfiles()
+                        .onSuccess { perfilesActualizados ->
+                            uiState = uiState.copy(
+                                cargando = false,
+                                exitoPerfil = true,
+                                perfiles = perfilesActualizados,
+                                subModulos = uiState.subModulos.map { sub -> sub.copy(seleccionado = false) }
+                            )
+                        }
+                        .onFailure {
+                            uiState = uiState.copy(
+                                cargando = false,
+                                exitoPerfil = true,
+                                subModulos = uiState.subModulos.map { sub -> sub.copy(seleccionado = false) }
+                            )
+                        }
+                }
                 .onFailure { uiState = uiState.copy(cargando = false, error = it.message) }
         }
     }
