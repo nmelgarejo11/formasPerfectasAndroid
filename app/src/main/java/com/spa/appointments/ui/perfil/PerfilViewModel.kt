@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.spa.appointments.core.utils.ApiErrorMapper
 import com.spa.appointments.domain.model.ActualizarPerfilRequest
 import com.spa.appointments.domain.model.Perfil
 import com.spa.appointments.domain.repository.PerfilRepository
@@ -44,7 +45,7 @@ class PerfilViewModel @Inject constructor(
             _uiState.value = PerfilUiState.Loading
             repository.obtenerPerfil()
                 .onSuccess { _uiState.value = PerfilUiState.Success(it) }
-                .onFailure { _uiState.value = PerfilUiState.Error(it.message ?: "Error") }
+                .onFailure { _uiState.value = PerfilUiState.Error(ApiErrorMapper.parsearMensajeError(it)) }
         }
     }
 
@@ -57,7 +58,7 @@ class PerfilViewModel @Inject constructor(
                     cargarPerfil()
                 }
                 .onFailure {
-                    _actionState.value = PerfilActionState.Error(it.message ?: "Error")
+                    _actionState.value = PerfilActionState.Error(ApiErrorMapper.parsearMensajeError(it))
                 }
         }
     }
@@ -71,7 +72,7 @@ class PerfilViewModel @Inject constructor(
                     cargarPerfil()
                 }
                 .onFailure {
-                    _actionState.value = PerfilActionState.Error(it.message ?: "Error al subir foto")
+                    _actionState.value = PerfilActionState.Error(ApiErrorMapper.parsearMensajeError(it))
                 }
         }
     }

@@ -9,6 +9,7 @@ import com.spa.appointments.domain.repository.PerfilRepository
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
+import retrofit2.HttpException
 import javax.inject.Inject
 
 class PerfilRepositoryImpl @Inject constructor(
@@ -17,13 +18,18 @@ class PerfilRepositoryImpl @Inject constructor(
 
     override suspend fun obtenerPerfil(): Result<Perfil> = runCatching {
         val response = api.obtenerPerfil()
-        response.body() ?: error("com.spa.appointments.domain.model.Perfil no encontrado")
+        if (!response.isSuccessful) {
+            throw HttpException(response)
+        }
+        response.body() ?: error("Perfil no encontrado")
     }
 
     override suspend fun actualizarPerfil(request: ActualizarPerfilRequest): Result<Unit> =
         runCatching {
             val response = api.actualizarPerfil(request)
-            if (!response.isSuccessful) error("Error al actualizar: ${response.code()}")
+            if (!response.isSuccessful) {
+                throw HttpException(response)
+            }
         }
 
     override suspend fun subirFoto(uri: Uri, context: Context): Result<String> = runCatching {
@@ -37,6 +43,9 @@ class PerfilRepositoryImpl @Inject constructor(
         val part        = MultipartBody.Part.createFormData("foto", "foto.jpg", requestBody)
 
         val response = api.subirFoto(part)
+        if (!response.isSuccessful) {
+            throw HttpException(response)
+        }
         response.body()?.fotoUrl ?: error("No se recibió URL de foto")
     }
 }
