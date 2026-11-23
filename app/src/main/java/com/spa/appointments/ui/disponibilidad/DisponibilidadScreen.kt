@@ -14,6 +14,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -25,6 +26,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -505,6 +507,14 @@ fun DisponibilidadScreen(
 
             Spacer(Modifier.height(8.dp))
 
+            SelectorDuracion(
+                duracionActual = vm.duracionEfectiva,
+                duracionOriginal = servicio.duracionMinutos,
+                onDuracionCambiada = { vm.cambiarDuracion(it, sharedVm) }
+            )
+
+            Spacer(Modifier.height(8.dp))
+
             SelectorFecha(
                 fechaSeleccionada   = fechaSeleccionada,
                 onFechaSeleccionada = { vm.seleccionarFecha(it, sharedVm) }
@@ -872,5 +882,107 @@ private fun formatearHora12h(horaStr: String): String {
         String.format(Locale.US, "%02d:%s %s", h12, m, amPm)
     } catch (e: Exception) {
         horaStr.take(5)
+    }
+}
+
+@Composable
+private fun SelectorDuracion(
+    duracionActual: Int,
+    duracionOriginal: Int,
+    onDuracionCambiada: (Int) -> Unit
+) {
+    var textoInput by remember(duracionActual) { mutableStateOf(duracionActual.toString()) }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Timer,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                Column {
+                    Text(
+                        text = "Duración de la cita (minutos):",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Duración sugerida: $duracionOriginal min",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                OutlinedIconButton(
+                    onClick = {
+                        val nuevo = (duracionActual - 5).coerceAtLeast(5)
+                        textoInput = nuevo.toString()
+                        onDuracionCambiada(nuevo)
+                    },
+                    enabled = duracionActual > 5,
+                    modifier = Modifier.size(42.dp),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("-5", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                }
+
+                OutlinedTextField(
+                    value = textoInput,
+                    onValueChange = { input ->
+                        if (input.all { it.isDigit() } && input.length <= 3) {
+                            textoInput = input
+                            val valInt = input.toIntOrNull()
+                            if (valInt != null && valInt in 1..480) {
+                                onDuracionCambiada(valInt)
+                            }
+                        }
+                    },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true,
+                    textStyle = LocalTextStyle.current.copy(
+                        textAlign = TextAlign.Center,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    ),
+                    suffix = { Text("min", style = MaterialTheme.typography.bodySmall) },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp)
+                )
+
+                OutlinedIconButton(
+                    onClick = {
+                        val nuevo = (duracionActual + 5).coerceAtMost(480)
+                        textoInput = nuevo.toString()
+                        onDuracionCambiada(nuevo)
+                    },
+                    modifier = Modifier.size(42.dp),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("+5", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                }
+            }
+        }
     }
 }

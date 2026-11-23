@@ -47,6 +47,18 @@ class DisponibilidadViewModel @Inject constructor(
     private val _precioCalculado = MutableStateFlow<Double>(0.0)
     val precioCalculado: StateFlow<Double> = _precioCalculado
 
+    private val _duracionPersonalizada = MutableStateFlow<Int?>(null)
+    val duracionPersonalizada: StateFlow<Int?> = _duracionPersonalizada
+
+    val duracionEfectiva: Int
+        get() = _duracionPersonalizada.value ?: servicio?.duracionMinutos ?: 60
+
+    fun cambiarDuracion(nuevaDuracion: Int, sharedVm: ReservaSharedViewModel? = null) {
+        _duracionPersonalizada.value = nuevaDuracion
+        _slotSeleccionado.value = null
+        cargarSlots(_fechaSeleccionada.value, sharedVm)
+    }
+
     private var rangosServicio: List<ServicioPrecioRango> = emptyList()
 
     fun cargarPrecioServicio(idServicio: Int, cantidadPersonas: Int) {
@@ -99,6 +111,7 @@ class DisponibilidadViewModel @Inject constructor(
     fun cargarSlots(fecha: LocalDate, sharedVm: ReservaSharedViewModel? = null) {
         val serv = servicio ?: return
         val prof = profesional
+        val duracionUsar = duracionEfectiva
 
         viewModelScope.launch {
             _uiState.value = DisponibilidadUiState.LoadingSlots
@@ -108,7 +121,7 @@ class DisponibilidadViewModel @Inject constructor(
                         idProfesional = prof.id,
                         idSede        = prof.idSede,
                         fecha         = fecha.toString(),
-                        duracion      = serv.duracionMinutos
+                        duracion      = duracionUsar
                     )
                 } else {
                     val todosProfs = try { repo.getProfesionales(idSede = null, idServicio = serv.id) } catch (_: Exception) { emptyList<Profesional>() }
@@ -118,7 +131,7 @@ class DisponibilidadViewModel @Inject constructor(
                         val mapaSlots = mutableMapOf<String, SlotDisponible>()
                         for (p in todosProfs) {
                             val pSlots = try {
-                                repo.getDisponibilidad(p.id, p.idSede, fecha.toString(), serv.duracionMinutos)
+                                repo.getDisponibilidad(p.id, p.idSede, fecha.toString(), duracionUsar)
                             } catch (_: Exception) { emptyList() }
 
                             for (s in pSlots) {
@@ -152,7 +165,7 @@ class DisponibilidadViewModel @Inject constructor(
                 if (slotsOcupadosEnFlujo.isNotEmpty()) {
                     slots = slots.map { slotCandidato ->
                         val hayConflicto = slotsOcupadosEnFlujo.any { slotOcupado ->
-                            haySolapamiento(slotOcupado, slotCandidato, serv.duracionMinutos)
+                            haySolapamiento(slotOcupado, slotCandidato, duracionUsar)
                         }
                         if (hayConflicto) {
                             slotCandidato.copy(disponible = false)
@@ -278,6 +291,7 @@ class DisponibilidadViewModel @Inject constructor(
                 }
 
                 // Mapeo dinámico de la lista de servicios recolectados
+                val duracionUsar = duracionEfectiva
                 val serviciosDetalle = if (sharedVm.esMultiple) {
                     sharedVm.serviciosSeleccionados.map { item ->
                         ServicioDetalle(
@@ -292,7 +306,7 @@ class DisponibilidadViewModel @Inject constructor(
                             ServicioDetalle(
                                 idServicio = item.id,
                                 precio     = precioFinalServicio,
-                                duracion   = item.duracionMinutos
+                                duracion   = duracionUsar
                             )
                         )
                     } ?: emptyList()

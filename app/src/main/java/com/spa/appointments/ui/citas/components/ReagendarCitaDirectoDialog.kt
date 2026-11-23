@@ -11,7 +11,10 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.EditCalendar
@@ -25,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -62,12 +66,15 @@ fun ReagendarCitaDirectoDialog(
 
     val formatterFechaIso = DateTimeFormatter.ofPattern("yyyy-MM-dd")
 
-    val duracionServicio = remember(cita.servicios) {
+    val duracionOriginal = remember(cita.servicios) {
         extraerDuracionServicio(cita.servicios)
     }
+    var duracionPersonalizada by remember(cita) {
+        mutableIntStateOf(duracionOriginal)
+    }
 
-    // Cargar slots cuando cambia profesional o fecha
-    LaunchedEffect(profesionalSeleccionado, fechaSeleccionada) {
+    // Cargar slots cuando cambia profesional, fecha o duración
+    LaunchedEffect(profesionalSeleccionado, fechaSeleccionada, duracionPersonalizada) {
         val prof = profesionalSeleccionado
         if (prof != null) {
             slotSeleccionado = null
@@ -75,7 +82,7 @@ fun ReagendarCitaDirectoDialog(
                 prof.id,
                 cita.idSede,
                 fechaSeleccionada.format(formatterFechaIso),
-                duracionServicio
+                duracionPersonalizada
             )
         }
     }
@@ -103,7 +110,9 @@ fun ReagendarCitaDirectoDialog(
         text = {
             Column(
                 verticalArrangement = Arrangement.spacedBy(14.dp),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
             ) {
                 Text(
                     text = "Selecciona el profesional habilitado, fecha y nuevo horario disponible.",
@@ -145,7 +154,82 @@ fun ReagendarCitaDirectoDialog(
                     }
                 }
 
-                // 2. Selector de Fecha (Carrusel de días + Botón Calendario)
+                // 2. Selector de Duración de Cita (Ingreso libre de minutos)
+                var textoInputDuracion by remember(duracionPersonalizada) {
+                    mutableStateOf(duracionPersonalizada.toString())
+                }
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "Duración de la cita:",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Original: $duracionOriginal min",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    OutlinedIconButton(
+                        onClick = {
+                            val nuevo = (duracionPersonalizada - 5).coerceAtLeast(5)
+                            duracionPersonalizada = nuevo
+                        },
+                        enabled = duracionPersonalizada > 5,
+                        modifier = Modifier.size(40.dp),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text("-5", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
+
+                    OutlinedTextField(
+                        value = textoInputDuracion,
+                        onValueChange = { input ->
+                            if (input.all { it.isDigit() } && input.length <= 3) {
+                                textoInputDuracion = input
+                                val valInt = input.toIntOrNull()
+                                if (valInt != null && valInt in 1..480) {
+                                    duracionPersonalizada = valInt
+                                }
+                            }
+                        },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        textStyle = LocalTextStyle.current.copy(
+                            textAlign = TextAlign.Center,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp
+                        ),
+                        suffix = { Text("min", style = MaterialTheme.typography.bodySmall) },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(10.dp)
+                    )
+
+                    OutlinedIconButton(
+                        onClick = {
+                            val nuevo = (duracionPersonalizada + 5).coerceAtMost(480)
+                            duracionPersonalizada = nuevo
+                        },
+                        modifier = Modifier.size(40.dp),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text("+5", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
+                }
+
+                // 3. Selector de Fecha (Carrusel de días + Botón Calendario)
                 val context = LocalContext.current
                 var mostrarDatePickerDialog by remember { mutableStateOf(false) }
 
@@ -288,36 +372,42 @@ fun ReagendarCitaDirectoDialog(
                     }
                 } else {
                     val slotsValidos = slotsDisponibles.filter { it.disponible }
+                    val filas = slotsValidos.chunked(3)
 
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(3),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(max = 160.dp)
-                    ) {
-                        items(slotsValidos) { slot ->
-                            val esSeleccionado = slotSeleccionado == slot
-
-                            Surface(
-                                shape = RoundedCornerShape(10.dp),
-                                color = if (esSeleccionado) MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.surfaceVariant,
-                                border = if (esSeleccionado) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)),
-                                modifier = Modifier.clickable { slotSeleccionado = slot }
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        filas.forEach { fila ->
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.fillMaxWidth()
                             ) {
-                                Box(
-                                    contentAlignment = Alignment.Center,
-                                    modifier = Modifier.padding(vertical = 10.dp)
-                                ) {
-                                    Text(
-                                        text = formatearHora12h(slot.horaInicio),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        fontWeight = FontWeight.Bold,
-                                        color = if (esSeleccionado) MaterialTheme.colorScheme.onPrimary
-                                        else MaterialTheme.colorScheme.onSurface
-                                    )
+                                fila.forEach { slot ->
+                                    val esSeleccionado = slotSeleccionado == slot
+
+                                    Surface(
+                                        shape = RoundedCornerShape(10.dp),
+                                        color = if (esSeleccionado) MaterialTheme.colorScheme.primary
+                                        else MaterialTheme.colorScheme.surfaceVariant,
+                                        border = if (esSeleccionado) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)),
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clickable { slotSeleccionado = slot }
+                                    ) {
+                                        Box(
+                                            contentAlignment = Alignment.Center,
+                                            modifier = Modifier.padding(vertical = 10.dp)
+                                        ) {
+                                            Text(
+                                                text = formatearHora12h(slot.horaInicio),
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = if (esSeleccionado) MaterialTheme.colorScheme.onPrimary
+                                                else MaterialTheme.colorScheme.onSurface
+                                            )
+                                        }
+                                    }
+                                }
+                                repeat(3 - fila.size) {
+                                    Spacer(Modifier.weight(1f))
                                 }
                             }
                         }
@@ -333,12 +423,15 @@ fun ReagendarCitaDirectoDialog(
                     if (slot != null && prof != null) {
                         val fechaIso = fechaSeleccionada.format(formatterFechaIso)
                         val hIni = slot.horaInicio.trim()
-                        val hFin = slot.horaFin.trim()
                         val horaIniClean = if (hIni.length == 5) "${hIni}:00" else hIni.take(8)
-                        val horaFinClean = if (hFin.length == 5) "${hFin}:00" else hFin.take(8)
 
                         val inicioIso = "${fechaIso}T${horaIniClean}"
+
+                        val horaIniLocal = java.time.LocalTime.parse(horaIniClean)
+                        val horaFinLocal = horaIniLocal.plusMinutes(duracionPersonalizada.toLong())
+                        val horaFinClean = String.format(Locale.US, "%02d:%02d:00", horaFinLocal.hour, horaFinLocal.minute)
                         val finIso = "${fechaIso}T${horaFinClean}"
+
                         onConfirmarReagendamiento(cita.id, prof.id, inicioIso, finIso)
                     }
                 },
