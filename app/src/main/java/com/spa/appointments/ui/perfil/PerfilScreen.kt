@@ -32,6 +32,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -53,12 +55,11 @@ fun PerfilScreen(
     val uiState      by viewModel.uiState.collectAsState()
     val actionState  by viewModel.actionState.collectAsState()
 
-    var nombre      by remember { mutableStateOf("") }
-    var apellido    by remember { mutableStateOf("") }
-    var telefono    by remember { mutableStateOf("") }
-    var email       by remember { mutableStateOf("") }
-    var initialized by remember { mutableStateOf(false) }
-    var fotoUri     by remember { mutableStateOf<Uri?>(null) }
+    var nombreUsuario   by remember { mutableStateOf("") }
+    var clave           by remember { mutableStateOf("") }
+    var claveVisible    by remember { mutableStateOf(false) }
+    var initialized     by remember { mutableStateOf(false) }
+    var fotoUri         by remember { mutableStateOf<Uri?>(null) }
 
     val fotoLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -67,20 +68,19 @@ fun PerfilScreen(
     }
 
     if (uiState is PerfilUiState.Success && !initialized) {
-        val p    = (uiState as PerfilUiState.Success).perfil
-        nombre   = p.nombre
-        apellido = p.apellido
-        telefono = p.telefono ?: ""
-        email    = p.email    ?: ""
-        initialized = true
+        val p          = (uiState as PerfilUiState.Success).perfil
+        nombreUsuario = p.nombreUsuario
+        initialized    = true
     }
 
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(actionState) {
         when (actionState) {
-            is PerfilActionState.Success ->
+            is PerfilActionState.Success -> {
                 snackbarHostState.showSnackbar("Perfil guardado correctamente")
+                clave = ""
+            }
             is PerfilActionState.Error   ->
                 snackbarHostState.showSnackbar(
                     (actionState as PerfilActionState.Error).mensaje
@@ -103,7 +103,7 @@ fun PerfilScreen(
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text  = "Edita tu información personal",
+                                text  = "Administra tus datos de usuario",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -272,7 +272,7 @@ fun PerfilScreen(
                                 ) {
                                     Box(contentAlignment = Alignment.Center) {
                                         Text(
-                                            text       = perfil.nombre.firstOrNull()?.uppercase() ?: "?",
+                                            text       = perfil.nombreUsuario.firstOrNull()?.uppercase() ?: perfil.usuario.firstOrNull()?.uppercase() ?: "?",
                                             style      = MaterialTheme.typography.headlineLarge,
                                             fontWeight = FontWeight.Bold,
                                             color      = MaterialTheme.colorScheme.onPrimaryContainer
@@ -303,13 +303,13 @@ fun PerfilScreen(
 
                     Spacer(Modifier.height(10.dp))
 
-                    // Chip de Nombre de usuario
+                    // Chip de Nombre de usuario / login
                     Surface(
                         shape = RoundedCornerShape(50),
                         color = MaterialTheme.colorScheme.surfaceContainerHigh
                     ) {
                         Text(
-                            text       = "@${perfil.nombreUsuario}",
+                            text       = "@${perfil.usuario.ifBlank { perfil.nombreUsuario }}",
                             style      = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
                             color      = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -319,10 +319,10 @@ fun PerfilScreen(
 
                     Spacer(Modifier.height(28.dp))
 
-                    // ── Sección Datos Personales ──────────────────────────
+                    // ── Sección Datos de Usuario ──────────────────────────
                     SectionHeader(
-                        icono  = Icons.Default.Person,
-                        titulo = "DATOS PERSONALES"
+                        icono  = Icons.Default.ManageAccounts,
+                        titulo = "DATOS DE USUARIO"
                     )
 
                     Spacer(Modifier.height(12.dp))
@@ -340,10 +340,10 @@ fun PerfilScreen(
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             OutlinedTextField(
-                                value         = nombre,
-                                onValueChange = { nombre = it },
-                                label         = { Text("Nombre") },
-                                leadingIcon   = { Icon(Icons.Default.Badge, null, tint = MaterialTheme.colorScheme.primary) },
+                                value         = nombreUsuario,
+                                onValueChange = { nombreUsuario = it },
+                                label         = { Text("Nombre a mostrar") },
+                                leadingIcon   = { Icon(Icons.Default.Person, null, tint = MaterialTheme.colorScheme.primary) },
                                 modifier      = Modifier.fillMaxWidth(),
                                 singleLine    = true,
                                 shape         = RoundedCornerShape(14.dp),
@@ -361,10 +361,17 @@ fun PerfilScreen(
                             )
 
                             OutlinedTextField(
-                                value         = apellido,
-                                onValueChange = { apellido = it },
-                                label         = { Text("Apellido") },
-                                leadingIcon   = { Icon(Icons.Default.Badge, null, tint = MaterialTheme.colorScheme.primary) },
+                                value         = clave,
+                                onValueChange = { clave = it },
+                                label         = { Text("Nueva contraseña (opcional)") },
+                                leadingIcon   = { Icon(Icons.Default.Lock, null, tint = MaterialTheme.colorScheme.primary) },
+                                trailingIcon  = {
+                                    val icon = if (claveVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility
+                                    IconButton(onClick = { claveVisible = !claveVisible }) {
+                                        Icon(icon, contentDescription = "Mostrar contraseña")
+                                    }
+                                },
+                                visualTransformation = if (claveVisible) VisualTransformation.None else PasswordVisualTransformation(),
                                 modifier      = Modifier.fillMaxWidth(),
                                 singleLine    = true,
                                 shape         = RoundedCornerShape(14.dp),
@@ -373,73 +380,7 @@ fun PerfilScreen(
                                     unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
                                 ),
                                 keyboardOptions = KeyboardOptions(
-                                    capitalization = KeyboardCapitalization.Words,
-                                    imeAction      = ImeAction.Next
-                                ),
-                                keyboardActions = KeyboardActions(
-                                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
-                                )
-                            )
-                        }
-                    }
-
-                    Spacer(Modifier.height(24.dp))
-
-                    // ── Sección Información de Contacto ──────────────────
-                    SectionHeader(
-                        icono  = Icons.Default.ContactPhone,
-                        titulo = "INFORMACIÓN DE CONTACTO"
-                    )
-
-                    Spacer(Modifier.height(12.dp))
-
-                    OutlinedCard(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape    = RoundedCornerShape(18.dp),
-                        colors   = CardDefaults.outlinedCardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                        ),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
-                    ) {
-                        Column(
-                            modifier            = Modifier.padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            OutlinedTextField(
-                                value         = telefono,
-                                onValueChange = { telefono = it },
-                                label         = { Text("Teléfono") },
-                                leadingIcon   = { Icon(Icons.Default.Phone, null, tint = MaterialTheme.colorScheme.primary) },
-                                modifier      = Modifier.fillMaxWidth(),
-                                singleLine    = true,
-                                shape         = RoundedCornerShape(14.dp),
-                                colors        = OutlinedTextFieldDefaults.colors(
-                                    focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
-                                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                                ),
-                                keyboardOptions = KeyboardOptions(
-                                    keyboardType = KeyboardType.Phone,
-                                    imeAction    = ImeAction.Next
-                                ),
-                                keyboardActions = KeyboardActions(
-                                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
-                                )
-                            )
-
-                            OutlinedTextField(
-                                value         = email,
-                                onValueChange = { email = it },
-                                label         = { Text("Email") },
-                                leadingIcon   = { Icon(Icons.Default.Email, null, tint = MaterialTheme.colorScheme.primary) },
-                                modifier      = Modifier.fillMaxWidth(),
-                                singleLine    = true,
-                                shape         = RoundedCornerShape(14.dp),
-                                colors        = OutlinedTextFieldDefaults.colors(
-                                    focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
-                                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                                ),
-                                keyboardOptions = KeyboardOptions(
-                                    keyboardType = KeyboardType.Email,
+                                    keyboardType = KeyboardType.Password,
                                     imeAction    = ImeAction.Done
                                 ),
                                 keyboardActions = KeyboardActions(
@@ -457,10 +398,8 @@ fun PerfilScreen(
                             focusManager.clearFocus()
                             viewModel.actualizarPerfil(
                                 ActualizarPerfilRequest(
-                                    nombre   = nombre,
-                                    apellido = apellido,
-                                    telefono = telefono.ifBlank { null },
-                                    email    = email.ifBlank { null }
+                                    nombreUsuario = nombreUsuario,
+                                    clave         = clave.ifBlank { null }
                                 )
                             )
                         },
@@ -468,7 +407,7 @@ fun PerfilScreen(
                             .fillMaxWidth()
                             .height(52.dp),
                         shape    = RoundedCornerShape(14.dp),
-                        enabled  = actionState !is PerfilActionState.Loading
+                        enabled  = actionState !is PerfilActionState.Loading && nombreUsuario.isNotBlank()
                     ) {
                         if (actionState is PerfilActionState.Loading) {
                             CircularProgressIndicator(

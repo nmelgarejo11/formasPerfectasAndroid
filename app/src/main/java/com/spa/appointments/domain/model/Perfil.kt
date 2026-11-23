@@ -5,21 +5,15 @@ import com.squareup.moshi.JsonClass
 @JsonClass(generateAdapter = true)
 data class Perfil(
     @Json(name = "idUsuario") val idUsuario: Int = 0,
+    @Json(name = "usuario") val usuario: String = "",
     @Json(name = "nombreUsuario") val nombreUsuario: String = "",
-    @Json(name = "fotoUrl") val fotoUrl: String? = null,
-    @Json(name = "idCliente") val idCliente: Int? = null,
-    @Json(name = "nombre") val nombre: String = "",
-    @Json(name = "apellido") val apellido: String = "",
-    @Json(name = "telefono") val telefono: String? = null,
-    @Json(name = "email") val email: String? = null
+    @Json(name = "fotoUrl") val fotoUrl: String? = null
 )
 
 @JsonClass(generateAdapter = true)
 data class ActualizarPerfilRequest(
-    @Json(name = "nombre") val nombre: String,
-    @Json(name = "apellido") val apellido: String,
-    @Json(name = "telefono") val telefono: String?,
-    @Json(name = "email") val email: String?
+    @Json(name = "nombreUsuario") val nombreUsuario: String,
+    @Json(name = "clave") val clave: String? = null
 )
 
 @JsonClass(generateAdapter = true)
