@@ -1371,7 +1371,7 @@ private fun FinalizarCitaDialog(
     var seleccionado        by remember { mutableStateOf<MetodoPago?>(null) }
     var detalleSeleccionado by remember { mutableStateOf<MetodoPagoDetalle?>(null) }
     var precioFinalText     by remember(precioSugerido) {
-        mutableStateOf(if (precioSugerido > 0) String.format(Locale.US, "%.0f", precioSugerido) else "")
+        mutableStateOf(if (precioSugerido >= 0) String.format(Locale.US, "%.0f", precioSugerido) else "")
     }
     var observacionesText by remember { mutableStateOf("") }
     var expanded          by remember { mutableStateOf(false) }
