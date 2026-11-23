@@ -597,9 +597,9 @@ private fun ServicioDialog(
 
     val variablesWhatsApp = remember(esGrupal) {
         if (esGrupal) {
-            listOf("{NombreCliente}", "{Fecha}", "{Hora}", "{Duracion}", "{Asistentes}")
+            listOf("{Nombre}", "{Apellido}", "{NombreCliente}", "{Fecha}", "{Hora}", "{Duracion}", "{Asistentes}")
         } else {
-            listOf("{NombreCliente}", "{Fecha}", "{Hora}", "{Duracion}")
+            listOf("{Nombre}", "{Apellido}", "{NombreCliente}", "{Fecha}", "{Hora}", "{Duracion}")
         }
     }
 
@@ -626,8 +626,8 @@ private fun ServicioDialog(
     val maxPersonasValido = !esGrupal || (maxPersonasInt != null && maxPersonasInt > 1)
 
     val esValido = nombre.isNotBlank()
-            && duracion.toIntOrNull() != null
-            && precio.toDoubleOrNull() != null
+            && (duracion.toIntOrNull() ?: 0) > 0
+            && (precio.toDoubleOrNull() ?: -1.0) >= 0.0
             && categoriaSeleccionada != null
             && maxPersonasValido
 
@@ -649,13 +649,53 @@ private fun ServicioDialog(
             }
         },
         title = {
-            Text(
-                text       = if (servicio != null) "Editar servicio" else "Nuevo servicio",
-                fontWeight = FontWeight.Bold,
-                style      = MaterialTheme.typography.titleMedium,
-                textAlign  = TextAlign.Center,
-                modifier   = Modifier.fillMaxWidth()
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text       = if (servicio != null) "Editar servicio" else "Nuevo servicio",
+                    fontWeight = FontWeight.Bold,
+                    style      = MaterialTheme.typography.titleMedium,
+                    modifier   = Modifier.weight(1f)
+                )
+                if (esValido && !guardando) {
+                    IconButton(
+                        onClick = {
+                            onGuardar(
+                                ServicioRequest(
+                                    idCategoria     = categoriaSeleccionada!!.id,
+                                    nombre          = nombre.trim(),
+                                    descripcion     = descripcion.trim().ifBlank { null },
+                                    duracionMinutos = duracion.toInt(),
+                                    precioBase      = precio.toDouble(),
+                                    icono           = iconoSeleccionado?.clave,
+                                    esGrupal        = esGrupal,
+                                    maxPersonas     = if (esGrupal) maxPersonas.toIntOrNull() else null,
+                                    mensajeWhatsApp = mensajeWhatsApp.text.trim().ifEmpty { null }
+                                )
+                            )
+                        },
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    Icons.Default.Save,
+                                    contentDescription = "Guardar",
+                                    tint = MaterialTheme.colorScheme.onPrimary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         },
         text = {
             Column(

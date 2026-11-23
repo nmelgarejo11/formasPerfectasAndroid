@@ -576,12 +576,14 @@ internal fun MensajeWhatsAppField(
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             variables.forEach { variable ->
-                val etiqueta = when {
-                    variable.contains("Nombre") -> "+ Nombre"
-                    variable.contains("Fecha") -> "+ Fecha"
-                    variable.contains("Hora") -> "+ Hora"
-                    variable.contains("Duracion") -> "+ Duración"
-                    variable.contains("Asistentes") -> "+ Asistentes"
+                val etiqueta = when (variable) {
+                    "{Nombre}" -> "+ Nombre"
+                    "{Apellido}" -> "+ Apellido"
+                    "{NombreCliente}" -> "+ Nombre Completo"
+                    "{Fecha}" -> "+ Fecha"
+                    "{Hora}" -> "+ Hora"
+                    "{Duracion}" -> "+ Duración"
+                    "{Asistentes}" -> "+ Asistentes"
                     else -> "+ $variable"
                 }
                 SuggestionChip(
@@ -608,9 +610,11 @@ internal fun MensajeWhatsAppField(
         // Burbuja de preview estilo WhatsApp
         val preview = value.text
             .replace("{NombreCliente}", "María García")
+            .replace("{Nombre}", "María")
+            .replace("{Apellido}", "García")
             .replace("{Fecha}", "15/05/2026")
             .replace("{Hora}", "10:30 AM")
-            .replace("{Duracion}", "1 Hora 30 Minutos")
+            .replace("{Duracion}", "1 hora 30 minutos")
             .replace("{Asistentes}", "4 personas")
 
         if (preview.isNotBlank()) {

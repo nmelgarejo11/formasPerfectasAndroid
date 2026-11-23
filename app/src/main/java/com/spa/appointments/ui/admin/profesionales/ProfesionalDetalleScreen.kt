@@ -47,6 +47,8 @@ fun ProfesionalDetalleScreen(
         mutableStateOf(sedesAsignadas.firstOrNull())
     }
 
+    var busquedaServicio by remember { mutableStateOf("") }
+
     var serviciosEditados by remember(serviciosAsignados, serviciosCatalogo) {
         mutableStateOf(
             serviciosCatalogo.map { srv ->
@@ -54,6 +56,18 @@ fun ProfesionalDetalleScreen(
                 Triple(srv, asignado != null, asignado?.precio?.toString() ?: srv.precioBase.toString())
             }
         )
+    }
+
+    val serviciosFiltrados = remember(serviciosEditados, busquedaServicio) {
+        if (busquedaServicio.isBlank()) {
+            serviciosEditados.indices.toList()
+        } else {
+            serviciosEditados.indices.filter { index ->
+                val (srv, _, _) = serviciosEditados[index]
+                srv.nombre.contains(busquedaServicio, ignoreCase = true) ||
+                        srv.nombreCategoria.contains(busquedaServicio, ignoreCase = true)
+            }
+        }
     }
 
     val snackbarHostState = remember { SnackbarHostState() }
@@ -257,6 +271,36 @@ fun ProfesionalDetalleScreen(
                                     modifier   = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                                 )
                             }
+                            Spacer(Modifier.width(8.dp))
+                        }
+                        // Botón de guardar superior para acceso inmediato sin tener que desplazarse hasta el final
+                        Button(
+                            onClick = {
+                                val items = serviciosEditados
+                                    .filter { it.second }
+                                    .mapNotNull { (srv, _, precioStr) ->
+                                        precioStr.toDoubleOrNull()?.let { p ->
+                                            if (p >= 0.0) ServicioProfesionalItem(srv.id, p) else null
+                                        }
+                                    }
+                                viewModel.guardarServicios(idProfesional, items)
+                            },
+                            enabled  = !isLoading,
+                            shape    = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                            modifier = Modifier.height(36.dp)
+                        ) {
+                            if (isLoading) {
+                                CircularProgressIndicator(
+                                    modifier    = Modifier.size(14.dp),
+                                    strokeWidth = 2.dp,
+                                    color       = MaterialTheme.colorScheme.onPrimary
+                                )
+                            } else {
+                                Icon(Icons.Default.Save, null, modifier = Modifier.size(14.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("Guardar", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
 
@@ -265,10 +309,39 @@ fun ProfesionalDetalleScreen(
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
 
+                    // Campo de Búsqueda para filtrar servicios
+                    if (serviciosCatalogo.isNotEmpty()) {
+                        OutlinedTextField(
+                            value         = busquedaServicio,
+                            onValueChange = { busquedaServicio = it },
+                            placeholder   = { Text("Buscar servicio o categoría…", style = MaterialTheme.typography.bodyMedium) },
+                            leadingIcon   = { Icon(Icons.Default.Search, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary) },
+                            trailingIcon  = {
+                                if (busquedaServicio.isNotEmpty()) {
+                                    IconButton(onClick = { busquedaServicio = "" }) {
+                                        Icon(Icons.Default.Close, null, modifier = Modifier.size(18.dp))
+                                    }
+                                }
+                            },
+                            singleLine    = true,
+                            shape         = RoundedCornerShape(12.dp),
+                            colors        = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                            ),
+                            modifier      = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 8.dp)
+                        )
+                    }
+
                     if (serviciosCatalogo.isEmpty()) {
                         EmptySeccionBanner(texto = "Sin servicios en catálogo")
+                    } else if (serviciosFiltrados.isEmpty()) {
+                        EmptySeccionBanner(texto = "Ningún servicio coincide con \"$busquedaServicio\"")
                     } else {
-                        serviciosEditados.forEachIndexed { index, (srv, asignado, precio) ->
+                        serviciosFiltrados.forEachIndexed { displayIndex, index ->
+                            val (srv, asignado, precio) = serviciosEditados[index]
                             ServicioCheckRow(
                                 servicio  = srv,
                                 checked   = asignado,
@@ -284,7 +357,7 @@ fun ProfesionalDetalleScreen(
                                     }
                                 }
                             )
-                            if (index < serviciosEditados.lastIndex) {
+                            if (displayIndex < serviciosFiltrados.lastIndex) {
                                 HorizontalDivider(
                                     color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
                                 )
@@ -299,8 +372,8 @@ fun ProfesionalDetalleScreen(
                             val items = serviciosEditados
                                 .filter { it.second }
                                 .mapNotNull { (srv, _, precioStr) ->
-                                    precioStr.toDoubleOrNull()?.let {
-                                        ServicioProfesionalItem(srv.id, it)
+                                    precioStr.toDoubleOrNull()?.let { p ->
+                                        if (p >= 0.0) ServicioProfesionalItem(srv.id, p) else null
                                     }
                                 }
                             viewModel.guardarServicios(idProfesional, items)

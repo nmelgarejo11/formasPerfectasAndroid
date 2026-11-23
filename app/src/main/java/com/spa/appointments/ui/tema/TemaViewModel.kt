@@ -38,7 +38,7 @@ class TemaViewModel @Inject constructor(
     val uiState: StateFlow<TemaUiState> = _uiState
 
     // Variables disponibles para el mensaje WhatsApp
-    val variablesDisponibles = listOf("{NombreCliente}", "{Fecha}", "{Hora}")
+    val variablesDisponibles = listOf("{Nombre}", "{Apellido}", "{NombreCliente}", "{Fecha}", "{Hora}")
 
     init { cargarTema() }
 

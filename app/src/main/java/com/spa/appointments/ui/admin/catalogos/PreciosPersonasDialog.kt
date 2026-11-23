@@ -44,9 +44,9 @@ fun PreciosPersonasDialog(
     val siguienteCantMultiplicable = maxPersonasExistente + 1
 
     val esValido = if (esPorPersona) {
-        (precioText.toDoubleOrNull() ?: 0.0) > 0.0
+        (precioText.toDoubleOrNull() ?: -1.0) >= 0.0
     } else {
-        (cantidadText.toIntOrNull() ?: 0) >= 1 && (precioText.toDoubleOrNull() ?: 0.0) > 0.0
+        (cantidadText.toIntOrNull() ?: 0) >= 1 && (precioText.toDoubleOrNull() ?: -1.0) >= 0.0
     }
 
     BasicAlertDialog(onDismissRequest = onDismiss) {
@@ -223,7 +223,7 @@ fun PreciosPersonasDialog(
                         FilledTonalButton(
                             onClick = {
                                 val prec = precioText.toDoubleOrNull()
-                                if (prec != null) {
+                                if (prec != null && prec >= 0.0) {
                                     val cant = if (esPorPersona) siguienteCantMultiplicable else (cantidadText.toIntOrNull() ?: 1)
                                     onGuardarRango(cant, prec, esPorPersona)
                                     cantidadText = ""
