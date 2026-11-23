@@ -205,17 +205,17 @@ fun GestionUsuariosScreen(
                     // 3. Lista de Usuarios
                     else -> {
                         LazyColumn(
-                            contentPadding      = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                            contentPadding      = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
                             modifier            = Modifier.fillMaxSize()
                         ) {
                             items(state.usuarios, key = { it.id }) { u ->
                                 OutlinedCard(
-                                    shape    = RoundedCornerShape(18.dp),
+                                    shape    = RoundedCornerShape(12.dp),
                                     colors   = CardDefaults.outlinedCardColors(
                                         containerColor = MaterialTheme.colorScheme.surfaceContainerLow
                                     ),
-                                    border   = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
+                                    border   = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clickable {
@@ -226,47 +226,61 @@ fun GestionUsuariosScreen(
                                     Row(
                                         modifier          = Modifier
                                             .fillMaxWidth()
-                                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                                            .padding(horizontal = 14.dp, vertical = 10.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Surface(
-                                            shape    = RoundedCornerShape(12.dp),
+                                            shape    = RoundedCornerShape(10.dp),
                                             color    = MaterialTheme.colorScheme.primaryContainer,
-                                            modifier = Modifier.size(46.dp)
+                                            modifier = Modifier.size(38.dp)
                                         ) {
                                             Box(contentAlignment = Alignment.Center) {
                                                 Icon(
                                                     imageVector        = Icons.Default.Person,
                                                     contentDescription = null,
-                                                    modifier           = Modifier.size(22.dp),
+                                                    modifier           = Modifier.size(18.dp),
                                                     tint               = MaterialTheme.colorScheme.onPrimaryContainer
                                                 )
                                             }
                                         }
 
-                                        Spacer(Modifier.width(14.dp))
+                                        Spacer(Modifier.width(12.dp))
 
                                         Column(modifier = Modifier.weight(1f)) {
+                                            val displayNombre = if (!u.nombreUsuario.isNullOrBlank()) u.nombreUsuario else u.usuario
                                             Text(
-                                                text       = u.usuario,
-                                                style      = MaterialTheme.typography.titleMedium,
+                                                text       = displayNombre,
+                                                style      = MaterialTheme.typography.bodyLarge,
                                                 fontWeight = FontWeight.Bold,
                                                 color      = MaterialTheme.colorScheme.onSurface
                                             )
+                                            val subtitulo = if (!u.nombreUsuario.isNullOrBlank()) {
+                                                "@${u.usuario} • ${u.nombrePerfil ?: "Sin Perfil"}"
+                                            } else {
+                                                u.nombrePerfil ?: "Sin Perfil Asignado"
+                                            }
                                             Text(
-                                                text     = u.nombrePerfil ?: "Sin Perfil Asignado",
+                                                text     = subtitulo,
                                                 style    = MaterialTheme.typography.bodySmall,
                                                 color    = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                modifier = Modifier.padding(top = 2.dp)
+                                                modifier = Modifier.padding(top = 1.dp)
                                             )
                                         }
 
-                                        Icon(
-                                            imageVector        = Icons.Default.Edit,
-                                            contentDescription = "Cambiar Perfil",
-                                            tint               = MaterialTheme.colorScheme.primary,
-                                            modifier           = Modifier.size(20.dp)
-                                        )
+                                        IconButton(
+                                            onClick  = {
+                                                usuarioSeleccionado = u
+                                                mostrarDialog = true
+                                            },
+                                            modifier = Modifier.size(36.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector        = Icons.Default.Edit,
+                                                contentDescription = "Cambiar Perfil",
+                                                tint               = MaterialTheme.colorScheme.primary,
+                                                modifier           = Modifier.size(18.dp)
+                                            )
+                                        }
                                     }
                                 }
                             }

@@ -104,10 +104,17 @@ class AdministracionViewModel @Inject constructor(
     }
 
     // ── Crear Usuario ──────────────────────────────────
-    fun crearUsuario(usuario: String, clave: String, idPerfil: Int) {
+    fun crearUsuario(usuario: String, nombreUsuario: String, clave: String, idPerfil: Int) {
         viewModelScope.launch {
             uiState = uiState.copy(cargando = true)
-            repo.crearUsuario(CrearUsuarioRequest(usuario, clave, idPerfil = idPerfil))
+            repo.crearUsuario(
+                CrearUsuarioRequest(
+                    usuario       = usuario,
+                    clave         = clave,
+                    nombreUsuario = nombreUsuario.ifBlank { null },
+                    idPerfil      = idPerfil
+                )
+            )
                 .onSuccess { uiState = uiState.copy(cargando = false, exitoUsuario = true) }
                 .onFailure { uiState = uiState.copy(cargando = false, error = ApiErrorMapper.parsearMensajeError(it)) }
         }

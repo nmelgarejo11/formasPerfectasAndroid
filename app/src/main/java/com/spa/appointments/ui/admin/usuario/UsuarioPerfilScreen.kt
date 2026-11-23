@@ -35,6 +35,7 @@ fun UsuarioPerfilScreen(
 
     var tab           by remember { mutableIntStateOf(0) }
     var usuario       by remember { mutableStateOf("") }
+    var nombreUsuario by remember { mutableStateOf("") }
     var clave         by remember { mutableStateOf("") }
     var verClave      by remember { mutableStateOf(false) }
     var perfilSel     by remember { mutableIntStateOf(-1) }
@@ -157,17 +158,32 @@ fun UsuarioPerfilScreen(
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState())
                         .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     if (tab == 0) {
+                        OutlinedTextField(
+                            value         = nombreUsuario,
+                            onValueChange = { nombreUsuario = it },
+                            label         = { Text("Nombre completo") },
+                            supportingText= { Text("Nombre personalizado que se mostrará en el saludo al ingresar") },
+                            leadingIcon   = { Icon(Icons.Default.Badge, null, tint = MaterialTheme.colorScheme.primary) },
+                            singleLine    = true,
+                            modifier      = Modifier.fillMaxWidth(),
+                            shape         = RoundedCornerShape(12.dp),
+                            colors        = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                            )
+                        )
+
                         OutlinedTextField(
                             value         = usuario,
                             onValueChange = { usuario = it },
                             label         = { Text("Nombre de usuario *") },
-                            leadingIcon   = { Icon(Icons.Default.Person, null, tint = MaterialTheme.colorScheme.primary) },
+                            leadingIcon   = { Icon(Icons.Default.AccountCircle, null, tint = MaterialTheme.colorScheme.primary) },
                             singleLine    = true,
                             modifier      = Modifier.fillMaxWidth(),
-                            shape         = RoundedCornerShape(14.dp),
+                            shape         = RoundedCornerShape(12.dp),
                             colors        = OutlinedTextFieldDefaults.colors(
                                 focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
                                 unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
@@ -191,16 +207,18 @@ fun UsuarioPerfilScreen(
                             keyboardOptions      = KeyboardOptions(keyboardType = KeyboardType.Password),
                             singleLine           = true,
                             modifier             = Modifier.fillMaxWidth(),
-                            shape                = RoundedCornerShape(14.dp),
+                            shape                = RoundedCornerShape(12.dp),
                             colors               = OutlinedTextFieldDefaults.colors(
                                 focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
                                 unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
                             )
                         )
 
+                        Spacer(Modifier.height(2.dp))
+
                         Text(
                             text       = "Perfil de acceso *",
-                            style      = MaterialTheme.typography.titleMedium,
+                            style      = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
                             color      = MaterialTheme.colorScheme.onSurface
                         )
@@ -215,30 +233,30 @@ fun UsuarioPerfilScreen(
                             state.perfiles.forEach { perfil ->
                                 OutlinedCard(
                                     modifier = Modifier.fillMaxWidth(),
-                                    shape    = RoundedCornerShape(14.dp),
+                                    shape    = RoundedCornerShape(12.dp),
                                     colors   = CardDefaults.outlinedCardColors(
                                         containerColor = if (perfilSel == perfil.id)
-                                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
                                         else
                                             MaterialTheme.colorScheme.surfaceContainerLow
                                     ),
                                     border  = BorderStroke(
-                                        if (perfilSel == perfil.id) 2.dp else 1.dp,
+                                        if (perfilSel == perfil.id) 1.5.dp else 1.dp,
                                         if (perfilSel == perfil.id) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
                                     ),
                                     onClick = { perfilSel = perfil.id }
                                 ) {
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically,
-                                        modifier          = Modifier.padding(14.dp)
+                                        modifier          = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
                                     ) {
                                         RadioButton(
                                             selected = perfilSel == perfil.id,
                                             onClick  = { perfilSel = perfil.id }
                                         )
-                                        Spacer(Modifier.width(10.dp))
+                                        Spacer(Modifier.width(8.dp))
                                         Column {
-                                            Text(perfil.nombre, fontWeight = FontWeight.Bold)
+                                            Text(perfil.nombre, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
                                             perfil.descripcion?.let {
                                                 Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                             }
@@ -248,16 +266,18 @@ fun UsuarioPerfilScreen(
                             }
                         }
 
+                        Spacer(Modifier.height(4.dp))
+
                         Button(
-                            onClick  = { viewModel.crearUsuario(usuario.trim(), clave.trim(), perfilSel) },
+                            onClick  = { viewModel.crearUsuario(usuario.trim(), nombreUsuario.trim(), clave.trim(), perfilSel) },
                             enabled  = usuario.isNotBlank() && clave.isNotBlank() && perfilSel != -1 && !state.cargando,
-                            modifier = Modifier.fillMaxWidth().height(52.dp),
-                            shape    = RoundedCornerShape(14.dp)
+                            modifier = Modifier.fillMaxWidth().height(48.dp),
+                            shape    = RoundedCornerShape(12.dp)
                         ) {
                             if (state.cargando) {
-                                CircularProgressIndicator(modifier = Modifier.size(22.dp), color = MaterialTheme.colorScheme.onPrimary)
+                                CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary)
                             } else {
-                                Icon(Icons.Default.PersonAdd, null)
+                                Icon(Icons.Default.PersonAdd, null, modifier = Modifier.size(18.dp))
                                 Spacer(Modifier.width(8.dp))
                                 Text("Guardar Usuario", fontWeight = FontWeight.Bold)
                             }
@@ -271,7 +291,7 @@ fun UsuarioPerfilScreen(
                             leadingIcon   = { Icon(Icons.Default.Shield, null, tint = MaterialTheme.colorScheme.primary) },
                             singleLine    = true,
                             modifier      = Modifier.fillMaxWidth(),
-                            shape         = RoundedCornerShape(14.dp),
+                            shape         = RoundedCornerShape(12.dp),
                             colors        = OutlinedTextFieldDefaults.colors(
                                 focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
                                 unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
@@ -285,7 +305,7 @@ fun UsuarioPerfilScreen(
                             leadingIcon   = { Icon(Icons.Default.Description, null, tint = MaterialTheme.colorScheme.primary) },
                             singleLine    = true,
                             modifier      = Modifier.fillMaxWidth(),
-                            shape         = RoundedCornerShape(14.dp),
+                            shape         = RoundedCornerShape(12.dp),
                             colors        = OutlinedTextFieldDefaults.colors(
                                 focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
                                 unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
@@ -294,7 +314,7 @@ fun UsuarioPerfilScreen(
 
                         Text(
                             text       = "Submódulos permitidos *",
-                            style      = MaterialTheme.typography.titleMedium,
+                            style      = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
                             color      = MaterialTheme.colorScheme.onSurface
                         )
@@ -302,10 +322,10 @@ fun UsuarioPerfilScreen(
                         state.subModulos.forEach { sub ->
                             OutlinedCard(
                                 modifier = Modifier.fillMaxWidth(),
-                                shape    = RoundedCornerShape(14.dp),
+                                shape    = RoundedCornerShape(12.dp),
                                 colors   = CardDefaults.outlinedCardColors(
                                     containerColor = if (sub.seleccionado)
-                                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
                                     else
                                         MaterialTheme.colorScheme.surfaceContainerLow
                                 ),
@@ -314,14 +334,14 @@ fun UsuarioPerfilScreen(
                             ) {
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
-                                    modifier          = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
+                                    modifier          = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                                 ) {
                                     Checkbox(
                                         checked         = sub.seleccionado,
                                         onCheckedChange = { viewModel.toggleSubModulo(sub.id) }
                                     )
-                                    Spacer(Modifier.width(10.dp))
-                                    Text(sub.nombre, fontWeight = FontWeight.SemiBold)
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(sub.nombre, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                                 }
                             }
                         }
@@ -329,13 +349,13 @@ fun UsuarioPerfilScreen(
                         Button(
                             onClick  = { viewModel.crearPerfil(nombrePerfil.trim(), descPerfil.ifBlank { null }) },
                             enabled  = nombrePerfil.isNotBlank() && state.subModulos.any { it.seleccionado } && !state.cargando,
-                            modifier = Modifier.fillMaxWidth().height(52.dp),
-                            shape    = RoundedCornerShape(14.dp)
+                            modifier = Modifier.fillMaxWidth().height(48.dp),
+                            shape    = RoundedCornerShape(12.dp)
                         ) {
                             if (state.cargando) {
-                                CircularProgressIndicator(modifier = Modifier.size(22.dp), color = MaterialTheme.colorScheme.onPrimary)
+                                CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary)
                             } else {
-                                Icon(Icons.Default.Save, null)
+                                Icon(Icons.Default.Save, null, modifier = Modifier.size(18.dp))
                                 Spacer(Modifier.width(8.dp))
                                 Text("Guardar Perfil", fontWeight = FontWeight.Bold)
                             }
