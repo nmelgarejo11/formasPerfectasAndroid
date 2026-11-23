@@ -1,6 +1,8 @@
 // Ruta: app/src/main/java/com/spa/appointments/ui/admin/profesionales/ProfesionalesAdminScreen.kt
 package com.spa.appointments.ui.admin.profesionales
 
+import android.content.Context
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
@@ -19,6 +21,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -28,24 +31,26 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.spa.appointments.domain.model.ProfesionalAdmin
-
-// ─── Screen Principal ─────────────────────────────────────────────────────────
+import com.spa.appointments.ui.components.SinPermisoContent
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfesionalesAdminScreen(
-    onBack:       () -> Unit,
+    onBack: () -> Unit,
     onVerDetalle: (Int) -> Unit,
     onVerHorario: (Int) -> Unit,
     viewModel: ProfesionalesAdminViewModel = hiltViewModel()
 ) {
-    val profesionales by viewModel.profesionales.collectAsState()
-    val uiState       by viewModel.uiState.collectAsState()
-    val context       = LocalContext.current
+    val profesionales    by viewModel.profesionales.collectAsState()
+    val cargos           by viewModel.cargos.collectAsState()
+    val bancos           by viewModel.bancos.collectAsState()
+    val tiposDocumento   by viewModel.tiposDocumento.collectAsState()
+    val tiposCuenta      by viewModel.tiposCuenta.collectAsState()
+    val uiState          by viewModel.uiState.collectAsState()
 
-    var busqueda   by remember { mutableStateOf("") }
     var showDialog by remember { mutableStateOf(false) }
     var editando   by remember { mutableStateOf<ProfesionalAdmin?>(null) }
+    var busqueda   by remember { mutableStateOf("") }
 
     val filtrados = remember(profesionales, busqueda) {
         if (busqueda.isBlank()) profesionales
@@ -56,25 +61,21 @@ fun ProfesionalesAdminScreen(
         }
     }
 
-    val fotoLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.GetContent()
-    ) { uri ->
-        uri?.let { editando?.let { prof -> viewModel.subirFoto(prof.id, it, context) } }
-    }
-
     val snackbarHostState = remember { SnackbarHostState() }
 
-    LaunchedEffect(Unit) { viewModel.cargarDatos() }
+    LaunchedEffect(Unit) {
+        viewModel.cargarDatos()
+    }
 
     LaunchedEffect(uiState) {
-        when (val s = uiState) {
+        when (uiState) {
+            is ProfesionalesUiState.Error -> {
+                snackbarHostState.showSnackbar((uiState as ProfesionalesUiState.Error).mensaje)
+                viewModel.resetState()
+            }
             is ProfesionalesUiState.Success -> {
                 showDialog = false
                 editando   = null
-                viewModel.resetState()
-            }
-            is ProfesionalesUiState.Error -> {
-                snackbarHostState.showSnackbar(s.mensaje)
                 viewModel.resetState()
             }
             else -> Unit
@@ -89,11 +90,11 @@ fun ProfesionalesAdminScreen(
                     title = {
                         Column {
                             Text(
-                                text       = "Profesionales",
+                                text       = "Equipo de Trabajo",
                                 style      = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
-                            if (profesionales.isNotEmpty()) {
+                            if (profesionales.isNotEmpty() && uiState !is ProfesionalesUiState.Forbidden) {
                                 Surface(
                                     shape    = RoundedCornerShape(50),
                                     color    = MaterialTheme.colorScheme.primaryContainer,
@@ -119,7 +120,6 @@ fun ProfesionalesAdminScreen(
                     )
                 )
 
-                // 🎨 Canvas: Acento decorativo debajo de la TopAppBar
                 val primaryColor   = MaterialTheme.colorScheme.primary
                 val secondaryColor = MaterialTheme.colorScheme.secondary
                 Canvas(
@@ -145,147 +145,151 @@ fun ProfesionalesAdminScreen(
             }
         },
         floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick        = { editando = null; showDialog = true },
-                icon           = { Icon(Icons.Default.Add, null) },
-                text           = { Text("Nuevo profesional", fontWeight = FontWeight.Bold) },
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor   = MaterialTheme.colorScheme.onPrimary,
-                shape          = RoundedCornerShape(16.dp)
-            )
+            if (uiState !is ProfesionalesUiState.Forbidden) {
+                ExtendedFloatingActionButton(
+                    onClick        = { editando = null; showDialog = true },
+                    icon           = { Icon(Icons.Default.Add, null) },
+                    text           = { Text("Nuevo profesional", fontWeight = FontWeight.Bold) },
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor   = MaterialTheme.colorScheme.onPrimary,
+                    shape          = RoundedCornerShape(16.dp)
+                )
+            }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
 
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
-            Spacer(Modifier.height(8.dp))
-
-            // ── Buscador M3 ───────────────────────────────────────────────
-            OutlinedTextField(
-                value         = busqueda,
-                onValueChange = { busqueda = it },
-                label         = { Text("Buscar profesional") },
-                leadingIcon   = { Icon(Icons.Default.Search, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
-                trailingIcon  = {
-                    if (busqueda.isNotBlank()) {
-                        IconButton(onClick = { busqueda = "" }) {
-                            Icon(Icons.Default.Clear, null)
-                        }
-                    }
-                },
-                modifier   = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 6.dp),
-                shape      = RoundedCornerShape(14.dp),
-                colors     = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                ),
-                singleLine = true
+        if (uiState is ProfesionalesUiState.Forbidden) {
+            SinPermisoContent(
+                modifier = Modifier.padding(padding),
+                onVolver = onBack
             )
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+            ) {
+                Spacer(Modifier.height(8.dp))
 
-            Box(modifier = Modifier.fillMaxSize()) {
-                when {
-                    uiState is ProfesionalesUiState.Loading && profesionales.isEmpty() -> {
-                        Column(
-                            modifier            = Modifier.align(Alignment.Center),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            CircularProgressIndicator(
-                                color       = MaterialTheme.colorScheme.primary,
-                                trackColor  = MaterialTheme.colorScheme.primaryContainer,
-                                strokeWidth = 3.dp,
-                                modifier    = Modifier.size(36.dp)
-                            )
-                            Text(
-                                "Cargando profesionales…",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                OutlinedTextField(
+                    value         = busqueda,
+                    onValueChange = { busqueda = it },
+                    label         = { Text("Buscar profesional o cargo") },
+                    leadingIcon   = { Icon(Icons.Default.Search, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                    trailingIcon  = {
+                        if (busqueda.isNotBlank()) {
+                            IconButton(onClick = { busqueda = "" }) {
+                                Icon(Icons.Default.Clear, null)
+                            }
                         }
-                    }
+                    },
+                    modifier   = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                    shape      = RoundedCornerShape(14.dp),
+                    colors     = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                    ),
+                    singleLine = true,
+                    enabled    = uiState !is ProfesionalesUiState.Loading
+                )
 
-                    filtrados.isEmpty() -> {
-                        val primaryColor = MaterialTheme.colorScheme.primary
-
-                        OutlinedCard(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(24.dp)
-                                .align(Alignment.Center),
-                            shape  = RoundedCornerShape(24.dp),
-                            colors = CardDefaults.outlinedCardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                            )
-                        ) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    when {
+                        uiState is ProfesionalesUiState.Loading && profesionales.isEmpty() -> {
                             Column(
-                                modifier            = Modifier.padding(32.dp).fillMaxWidth(),
+                                modifier            = Modifier.align(Alignment.Center),
                                 horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(14.dp)
+                                verticalArrangement = Arrangement.spacedBy(16.dp)
                             ) {
-                                Box(
-                                    modifier         = Modifier.size(80.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Canvas(modifier = Modifier.fillMaxSize()) {
-                                        drawCircle(color = primaryColor.copy(alpha = 0.15f))
-                                    }
-                                    Surface(
-                                        shape = CircleShape,
-                                        color = MaterialTheme.colorScheme.surfaceContainerHigh
-                                    ) {
-                                        Icon(
-                                            imageVector        = if (busqueda.isBlank()) Icons.Default.Group
-                                            else Icons.Default.SearchOff,
-                                            contentDescription = null,
-                                            modifier           = Modifier.padding(18.dp).size(36.dp),
-                                            tint               = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                }
-                                Text(
-                                    text       = if (busqueda.isBlank()) "Sin profesionales aún" else "Sin resultados",
-                                    style      = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color      = MaterialTheme.colorScheme.onSurface
+                                CircularProgressIndicator(
+                                    color       = MaterialTheme.colorScheme.primary,
+                                    trackColor  = MaterialTheme.colorScheme.primaryContainer,
+                                    strokeWidth = 3.dp,
+                                    modifier    = Modifier.size(36.dp)
                                 )
                                 Text(
-                                    text      = if (busqueda.isBlank())
-                                        "Crea el primer profesional con el botón inferior."
-                                    else
-                                        "Ningún profesional coincide con \"$busqueda\".",
-                                    style     = MaterialTheme.typography.bodyMedium,
-                                    color     = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    textAlign = TextAlign.Center
+                                    text  = "Cargando equipo de trabajo…",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
-                    }
 
-                    else -> {
-                        LazyColumn(
-                            contentPadding      = PaddingValues(
-                                start  = 16.dp,
-                                end    = 16.dp,
-                                top    = 8.dp,
-                                bottom = 88.dp
-                            ),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            items(filtrados, key = { it.id }) { prof ->
-                                ProfesionalCard(
-                                    profesional  = prof,
-                                    onEditar     = { editando = prof; showDialog = true },
-                                    onToggle     = { viewModel.toggleEstado(prof.id) },
-                                    onFoto       = { editando = prof; fotoLauncher.launch("image/*") },
-                                    onDetalle    = { onVerDetalle(prof.id) },
-                                    onVerHorario = { onVerHorario(prof.id) }
+                        filtrados.isEmpty() -> {
+                            val primaryColor = MaterialTheme.colorScheme.primary
+
+                            OutlinedCard(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(24.dp)
+                                    .align(Alignment.Center),
+                                shape  = RoundedCornerShape(24.dp),
+                                colors = CardDefaults.outlinedCardColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
                                 )
+                            ) {
+                                Column(
+                                    modifier            = Modifier.padding(32.dp).fillMaxWidth(),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                                ) {
+                                    Box(
+                                        modifier         = Modifier.size(80.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Canvas(modifier = Modifier.fillMaxSize()) {
+                                            drawCircle(color = primaryColor.copy(alpha = 0.15f))
+                                        }
+                                        Surface(
+                                            shape = CircleShape,
+                                            color = MaterialTheme.colorScheme.surfaceContainerHigh
+                                        ) {
+                                            Icon(
+                                                imageVector        = if (busqueda.isBlank()) Icons.Default.Badge
+                                                else Icons.Default.SearchOff,
+                                                contentDescription = null,
+                                                modifier           = Modifier.padding(18.dp).size(36.dp),
+                                                tint               = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                    Text(
+                                        text       = if (busqueda.isBlank()) "Sin profesionales aún" else "Sin resultados",
+                                        style      = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color      = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text      = if (busqueda.isBlank())
+                                            "Crea el primer profesional con el botón inferior."
+                                        else
+                                            "Ningún profesional coincide con \"$busqueda\".",
+                                        style     = MaterialTheme.typography.bodyMedium,
+                                        color     = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        textAlign = TextAlign.Center
+                                    )
+                                }
+                            }
+                        }
+
+                        else -> {
+                            LazyColumn(
+                                contentPadding      = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 88.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                items(filtrados, key = { it.id }) { prof ->
+                                    ProfesionalCard(
+                                        prof         = prof,
+                                        onVerDetalle = { onVerDetalle(prof.id) },
+                                        onVerHorario = { onVerHorario(prof.id) },
+                                        onEditar     = { editando = prof; showDialog = true },
+                                        onToggle     = { viewModel.toggleEstado(prof.id) },
+                                        onSubirFoto  = { uri, ctx -> viewModel.subirFoto(prof.id, uri, ctx) }
+                                    )
+                                }
                             }
                         }
                     }
@@ -297,211 +301,182 @@ fun ProfesionalesAdminScreen(
     if (showDialog) {
         ProfesionalDialog(
             profesional    = editando,
-            cargos         = viewModel.cargos.collectAsState().value,
-            bancos         = viewModel.bancos.collectAsState().value,
-            tiposDocumento = viewModel.tiposDocumento.collectAsState().value,
-            tiposCuenta    = viewModel.tiposCuenta.collectAsState().value,
+            cargos         = cargos,
+            bancos         = bancos,
+            tiposDocumento = tiposDocumento,
+            tiposCuenta    = tiposCuenta,
             guardando      = uiState is ProfesionalesUiState.Loading,
-            onGuardar      = { req -> viewModel.guardarProfesional(editando?.id, req) },
-            onDismiss      = { showDialog = false; editando = null; viewModel.resetState() }
+            onGuardar      = { req ->
+                viewModel.guardarProfesional(editando?.id, req)
+            },
+            onDismiss      = { showDialog = false; editando = null }
         )
     }
 }
 
-// ─── Card de Profesional M3 ───────────────────────────────────────────────────
+// ─── Card Profesional M3 ───────────────────────────────────────────────────────
 
 @Composable
 private fun ProfesionalCard(
-    profesional:  ProfesionalAdmin,
-    onEditar:     () -> Unit,
-    onToggle:     () -> Unit,
-    onFoto:       () -> Unit,
-    onDetalle:    () -> Unit,
-    onVerHorario: () -> Unit
+    prof         : ProfesionalAdmin,
+    onVerDetalle : () -> Unit,
+    onVerHorario : () -> Unit,
+    onEditar     : () -> Unit,
+    onToggle     : () -> Unit,
+    onSubirFoto  : (Uri, Context) -> Unit
 ) {
-    var menuExpanded by remember { mutableStateOf(false) }
-    val inicial = "${profesional.nombre.firstOrNull() ?: ""}${profesional.apellido.firstOrNull() ?: ""}"
-        .uppercase()
+    val context = LocalContext.current
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri?.let { onSubirFoto(it, context) }
+    }
 
     OutlinedCard(
-        modifier = Modifier.fillMaxWidth(),
         shape    = RoundedCornerShape(18.dp),
         colors   = CardDefaults.outlinedCardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
+        border   = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
+        modifier = Modifier.fillMaxWidth()
     ) {
-        Row(
-            modifier          = Modifier
+        Column(
+            modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(16.dp)
         ) {
-            // ── Avatar con botón cámara ───────────────────────────────────
-            Box(
-                modifier         = Modifier.size(56.dp),
-                contentAlignment = Alignment.BottomEnd
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier          = Modifier.fillMaxWidth()
             ) {
-                if (!profesional.foto.isNullOrBlank()) {
-                    AsyncImage(
-                        model              = profesional.foto,
-                        contentDescription = null,
-                        contentScale       = ContentScale.Crop,
-                        modifier           = Modifier
-                            .size(56.dp)
-                            .clip(CircleShape)
-                    )
-                } else {
+                Box(
+                    modifier         = Modifier
+                        .size(52.dp)
+                        .clickable { launcher.launch("image/*") },
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (prof.foto.isNullOrBlank()) {
+                        Surface(
+                            shape    = CircleShape,
+                            color    = MaterialTheme.colorScheme.primaryContainer,
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(
+                                    text       = prof.nombre.firstOrNull()?.uppercase() ?: "P",
+                                    style      = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color      = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                        }
+                    } else {
+                        AsyncImage(
+                            model              = prof.foto,
+                            contentDescription = prof.nombre,
+                            modifier           = Modifier
+                                .fillMaxSize()
+                                .clip(CircleShape),
+                            contentScale       = ContentScale.Crop
+                        )
+                    }
+
                     Surface(
-                        modifier = Modifier.size(56.dp),
                         shape    = CircleShape,
-                        color    = MaterialTheme.colorScheme.primaryContainer
+                        color    = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .size(18.dp)
+                            .align(Alignment.BottomEnd)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
-                            Text(
-                                text       = inicial,
-                                style      = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color      = MaterialTheme.colorScheme.onPrimaryContainer
+                            Icon(
+                                imageVector        = Icons.Default.CameraAlt,
+                                contentDescription = "Cambiar foto",
+                                modifier           = Modifier.size(10.dp),
+                                tint               = MaterialTheme.colorScheme.onPrimary
                             )
                         }
                     }
                 }
 
-                // Botón cámara
-                Surface(
-                    shape    = CircleShape,
-                    color    = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier
-                        .size(24.dp)
-                        .clickable { onFoto() }
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            Icons.Default.CameraAlt, "Cambiar foto",
-                            modifier = Modifier.size(13.dp),
-                            tint     = MaterialTheme.colorScheme.onPrimary
-                        )
-                    }
-                }
-            }
+                Spacer(Modifier.width(14.dp))
 
-            Spacer(Modifier.width(12.dp))
-
-            // ── Info ──────────────────────────────────────────────────────
-            Column(modifier = Modifier.weight(1f)) {
-                Row(
-                    verticalAlignment     = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    modifier              = Modifier.fillMaxWidth()
-                ) {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text       = "${profesional.nombre} ${profesional.apellido}",
+                        text       = "${prof.nombre} ${prof.apellido}".trim(),
                         style      = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color      = MaterialTheme.colorScheme.onSurface,
-                        modifier   = Modifier.weight(1f)
+                        color      = MaterialTheme.colorScheme.onSurface
                     )
-                    // Chip estado
-                    Surface(
-                        shape = RoundedCornerShape(6.dp),
-                        color = if (profesional.estado)
-                            MaterialTheme.colorScheme.primaryContainer
-                        else
-                            MaterialTheme.colorScheme.surfaceContainerHigh
-                    ) {
-                        Text(
-                            text       = if (profesional.estado) "Activo" else "Inactivo",
-                            style      = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color      = if (profesional.estado)
-                                MaterialTheme.colorScheme.onPrimaryContainer
-                            else
-                                MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier   = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                        )
-                    }
-                }
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Default.Badge, null,
-                        modifier = Modifier.size(12.dp),
-                        tint     = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(Modifier.width(4.dp))
                     Text(
-                        text  = profesional.nombreCargo,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        text       = prof.nombreCargo,
+                        style      = MaterialTheme.typography.bodySmall,
+                        color      = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.SemiBold
                     )
-                }
-
-                if (!profesional.telefono.isNullOrBlank()) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Default.Phone, null,
-                            modifier = Modifier.size(12.dp),
-                            tint     = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(Modifier.width(4.dp))
+                    if (!prof.telefono.isNullOrBlank()) {
                         Text(
-                            text  = profesional.telefono,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            text     = prof.telefono,
+                            style    = MaterialTheme.typography.labelSmall,
+                            color    = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 2.dp)
                         )
                     }
                 }
+
+                Switch(
+                    checked         = prof.estado,
+                    onCheckedChange = { onToggle() },
+                    modifier        = Modifier.scale(0.85f)
+                )
             }
 
-            // ── Menú Contextual M3 ─────────────────────────────────────────
-            Box {
-                IconButton(onClick = { menuExpanded = true }) {
-                    Icon(
-                        Icons.Default.MoreVert, "Más opciones",
-                        modifier = Modifier.size(20.dp),
-                        tint     = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                DropdownMenu(
-                    expanded         = menuExpanded,
-                    onDismissRequest = { menuExpanded = false }
+            Spacer(Modifier.height(12.dp))
+            HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+            Spacer(Modifier.height(10.dp))
+
+            Row(
+                modifier              = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment     = Alignment.CenterVertically
+            ) {
+                OutlinedButton(
+                    onClick  = onVerDetalle,
+                    shape    = RoundedCornerShape(10.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                 ) {
-                    DropdownMenuItem(
-                        text        = { Text("Asignaciones", fontWeight = FontWeight.SemiBold) },
-                        leadingIcon = { Icon(Icons.Default.Tune, null, tint = MaterialTheme.colorScheme.primary) },
-                        onClick     = { menuExpanded = false; onDetalle() }
+                    Icon(
+                        imageVector        = Icons.Default.Settings,
+                        contentDescription = null,
+                        modifier           = Modifier.size(16.dp)
                     )
-                    DropdownMenuItem(
-                        text        = { Text("Horario", fontWeight = FontWeight.SemiBold) },
-                        leadingIcon = { Icon(Icons.Default.CalendarMonth, null, tint = MaterialTheme.colorScheme.primary) },
-                        onClick     = { menuExpanded = false; onVerHorario() }
+                    Spacer(Modifier.width(6.dp))
+                    Text("Configurar", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                }
+
+                OutlinedButton(
+                    onClick  = onVerHorario,
+                    shape    = RoundedCornerShape(10.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                    Icon(
+                        imageVector        = Icons.Default.Schedule,
+                        contentDescription = null,
+                        modifier           = Modifier.size(16.dp)
                     )
-                    DropdownMenuItem(
-                        text        = { Text("Editar", fontWeight = FontWeight.SemiBold) },
-                        leadingIcon = { Icon(Icons.Default.Edit, null) },
-                        onClick     = { menuExpanded = false; onEditar() }
-                    )
-                    HorizontalDivider()
-                    DropdownMenuItem(
-                        text        = {
-                            Text(
-                                if (profesional.estado) "Desactivar" else "Activar",
-                                fontWeight = FontWeight.Bold,
-                                color = if (profesional.estado) MaterialTheme.colorScheme.error
-                                else MaterialTheme.colorScheme.primary
-                            )
-                        },
-                        leadingIcon = {
-                            Icon(
-                                if (profesional.estado) Icons.Default.PersonOff
-                                else Icons.Default.PersonAdd,
-                                null,
-                                tint = if (profesional.estado) MaterialTheme.colorScheme.error
-                                else MaterialTheme.colorScheme.primary
-                            )
-                        },
-                        onClick = { menuExpanded = false; onToggle() }
+                    Spacer(Modifier.width(6.dp))
+                    Text("Horario", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                }
+
+                IconButton(
+                    onClick  = onEditar,
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(
+                        imageVector        = Icons.Default.Edit,
+                        contentDescription = "Editar datos",
+                        tint               = MaterialTheme.colorScheme.primary,
+                        modifier           = Modifier.size(20.dp)
                     )
                 }
             }

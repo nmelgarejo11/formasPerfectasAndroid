@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.spa.appointments.core.utils.ApiErrorMapper
 import com.spa.appointments.domain.model.ConsultaPerfil
 import com.spa.appointments.domain.model.SubModuloAsignadoDto
 import com.spa.appointments.domain.repository.AdministracionRepository
@@ -25,6 +26,8 @@ class PerfilSubModuloViewModel @Inject constructor(
         private set
     var isLoading by mutableStateOf(false)
         private set
+    var isForbidden by mutableStateOf(false)
+        private set
     var mensaje by mutableStateOf<String?>(null)
         private set
 
@@ -32,14 +35,30 @@ class PerfilSubModuloViewModel @Inject constructor(
 
     fun cargarPerfiles() = viewModelScope.launch {
         isLoading = true
-        repo.obtenerPerfiles().onSuccess { perfiles = it }
+        repo.obtenerPerfiles()
+            .onSuccess {
+                perfiles = it
+                isForbidden = false
+            }
+            .onFailure {
+                if (ApiErrorMapper.esForbidden(it)) isForbidden = true
+                else mensaje = ApiErrorMapper.parsearMensajeError(it)
+            }
         isLoading = false
     }
 
     fun seleccionarPerfil(perfil: ConsultaPerfil) = viewModelScope.launch {
         perfilSeleccionado = perfil
         isLoading = true
-        repo.getSubModulos(perfil.id).onSuccess { subModulos = it }
+        repo.getSubModulos(perfil.id)
+            .onSuccess {
+                subModulos = it
+                isForbidden = false
+            }
+            .onFailure {
+                if (ApiErrorMapper.esForbidden(it)) isForbidden = true
+                else mensaje = ApiErrorMapper.parsearMensajeError(it)
+            }
         isLoading = false
     }
 
@@ -48,11 +67,12 @@ class PerfilSubModuloViewModel @Inject constructor(
         if (item.asignado) {
             repo.quitar(idPerfil, item.idSubModulo)
                 .onSuccess { mensaje = "\"${item.nombre}\" removido" }
+                .onFailure { mensaje = ApiErrorMapper.parsearMensajeError(it) }
         } else {
             repo.asignar(idPerfil, item.idSubModulo)
                 .onSuccess { mensaje = "\"${item.nombre}\" asignado" }
+                .onFailure { mensaje = ApiErrorMapper.parsearMensajeError(it) }
         }
-        // Refresca la lista
         repo.getSubModulos(idPerfil).onSuccess { subModulos = it }
     }
 

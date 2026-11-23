@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.spa.appointments.core.utils.ApiErrorMapper
 import com.spa.appointments.data.repository.ProfesionalesAdminRepository
 import com.spa.appointments.domain.model.*
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -15,10 +16,11 @@ import java.io.File
 import javax.inject.Inject
 
 sealed class ProfesionalesUiState {
-    object Idle : ProfesionalesUiState()
-    object Loading : ProfesionalesUiState()
-    object Success : ProfesionalesUiState()
+    object Idle      : ProfesionalesUiState()
+    object Loading   : ProfesionalesUiState()
+    object Success   : ProfesionalesUiState()
     data class Error(val mensaje: String) : ProfesionalesUiState()
+    object Forbidden : ProfesionalesUiState()
 }
 
 @HiltViewModel
@@ -44,7 +46,6 @@ class ProfesionalesAdminViewModel @Inject constructor(
     private val _tiposCuenta = MutableStateFlow<List<TipoCuentaItem>>(emptyList())
     val tiposCuenta: StateFlow<List<TipoCuentaItem>> = _tiposCuenta
 
-    // Asignaciones del profesional seleccionado
     private val _sedesAsignadas = MutableStateFlow<List<Int>>(emptyList())
     val sedesAsignadas: StateFlow<List<Int>> = _sedesAsignadas
 
@@ -82,7 +83,11 @@ class ProfesionalesAdminViewModel @Inject constructor(
 
                 _uiState.value = ProfesionalesUiState.Idle
             } catch (e: Exception) {
-                _uiState.value = ProfesionalesUiState.Error(e.message ?: "Error al cargar datos")
+                if (ApiErrorMapper.esForbidden(e)) {
+                    _uiState.value = ProfesionalesUiState.Forbidden
+                } else {
+                    _uiState.value = ProfesionalesUiState.Error(ApiErrorMapper.parsearMensajeError(e))
+                }
             }
         }
     }
@@ -107,7 +112,11 @@ class ProfesionalesAdminViewModel @Inject constructor(
 
                 _uiState.value = ProfesionalesUiState.Idle
             } catch (e: Exception) {
-                _uiState.value = ProfesionalesUiState.Error(e.message ?: "Error al cargar datos")
+                if (ApiErrorMapper.esForbidden(e)) {
+                    _uiState.value = ProfesionalesUiState.Forbidden
+                } else {
+                    _uiState.value = ProfesionalesUiState.Error(ApiErrorMapper.parsearMensajeError(e))
+                }
             }
         }
     }
@@ -123,7 +132,7 @@ class ProfesionalesAdminViewModel @Inject constructor(
                 cargarDatos()
                 _uiState.value = ProfesionalesUiState.Success
             } catch (e: Exception) {
-                _uiState.value = ProfesionalesUiState.Error(e.message ?: "Error al guardar")
+                _uiState.value = ProfesionalesUiState.Error(ApiErrorMapper.parsearMensajeError(e))
             }
         }
     }
@@ -136,7 +145,7 @@ class ProfesionalesAdminViewModel @Inject constructor(
                     if (it.id == id) it.copy(estado = nuevoEstado) else it
                 }
             } catch (e: Exception) {
-                _uiState.value = ProfesionalesUiState.Error(e.message ?: "Error al cambiar estado")
+                _uiState.value = ProfesionalesUiState.Error(ApiErrorMapper.parsearMensajeError(e))
             }
         }
     }
@@ -152,7 +161,7 @@ class ProfesionalesAdminViewModel @Inject constructor(
                 }
                 _uiState.value = ProfesionalesUiState.Idle
             } catch (e: Exception) {
-                _uiState.value = ProfesionalesUiState.Error(e.message ?: "Error al subir foto")
+                _uiState.value = ProfesionalesUiState.Error(ApiErrorMapper.parsearMensajeError(e))
             }
         }
     }
@@ -169,7 +178,7 @@ class ProfesionalesAdminViewModel @Inject constructor(
                 kotlinx.coroutines.delay(1000)
                 _uiState.value = ProfesionalesUiState.Idle
             } catch (e: Exception) {
-                _uiState.value = ProfesionalesUiState.Error(e.message ?: "Error al guardar sedes")
+                _uiState.value = ProfesionalesUiState.Error(ApiErrorMapper.parsearMensajeError(e))
             }
         }
     }
@@ -186,7 +195,7 @@ class ProfesionalesAdminViewModel @Inject constructor(
                 kotlinx.coroutines.delay(1000)
                 _uiState.value = ProfesionalesUiState.Idle
             } catch (e: Exception) {
-                _uiState.value = ProfesionalesUiState.Error(e.message ?: "Error al guardar servicios")
+                _uiState.value = ProfesionalesUiState.Error(ApiErrorMapper.parsearMensajeError(e))
             }
         }
     }

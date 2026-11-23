@@ -23,6 +23,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.spa.appointments.domain.model.BloqueoResponse
 import com.spa.appointments.domain.model.ProfesionalAdmin
 import com.spa.appointments.ui.admin.profesionales.ProfesionalesAdminViewModel
+import com.spa.appointments.ui.components.SinPermisoContent
 
 // ─── Screen Principal ─────────────────────────────────────────────────────────
 
@@ -132,6 +133,12 @@ fun HorariosScreen(
     ) { padding ->
 
         when {
+            uiState is HorariosUiState.Forbidden -> {
+                SinPermisoContent(
+                    modifier = Modifier.padding(padding),
+                    onVolver = onBack
+                )
+            }
             uiState is HorariosUiState.Loading && diasHorario.isEmpty() -> {
                 Box(
                     modifier         = Modifier.fillMaxSize().padding(padding),

@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.spa.appointments.core.utils.ApiErrorMapper
 import com.spa.appointments.data.repository.ClienteRepository
 import com.spa.appointments.domain.model.ActualizarClienteRequest
 import com.spa.appointments.domain.model.Cliente
@@ -19,7 +20,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 sealed class ClientesUiState {
-    object Idle : ClientesUiState()
+    object Idle    : ClientesUiState()
     object Loading : ClientesUiState()
     data class Results(
         val clientes: List<Cliente>,
@@ -27,6 +28,7 @@ sealed class ClientesUiState {
         val finDeResultados: Boolean = false
     ) : ClientesUiState()
     data class Error(val mensaje: String) : ClientesUiState()
+    object Forbidden                      : ClientesUiState()
 }
 
 sealed class ClienteDetalleState {
@@ -118,8 +120,10 @@ class ClientesViewModel @Inject constructor(
                 }
                 .onFailure { error ->
                     cargandoMas = false
-                    if (reset) {
-                        _listState.value = ClientesUiState.Error(error.message ?: "Error al cargar clientes")
+                    if (ApiErrorMapper.esForbidden(error)) {
+                        _listState.value = ClientesUiState.Forbidden
+                    } else if (reset) {
+                        _listState.value = ClientesUiState.Error(ApiErrorMapper.parsearMensajeError(error))
                     } else {
                         val listaOrdenada = clientesAcumulados.ordenarAlfabeticamente()
                         _listState.value = ClientesUiState.Results(
@@ -161,7 +165,6 @@ class ClientesViewModel @Inject constructor(
         viewModelScope.launch {
             cargandoParserVoz = true
 
-            // LOG INICIAL: Para confirmar que Android disparó la acción
             android.util.Log.d("IA_VOZ_DEBUG", "Enviando texto a la API: '$textoAcumulado'")
 
             runCatching {
@@ -169,11 +172,9 @@ class ClientesViewModel @Inject constructor(
             }
                 .onSuccess { dto ->
                     android.util.Log.d("IA_VOZ_DEBUG", "¡Éxito! Datos recibidos: $dto")
-                    // Devolvemos los campos extraídos por la IA mediante un callback
                     onResultado(dto.nombre, dto.apellido, dto.telefono, dto.email)
                 }
                 .onFailure { error ->
-                    // ─── AQUÍ REVELAMOS EL COMPORTAMIENTO OCULTO ───────────────────
                     android.util.Log.e("IA_VOZ_DEBUG", "ERROR CRÍTICO AL LLAMAR A C#", error)
                 }
                 .also {
@@ -187,7 +188,7 @@ class ClientesViewModel @Inject constructor(
             _detalleState.value = ClienteDetalleState.Loading
             runCatching { repository.obtenerCliente(id) }
                 .onSuccess { _detalleState.value = ClienteDetalleState.Success(it) }
-                .onFailure { _detalleState.value = ClienteDetalleState.Error(it.message ?: "Error") }
+                .onFailure { _detalleState.value = ClienteDetalleState.Error(ApiErrorMapper.parsearMensajeError(it)) }
         }
     }
 
@@ -196,7 +197,7 @@ class ClientesViewModel @Inject constructor(
             _actionState.value = ClienteActionState.Loading
             runCatching { repository.crearCliente(request) }
                 .onSuccess { _actionState.value = ClienteActionState.Success }
-                .onFailure { _actionState.value = ClienteActionState.Error(it.message ?: "Error") }
+                .onFailure { _actionState.value = ClienteActionState.Error(ApiErrorMapper.parsearMensajeError(it)) }
         }
     }
 
@@ -205,7 +206,7 @@ class ClientesViewModel @Inject constructor(
             _actionState.value = ClienteActionState.Loading
             runCatching { repository.actualizarCliente(id, request) }
                 .onSuccess { _actionState.value = ClienteActionState.Success }
-                .onFailure { _actionState.value = ClienteActionState.Error(it.message ?: "Error") }
+                .onFailure { _actionState.value = ClienteActionState.Error(ApiErrorMapper.parsearMensajeError(it)) }
         }
     }
 
@@ -214,7 +215,7 @@ class ClientesViewModel @Inject constructor(
             _actionState.value = ClienteActionState.Loading
             runCatching { repository.desactivarCliente(id) }
                 .onSuccess { _actionState.value = ClienteActionState.Success }
-                .onFailure { _actionState.value = ClienteActionState.Error(it.message ?: "Error") }
+                .onFailure { _actionState.value = ClienteActionState.Error(ApiErrorMapper.parsearMensajeError(it)) }
         }
     }
 

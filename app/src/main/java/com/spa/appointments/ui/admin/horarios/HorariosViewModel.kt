@@ -2,6 +2,7 @@ package com.spa.appointments.ui.admin.horarios
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.spa.appointments.core.utils.ApiErrorMapper
 import com.spa.appointments.data.repository.HorariosRepository
 import com.spa.appointments.domain.model.*
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -12,13 +13,13 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 sealed class HorariosUiState {
-    object Idle    : HorariosUiState()
-    object Loading : HorariosUiState()
-    object Success : HorariosUiState()
+    object Idle      : HorariosUiState()
+    object Loading   : HorariosUiState()
+    object Success   : HorariosUiState()
     data class Error(val mensaje: String) : HorariosUiState()
+    object Forbidden : HorariosUiState()
 }
 
-// Modelo de trabajo en UI — soporte para horario partido (hasta 2 franjas)
 data class DiaHorario(
     val diaSemana:    Int,
     val nombreDia:    String,
@@ -79,7 +80,11 @@ class HorariosViewModel @Inject constructor(
                 _diasHorario.value = diasDesdeApi(horario)
                 _uiState.value = HorariosUiState.Idle
             } catch (e: Exception) {
-                _uiState.value = HorariosUiState.Error(e.message ?: "Error al cargar")
+                if (ApiErrorMapper.esForbidden(e)) {
+                    _uiState.value = HorariosUiState.Forbidden
+                } else {
+                    _uiState.value = HorariosUiState.Error(ApiErrorMapper.parsearMensajeError(e))
+                }
             }
         }
     }
@@ -137,7 +142,7 @@ class HorariosViewModel @Inject constructor(
                 repo.guardarHorario(idProfesional, GuardarHorarioRequest(idSede, items))
                 _uiState.value = HorariosUiState.Success
             } catch (e: Exception) {
-                _uiState.value = HorariosUiState.Error(e.message ?: "Error al guardar horario")
+                _uiState.value = HorariosUiState.Error(ApiErrorMapper.parsearMensajeError(e))
             }
         }
     }
@@ -153,7 +158,7 @@ class HorariosViewModel @Inject constructor(
                 cargar(idProfesionalDestino)
                 _uiState.value = HorariosUiState.Success
             } catch (e: Exception) {
-                _uiState.value = HorariosUiState.Error(e.message ?: "Error al copiar horario")
+                _uiState.value = HorariosUiState.Error(ApiErrorMapper.parsearMensajeError(e))
             }
         }
     }
@@ -169,7 +174,7 @@ class HorariosViewModel @Inject constructor(
                 _bloqueos.value = bloqueos
                 _uiState.value = HorariosUiState.Success
             } catch (e: Exception) {
-                _uiState.value = HorariosUiState.Error(e.message ?: "Error al crear bloqueo")
+                _uiState.value = HorariosUiState.Error(ApiErrorMapper.parsearMensajeError(e))
             }
         }
     }
@@ -180,7 +185,7 @@ class HorariosViewModel @Inject constructor(
                 repo.eliminarBloqueo(idProfesional, id)
                 _bloqueos.value = _bloqueos.value.filter { it.id != id }
             } catch (e: Exception) {
-                _uiState.value = HorariosUiState.Error(e.message ?: "Error al eliminar bloqueo")
+                _uiState.value = HorariosUiState.Error(ApiErrorMapper.parsearMensajeError(e))
             }
         }
     }

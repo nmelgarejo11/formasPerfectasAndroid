@@ -22,6 +22,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.spa.appointments.domain.model.Cargo
+import com.spa.appointments.ui.components.SinPermisoContent
 
 data class CargoRequest(val nombre: String)
 
@@ -73,7 +74,7 @@ fun CargosScreen(
                                 style      = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
-                            if (state.cargos.isNotEmpty()) {
+                            if (state.cargos.isNotEmpty() && !state.isForbidden) {
                                 Surface(
                                     shape    = RoundedCornerShape(50),
                                     color    = MaterialTheme.colorScheme.primaryContainer,
@@ -125,144 +126,193 @@ fun CargosScreen(
             }
         },
         floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick        = { editando = null; showDialog = true },
-                icon           = { Icon(Icons.Default.Add, null) },
-                text           = { Text("Nuevo cargo", fontWeight = FontWeight.Bold) },
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor   = MaterialTheme.colorScheme.onPrimary,
-                shape          = RoundedCornerShape(16.dp)
-            )
+            if (!state.isForbidden) {
+                ExtendedFloatingActionButton(
+                    onClick        = { editando = null; showDialog = true },
+                    icon           = { Icon(Icons.Default.Add, null) },
+                    text           = { Text("Nuevo cargo", fontWeight = FontWeight.Bold) },
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor   = MaterialTheme.colorScheme.onPrimary,
+                    shape          = RoundedCornerShape(16.dp)
+                )
+            }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
 
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
-            Spacer(Modifier.height(8.dp))
-
-            // ── Buscador M3 ───────────────────────────────────────────────
-            OutlinedTextField(
-                value         = busqueda,
-                onValueChange = { busqueda = it },
-                label         = { Text("Buscar cargo") },
-                leadingIcon   = { Icon(Icons.Default.Search, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
-                trailingIcon  = {
-                    if (busqueda.isNotBlank()) {
-                        IconButton(onClick = { busqueda = "" }) {
-                            Icon(Icons.Default.Clear, null)
-                        }
-                    }
-                },
-                modifier   = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 6.dp),
-                shape      = RoundedCornerShape(14.dp),
-                colors     = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                ),
-                singleLine = true
+        if (state.isForbidden) {
+            SinPermisoContent(
+                modifier = Modifier.padding(padding),
+                onVolver = onVolver
             )
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+            ) {
+                Spacer(Modifier.height(8.dp))
 
-            Box(modifier = Modifier.fillMaxSize()) {
-                when {
-                    state.cargando && state.cargos.isEmpty() -> {
-                        Column(
-                            modifier            = Modifier.align(Alignment.Center),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            CircularProgressIndicator(
-                                color       = MaterialTheme.colorScheme.primary,
-                                trackColor  = MaterialTheme.colorScheme.primaryContainer,
-                                strokeWidth = 3.dp,
-                                modifier    = Modifier.size(36.dp)
-                            )
-                            Text(
-                                "Cargando cargos…",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                // ── Buscador M3 ───────────────────────────────────────────────
+                OutlinedTextField(
+                    value         = busqueda,
+                    onValueChange = { busqueda = it },
+                    label         = { Text("Buscar cargo") },
+                    leadingIcon   = { Icon(Icons.Default.Search, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                    trailingIcon  = {
+                        if (busqueda.isNotBlank()) {
+                            IconButton(onClick = { busqueda = "" }) {
+                                Icon(Icons.Default.Clear, null)
+                            }
                         }
-                    }
+                    },
+                    modifier   = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                    shape      = RoundedCornerShape(14.dp),
+                    colors     = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                    ),
+                    singleLine = true,
+                    enabled    = !state.cargando
+                )
 
-                    filtrados.isEmpty() -> {
-                        val primaryColor = MaterialTheme.colorScheme.primary
-
-                        OutlinedCard(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(24.dp)
-                                .align(Alignment.Center),
-                            shape  = RoundedCornerShape(24.dp),
-                            colors = CardDefaults.outlinedCardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                            )
-                        ) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    when {
+                        state.cargando && state.cargos.isEmpty() -> {
                             Column(
-                                modifier            = Modifier.padding(32.dp).fillMaxWidth(),
+                                modifier            = Modifier.align(Alignment.Center),
                                 horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(14.dp)
+                                verticalArrangement = Arrangement.spacedBy(16.dp)
                             ) {
-                                Box(
-                                    modifier         = Modifier.size(80.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Canvas(modifier = Modifier.fillMaxSize()) {
-                                        drawCircle(color = primaryColor.copy(alpha = 0.15f))
-                                    }
-                                    Surface(
-                                        shape = CircleShape,
-                                        color = MaterialTheme.colorScheme.surfaceContainerHigh
-                                    ) {
-                                        Icon(
-                                            imageVector        = if (busqueda.isBlank()) Icons.Default.WorkOutline
-                                            else Icons.Default.SearchOff,
-                                            contentDescription = null,
-                                            modifier           = Modifier.padding(18.dp).size(36.dp),
-                                            tint               = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                }
-                                Text(
-                                    text       = if (busqueda.isBlank()) "Sin cargos aún" else "Sin resultados",
-                                    style      = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color      = MaterialTheme.colorScheme.onSurface
+                                CircularProgressIndicator(
+                                    color       = MaterialTheme.colorScheme.primary,
+                                    trackColor  = MaterialTheme.colorScheme.primaryContainer,
+                                    strokeWidth = 3.dp,
+                                    modifier    = Modifier.size(36.dp)
                                 )
                                 Text(
-                                    text      = if (busqueda.isBlank())
-                                        "Crea el primer cargo de empleado con el botón inferior."
-                                    else
-                                        "Ningún cargo coincide con \"$busqueda\".",
-                                    style     = MaterialTheme.typography.bodyMedium,
-                                    color     = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    textAlign = TextAlign.Center
+                                    text  = "Cargando cargos…",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
-                    }
 
-                    else -> {
-                        LazyColumn(
-                            contentPadding = PaddingValues(
-                                start  = 16.dp,
-                                top    = 8.dp,
-                                end    = 16.dp,
-                                bottom = 88.dp
-                            ),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            items(filtrados, key = { it.id }) { cargo ->
-                                CargoAdminCard(
-                                    cargo    = cargo,
-                                    onEditar = { editando = cargo; showDialog = true },
-                                    onToggle = { viewModel.cambiarEstadoCargo(cargo.id, !cargo.estado) }
+                        filtrados.isEmpty() -> {
+                            val primaryColor = MaterialTheme.colorScheme.primary
+
+                            OutlinedCard(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(24.dp)
+                                    .align(Alignment.Center),
+                                shape  = RoundedCornerShape(24.dp),
+                                colors = CardDefaults.outlinedCardColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
                                 )
+                            ) {
+                                Column(
+                                    modifier            = Modifier.padding(32.dp).fillMaxWidth(),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                                ) {
+                                    Box(
+                                        modifier         = Modifier.size(80.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Canvas(modifier = Modifier.fillMaxSize()) {
+                                            drawCircle(color = primaryColor.copy(alpha = 0.15f))
+                                        }
+                                        Surface(
+                                            shape = CircleShape,
+                                            color = MaterialTheme.colorScheme.surfaceContainerHigh
+                                        ) {
+                                            Icon(
+                                                imageVector        = if (busqueda.isBlank()) Icons.Default.WorkOff
+                                                else Icons.Default.SearchOff,
+                                                contentDescription = null,
+                                                modifier           = Modifier.padding(18.dp).size(36.dp),
+                                                tint               = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                    Text(
+                                        text       = if (busqueda.isBlank()) "Sin cargos aún" else "Sin resultados",
+                                        style      = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color      = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text      = if (busqueda.isBlank())
+                                            "Crea el primer cargo con el botón inferior."
+                                        else
+                                            "Ningún cargo coincide con \"$busqueda\".",
+                                        style     = MaterialTheme.typography.bodyMedium,
+                                        color     = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        textAlign = TextAlign.Center
+                                    )
+                                }
+                            }
+                        }
+
+                        else -> {
+                            LazyColumn(
+                                contentPadding      = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 88.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                items(filtrados, key = { it.id }) { item ->
+                                    OutlinedCard(
+                                        shape    = RoundedCornerShape(18.dp),
+                                        colors   = CardDefaults.outlinedCardColors(
+                                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                                        ),
+                                        border   = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Row(
+                                            modifier          = Modifier
+                                                .fillMaxWidth()
+                                                .padding(horizontal = 16.dp, vertical = 14.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Surface(
+                                                shape    = RoundedCornerShape(12.dp),
+                                                color    = MaterialTheme.colorScheme.primaryContainer,
+                                                modifier = Modifier.size(46.dp)
+                                            ) {
+                                                Box(contentAlignment = Alignment.Center) {
+                                                    Icon(
+                                                        imageVector        = Icons.Default.Work,
+                                                        contentDescription = null,
+                                                        modifier           = Modifier.size(22.dp),
+                                                        tint               = MaterialTheme.colorScheme.onPrimaryContainer
+                                                    )
+                                                }
+                                            }
+
+                                            Spacer(Modifier.width(14.dp))
+
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(
+                                                    text       = item.nombre,
+                                                    style      = MaterialTheme.typography.titleMedium,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color      = MaterialTheme.colorScheme.onSurface
+                                                )
+                                            }
+
+                                            Spacer(Modifier.width(8.dp))
+
+                                            Switch(
+                                                checked         = item.estado,
+                                                onCheckedChange = { viewModel.cambiarEstadoCargo(item.id, it) },
+                                                modifier        = Modifier.scale(0.85f)
+                                            )
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -273,159 +323,26 @@ fun CargosScreen(
 
     if (showDialog) {
         CargoDialog(
-            cargo     = editando,
             guardando = state.cargando,
-            onGuardar = { req ->
-                if (editando != null) {
-                    // Actualizar cargo
-                } else {
-                    viewModel.crearCargo(req.nombre)
-                }
+            onGuardar = { nombre ->
+                viewModel.crearCargo(nombre)
                 showDialog = false
             },
-            onDismiss  = { showDialog = false; editando = null }
+            onDismiss = { showDialog = false }
         )
     }
 }
 
-// ─── Card de Cargo M3 ─────────────────────────────────────────────────────────
-
-@Composable
-private fun CargoAdminCard(
-    cargo:    Cargo,
-    onEditar: () -> Unit,
-    onToggle: () -> Unit
-) {
-    OutlinedCard(
-        modifier = Modifier.fillMaxWidth(),
-        shape    = RoundedCornerShape(18.dp),
-        colors   = CardDefaults.outlinedCardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-        ),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
-    ) {
-        Row(
-            modifier          = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Surface(
-                shape    = RoundedCornerShape(12.dp),
-                color    = if (cargo.estado)
-                    MaterialTheme.colorScheme.primaryContainer
-                else
-                    MaterialTheme.colorScheme.surfaceContainerHigh,
-                modifier = Modifier.size(46.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector        = Icons.Default.Badge,
-                        contentDescription = null,
-                        modifier           = Modifier.size(22.dp),
-                        tint               = if (cargo.estado)
-                            MaterialTheme.colorScheme.onPrimaryContainer
-                        else
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-
-            Spacer(Modifier.width(12.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text       = cargo.nombre,
-                    style      = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color      = MaterialTheme.colorScheme.onSurface
-                )
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier          = Modifier.padding(top = 2.dp)
-                ) {
-                    Icon(
-                        Icons.Default.Category, null,
-                        modifier = Modifier.size(12.dp),
-                        tint     = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    Text(
-                        text  = "Gestión de Personal",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-
-            Spacer(Modifier.width(8.dp))
-
-            Column(
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Row(
-                    verticalAlignment     = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Surface(
-                        shape    = CircleShape,
-                        color    = if (cargo.estado)
-                            MaterialTheme.colorScheme.primary
-                        else
-                            MaterialTheme.colorScheme.outline,
-                        modifier = Modifier.size(8.dp)
-                    ) {}
-                    Text(
-                        text  = if (cargo.estado) "Activo" else "Inactivo",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = if (cargo.estado)
-                            MaterialTheme.colorScheme.primary
-                        else
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                Row(
-                    verticalAlignment     = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    IconButton(
-                        onClick  = onEditar,
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Edit, "Editar",
-                            modifier = Modifier.size(18.dp),
-                            tint     = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-
-                    Switch(
-                        checked         = cargo.estado,
-                        onCheckedChange = { onToggle() },
-                        modifier        = Modifier.scale(0.8f)
-                    )
-                }
-            }
-        }
-    }
-}
-
-// ─── Diálogo Crear / Editar M3 ─────────────────────────────────────────────────
+// ─── Diálogo Crear Cargo M3 ───────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CargoDialog(
-    cargo:     Cargo?,
     guardando: Boolean,
-    onGuardar: (CargoRequest) -> Unit,
+    onGuardar: (nombre: String) -> Unit,
     onDismiss: () -> Unit
 ) {
-    var nombre by remember(cargo) { mutableStateOf(cargo?.nombre ?: "") }
-    val esValido = nombre.isNotBlank()
+    var nombre by remember { mutableStateOf("") }
 
     AlertDialog(
         onDismissRequest = { if (!guardando) onDismiss() },
@@ -437,62 +354,64 @@ private fun CargoDialog(
                 color = MaterialTheme.colorScheme.primaryContainer
             ) {
                 Icon(
-                    imageVector        = if (cargo != null) Icons.Default.Edit else Icons.Default.Add,
+                    imageVector        = Icons.Default.Add,
                     contentDescription = null,
                     tint               = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier           = Modifier
-                        .padding(12.dp)
-                        .size(24.dp)
+                    modifier           = Modifier.padding(12.dp).size(24.dp)
                 )
             }
         },
         title = {
             Text(
-                text       = if (cargo != null) "Editar cargo" else "Nuevo cargo",
-                fontWeight = FontWeight.Bold,
+                text       = "Nuevo cargo",
                 style      = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
                 textAlign  = TextAlign.Center,
                 modifier   = Modifier.fillMaxWidth()
             )
         },
         text = {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-                modifier            = Modifier.fillMaxWidth()
-            ) {
+            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 OutlinedTextField(
                     value         = nombre,
                     onValueChange = { nombre = it },
                     label         = { Text("Nombre del cargo *") },
-                    leadingIcon   = { Icon(Icons.Default.Badge, null, tint = MaterialTheme.colorScheme.primary) },
+                    leadingIcon   = {
+                        Icon(
+                            imageVector        = Icons.Default.Work,
+                            contentDescription = null,
+                            tint               = MaterialTheme.colorScheme.primary
+                        )
+                    },
                     modifier      = Modifier.fillMaxWidth(),
                     singleLine    = true,
                     shape         = RoundedCornerShape(14.dp),
                     colors        = OutlinedTextFieldDefaults.colors(
                         focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
                         unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                    ),
-                    enabled = !guardando
+                    )
                 )
             }
         },
         confirmButton = {
             Button(
-                onClick = {
-                    onGuardar(CargoRequest(nombre = nombre.trim()))
-                },
-                enabled  = esValido && !guardando,
+                onClick  = { onGuardar(nombre.trim()) },
+                enabled  = nombre.isNotBlank() && !guardando,
                 shape    = RoundedCornerShape(12.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 if (guardando) {
                     CircularProgressIndicator(
-                        modifier    = Modifier.size(16.dp),
+                        modifier    = Modifier.size(18.dp),
                         strokeWidth = 2.dp,
                         color       = MaterialTheme.colorScheme.onPrimary
                     )
                 } else {
-                    Icon(Icons.Default.Save, null, modifier = Modifier.size(18.dp))
+                    Icon(
+                        imageVector        = Icons.Default.Save,
+                        contentDescription = null,
+                        modifier           = Modifier.size(18.dp)
+                    )
                     Spacer(Modifier.width(6.dp))
                     Text("Guardar", fontWeight = FontWeight.Bold)
                 }

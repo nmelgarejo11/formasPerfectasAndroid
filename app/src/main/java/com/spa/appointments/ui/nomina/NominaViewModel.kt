@@ -2,6 +2,7 @@ package com.spa.appointments.ui.nomina
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.spa.appointments.core.utils.ApiErrorMapper
 import com.spa.appointments.di.IoDispatcher
 import com.spa.appointments.domain.model.*
 import com.spa.appointments.domain.repository.NominaRepository
@@ -27,6 +28,7 @@ data class NominaUiState(
     val liquidacionesEnAccion: Set<Int> = emptySet(),
     val detallePreliquidacion: PreliquidacionResponse? = null,
     val cargandoDetalle: Boolean = false,
+    val isForbidden: Boolean = false,
 
     // ── Novedades y Períodos ──────────────────────────
     val conceptos: List<ConceptoResponse> = emptyList(),
@@ -641,6 +643,10 @@ class NominaViewModel @Inject constructor(
 
     private fun manejarError(error: Throwable) {
         if (error is CancellationException) return
+        if (ApiErrorMapper.esForbidden(error) || (error as? NominaApiException)?.httpStatus == 403) {
+            _uiState.update { it.copy(isForbidden = true) }
+            return
+        }
         viewModelScope.launch(ioDispatcher) {
             if (error is NominaApiException) {
                 when {

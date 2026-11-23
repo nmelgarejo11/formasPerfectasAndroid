@@ -2,6 +2,7 @@ package com.spa.appointments.ui.admin.catalogos
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.spa.appointments.core.utils.ApiErrorMapper
 import com.spa.appointments.data.repository.CatalogosAdminRepository
 import com.spa.appointments.domain.model.*
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -11,10 +12,11 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 sealed class CatalogosUiState {
-    object Idle : CatalogosUiState()
-    object Loading : CatalogosUiState()
-    object Success : CatalogosUiState()
+    object Idle      : CatalogosUiState()
+    object Loading   : CatalogosUiState()
+    object Success   : CatalogosUiState()
     data class Error(val mensaje: String) : CatalogosUiState()
+    object Forbidden : CatalogosUiState()
 }
 
 @HiltViewModel
@@ -43,7 +45,11 @@ class CatalogosViewModel @Inject constructor(
                 _categorias.value = repo.getCategorias()
                 _uiState.value = CatalogosUiState.Idle
             } catch (e: Exception) {
-                _uiState.value = CatalogosUiState.Error(e.message ?: "Error al cargar categorías")
+                if (ApiErrorMapper.esForbidden(e)) {
+                    _uiState.value = CatalogosUiState.Forbidden
+                } else {
+                    _uiState.value = CatalogosUiState.Error(ApiErrorMapper.parsearMensajeError(e))
+                }
             }
         }
     }
@@ -57,7 +63,7 @@ class CatalogosViewModel @Inject constructor(
                 cargarCategorias()
                 _uiState.value = CatalogosUiState.Success
             } catch (e: Exception) {
-                _uiState.value = CatalogosUiState.Error(e.message ?: "Error al guardar")
+                _uiState.value = CatalogosUiState.Error(ApiErrorMapper.parsearMensajeError(e))
             }
         }
     }
@@ -70,7 +76,7 @@ class CatalogosViewModel @Inject constructor(
                     if (it.id == id) it.copy(estado = nuevoEstado) else it
                 }
             } catch (e: Exception) {
-                _uiState.value = CatalogosUiState.Error(e.message ?: "Error al cambiar estado")
+                _uiState.value = CatalogosUiState.Error(ApiErrorMapper.parsearMensajeError(e))
             }
         }
     }
@@ -84,7 +90,11 @@ class CatalogosViewModel @Inject constructor(
                 _servicios.value = repo.getServicios()
                 _uiState.value = CatalogosUiState.Idle
             } catch (e: Exception) {
-                _uiState.value = CatalogosUiState.Error(e.message ?: "Error al cargar servicios")
+                if (ApiErrorMapper.esForbidden(e)) {
+                    _uiState.value = CatalogosUiState.Forbidden
+                } else {
+                    _uiState.value = CatalogosUiState.Error(ApiErrorMapper.parsearMensajeError(e))
+                }
             }
         }
     }
@@ -98,7 +108,7 @@ class CatalogosViewModel @Inject constructor(
                 cargarServicios()
                 _uiState.value = CatalogosUiState.Success
             } catch (e: Exception) {
-                _uiState.value = CatalogosUiState.Error(e.message ?: "Error al guardar")
+                _uiState.value = CatalogosUiState.Error(ApiErrorMapper.parsearMensajeError(e))
             }
         }
     }
@@ -117,7 +127,7 @@ class CatalogosViewModel @Inject constructor(
                 _uiState.value = CatalogosUiState.Success
                 onSuccess()
             } catch (e: Exception) {
-                _uiState.value = CatalogosUiState.Error(e.message ?: "Error al copiar mensaje")
+                _uiState.value = CatalogosUiState.Error(ApiErrorMapper.parsearMensajeError(e))
             }
         }
     }
@@ -130,7 +140,7 @@ class CatalogosViewModel @Inject constructor(
                     if (it.id == id) it.copy(estado = nuevoEstado) else it
                 }
             } catch (e: Exception) {
-                _uiState.value = CatalogosUiState.Error(e.message ?: "Error al cambiar estado")
+                _uiState.value = CatalogosUiState.Error(ApiErrorMapper.parsearMensajeError(e))
             }
         }
     }
@@ -153,7 +163,7 @@ class CatalogosViewModel @Inject constructor(
                 repo.guardarPrecioRango(idServicio, cantidadPersonas, precio, esPorPersona)
                 cargarPreciosRangos(idServicio)
             } catch (e: Exception) {
-                _uiState.value = CatalogosUiState.Error(e.message ?: "Error al guardar rango de precio")
+                _uiState.value = CatalogosUiState.Error(ApiErrorMapper.parsearMensajeError(e))
             }
         }
     }
@@ -164,7 +174,7 @@ class CatalogosViewModel @Inject constructor(
                 repo.eliminarPrecioRango(idRango)
                 cargarPreciosRangos(idServicio)
             } catch (e: Exception) {
-                _uiState.value = CatalogosUiState.Error(e.message ?: "Error al eliminar rango")
+                _uiState.value = CatalogosUiState.Error(ApiErrorMapper.parsearMensajeError(e))
             }
         }
     }

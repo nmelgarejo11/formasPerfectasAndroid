@@ -23,6 +23,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.spa.appointments.ui.components.SinPermisoContent
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,7 +33,7 @@ fun UsuarioPerfilScreen(
 ) {
     val state = viewModel.uiState
 
-    var tab           by remember { mutableIntStateOf(0) }   // 0 = Usuario, 1 = Crear Perfil
+    var tab           by remember { mutableIntStateOf(0) }
     var usuario       by remember { mutableStateOf("") }
     var clave         by remember { mutableStateOf("") }
     var verClave      by remember { mutableStateOf(false) }
@@ -78,7 +79,7 @@ fun UsuarioPerfilScreen(
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text  = "Accesos y Permisos",
+                                text  = "Crear usuarios y definir perfiles de acceso",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -94,7 +95,6 @@ fun UsuarioPerfilScreen(
                     )
                 )
 
-                // 🎨 Canvas: Acento decorativo debajo de la TopAppBar
                 val primaryColor   = MaterialTheme.colorScheme.primary
                 val secondaryColor = MaterialTheme.colorScheme.secondary
                 Canvas(
@@ -121,256 +121,224 @@ fun UsuarioPerfilScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .padding(padding)
-                .fillMaxSize()
-        ) {
-            // Pestañas integradas M3
-            PrimaryTabRow(selectedTabIndex = tab) {
-                Tab(
-                    selected = tab == 0,
-                    onClick  = { tab = 0 },
-                    text     = { Text("Nuevo Usuario", fontWeight = FontWeight.Bold) }
-                )
-                Tab(
-                    selected = tab == 1,
-                    onClick  = { tab = 1 },
-                    text     = { Text("Nuevo Perfil", fontWeight = FontWeight.Bold) }
-                )
-            }
 
-            when (tab) {
-                // ── TAB USUARIO ───────────────────────────────────────────────────
-                0 -> Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp)
-                        .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+        if (state.isForbidden) {
+            SinPermisoContent(
+                modifier = Modifier.padding(padding),
+                onVolver = onVolver
+            )
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+            ) {
+                TabRow(
+                    selectedTabIndex = tab,
+                    containerColor   = MaterialTheme.colorScheme.background,
+                    contentColor     = MaterialTheme.colorScheme.primary
                 ) {
-                    OutlinedTextField(
-                        value        = usuario,
-                        onValueChange = { usuario = it },
-                        label        = { Text("Nombre de usuario") },
-                        leadingIcon  = { Icon(Icons.Default.Person, null, tint = MaterialTheme.colorScheme.primary) },
-                        modifier     = Modifier.fillMaxWidth(),
-                        shape        = RoundedCornerShape(14.dp),
-                        colors       = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                        ),
-                        singleLine   = true,
-                        enabled      = !state.cargando
+                    Tab(
+                        selected = tab == 0,
+                        onClick  = { tab = 0 },
+                        text     = { Text("Crear Usuario", fontWeight = FontWeight.Bold) },
+                        icon     = { Icon(Icons.Default.PersonAdd, null) }
                     )
-
-                    OutlinedTextField(
-                        value        = clave,
-                        onValueChange = { clave = it },
-                        label        = { Text("Contraseña") },
-                        leadingIcon  = { Icon(Icons.Default.Lock, null, tint = MaterialTheme.colorScheme.primary) },
-                        trailingIcon = {
-                            IconButton(onClick = { verClave = !verClave }) {
-                                Icon(
-                                    imageVector = if (verClave) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                    contentDescription = null
-                                )
-                            }
-                        },
-                        visualTransformation = if (verClave) VisualTransformation.None else PasswordVisualTransformation(),
-                        keyboardOptions      = KeyboardOptions(keyboardType = KeyboardType.Password),
-                        modifier             = Modifier.fillMaxWidth(),
-                        shape                = RoundedCornerShape(14.dp),
-                        colors               = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                        ),
-                        singleLine           = true,
-                        enabled              = !state.cargando
+                    Tab(
+                        selected = tab == 1,
+                        onClick  = { tab = 1 },
+                        text     = { Text("Crear Perfil", fontWeight = FontWeight.Bold) },
+                        icon     = { Icon(Icons.Default.Shield, null) }
                     )
-
-                    Text(
-                        text       = "Asignar Perfil de Acceso",
-                        style      = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color      = MaterialTheme.colorScheme.onBackground,
-                        modifier   = Modifier.padding(top = 4.dp)
-                    )
-
-                    // Lista de perfiles encapsulada en Card M3
-                    OutlinedCard(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape    = RoundedCornerShape(18.dp),
-                        colors   = CardDefaults.outlinedCardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                        ),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
-                    ) {
-                        Column {
-                            state.perfiles.forEachIndexed { index, perfil ->
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable(enabled = !state.cargando) { perfilSel = perfil.id }
-                                        .padding(horizontal = 16.dp, vertical = 14.dp)
-                                ) {
-                                    RadioButton(
-                                        selected = perfilSel == perfil.id,
-                                        onClick  = { perfilSel = perfil.id },
-                                        enabled  = !state.cargando
-                                    )
-                                    Spacer(modifier = Modifier.width(10.dp))
-                                    Text(
-                                        text       = perfil.nombre,
-                                        style      = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        color      = MaterialTheme.colorScheme.onSurface
-                                    )
-                                }
-                                if (index < state.perfiles.lastIndex) {
-                                    HorizontalDivider(
-                                        modifier = Modifier.padding(horizontal = 16.dp),
-                                        color    = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Button(
-                        onClick  = { viewModel.crearUsuario(usuario.trim(), clave, perfilSel) },
-                        enabled  = usuario.isNotBlank() && clave.isNotBlank() && perfilSel != -1 && !state.cargando,
-                        modifier = Modifier.fillMaxWidth().height(50.dp),
-                        shape    = RoundedCornerShape(14.dp)
-                    ) {
-                        if (state.cargando) {
-                            CircularProgressIndicator(
-                                modifier    = Modifier.size(20.dp),
-                                strokeWidth = 2.dp,
-                                color       = MaterialTheme.colorScheme.onPrimary
-                            )
-                        } else {
-                            Icon(Icons.Default.PersonAdd, null)
-                            Spacer(Modifier.width(8.dp))
-                            Text("Registrar Usuario", fontWeight = FontWeight.Bold)
-                        }
-                    }
                 }
 
-                // ── TAB PERFIL ────────────────────────────────────────────────────
-                1 -> Column(
+                Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(16.dp)
-                        .verticalScroll(rememberScrollState()),
+                        .verticalScroll(rememberScrollState())
+                        .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    OutlinedTextField(
-                        value        = nombrePerfil,
-                        onValueChange = { nombrePerfil = it },
-                        label        = { Text("Nombre del rol o perfil") },
-                        leadingIcon  = { Icon(Icons.Default.Badge, null, tint = MaterialTheme.colorScheme.primary) },
-                        modifier     = Modifier.fillMaxWidth(),
-                        shape        = RoundedCornerShape(14.dp),
-                        colors       = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                        ),
-                        singleLine   = true,
-                        enabled      = !state.cargando
-                    )
+                    if (tab == 0) {
+                        OutlinedTextField(
+                            value         = usuario,
+                            onValueChange = { usuario = it },
+                            label         = { Text("Nombre de usuario *") },
+                            leadingIcon   = { Icon(Icons.Default.Person, null, tint = MaterialTheme.colorScheme.primary) },
+                            singleLine    = true,
+                            modifier      = Modifier.fillMaxWidth(),
+                            shape         = RoundedCornerShape(14.dp),
+                            colors        = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                            )
+                        )
 
-                    OutlinedTextField(
-                        value        = descPerfil,
-                        onValueChange = { descPerfil = it },
-                        label        = { Text("Descripción (opcional)") },
-                        leadingIcon  = { Icon(Icons.Default.Notes, null, tint = MaterialTheme.colorScheme.primary) },
-                        modifier     = Modifier.fillMaxWidth(),
-                        shape        = RoundedCornerShape(14.dp),
-                        colors       = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                        ),
-                        maxLines     = 2,
-                        enabled      = !state.cargando
-                    )
+                        OutlinedTextField(
+                            value                = clave,
+                            onValueChange        = { clave = it },
+                            label                = { Text("Contraseña *") },
+                            leadingIcon          = { Icon(Icons.Default.Lock, null, tint = MaterialTheme.colorScheme.primary) },
+                            trailingIcon         = {
+                                IconButton(onClick = { verClave = !verClave }) {
+                                    Icon(
+                                        imageVector        = if (verClave) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                        contentDescription = null
+                                    )
+                                }
+                            },
+                            visualTransformation = if (verClave) VisualTransformation.None else PasswordVisualTransformation(),
+                            keyboardOptions      = KeyboardOptions(keyboardType = KeyboardType.Password),
+                            singleLine           = true,
+                            modifier             = Modifier.fillMaxWidth(),
+                            shape                = RoundedCornerShape(14.dp),
+                            colors               = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                            )
+                        )
 
-                    Text(
-                        text       = "Permisos de Módulos (Accesos)",
-                        style      = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color      = MaterialTheme.colorScheme.onBackground,
-                        modifier   = Modifier.padding(top = 4.dp)
-                    )
+                        Text(
+                            text       = "Perfil de acceso *",
+                            style      = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color      = MaterialTheme.colorScheme.onSurface
+                        )
 
-                    // Lista de submódulos encapsulada en Card M3
-                    OutlinedCard(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape    = RoundedCornerShape(18.dp),
-                        colors   = CardDefaults.outlinedCardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                        ),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
-                    ) {
-                        Column {
-                            state.subModulos.forEachIndexed { index, sub ->
+                        if (state.perfiles.isEmpty()) {
+                            Text(
+                                text  = "No hay perfiles. Crea uno en la otra pestaña.",
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        } else {
+                            state.perfiles.forEach { perfil ->
+                                OutlinedCard(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape    = RoundedCornerShape(14.dp),
+                                    colors   = CardDefaults.outlinedCardColors(
+                                        containerColor = if (perfilSel == perfil.id)
+                                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                                        else
+                                            MaterialTheme.colorScheme.surfaceContainerLow
+                                    ),
+                                    border  = BorderStroke(
+                                        if (perfilSel == perfil.id) 2.dp else 1.dp,
+                                        if (perfilSel == perfil.id) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
+                                    ),
+                                    onClick = { perfilSel = perfil.id }
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier          = Modifier.padding(14.dp)
+                                    ) {
+                                        RadioButton(
+                                            selected = perfilSel == perfil.id,
+                                            onClick  = { perfilSel = perfil.id }
+                                        )
+                                        Spacer(Modifier.width(10.dp))
+                                        Column {
+                                            Text(perfil.nombre, fontWeight = FontWeight.Bold)
+                                            perfil.descripcion?.let {
+                                                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        Button(
+                            onClick  = { viewModel.crearUsuario(usuario.trim(), clave.trim(), perfilSel) },
+                            enabled  = usuario.isNotBlank() && clave.isNotBlank() && perfilSel != -1 && !state.cargando,
+                            modifier = Modifier.fillMaxWidth().height(52.dp),
+                            shape    = RoundedCornerShape(14.dp)
+                        ) {
+                            if (state.cargando) {
+                                CircularProgressIndicator(modifier = Modifier.size(22.dp), color = MaterialTheme.colorScheme.onPrimary)
+                            } else {
+                                Icon(Icons.Default.PersonAdd, null)
+                                Spacer(Modifier.width(8.dp))
+                                Text("Guardar Usuario", fontWeight = FontWeight.Bold)
+                            }
+                        }
+
+                    } else {
+                        OutlinedTextField(
+                            value         = nombrePerfil,
+                            onValueChange = { nombrePerfil = it },
+                            label         = { Text("Nombre del perfil *") },
+                            leadingIcon   = { Icon(Icons.Default.Shield, null, tint = MaterialTheme.colorScheme.primary) },
+                            singleLine    = true,
+                            modifier      = Modifier.fillMaxWidth(),
+                            shape         = RoundedCornerShape(14.dp),
+                            colors        = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                            )
+                        )
+
+                        OutlinedTextField(
+                            value         = descPerfil,
+                            onValueChange = { descPerfil = it },
+                            label         = { Text("Descripción (opcional)") },
+                            leadingIcon   = { Icon(Icons.Default.Description, null, tint = MaterialTheme.colorScheme.primary) },
+                            singleLine    = true,
+                            modifier      = Modifier.fillMaxWidth(),
+                            shape         = RoundedCornerShape(14.dp),
+                            colors        = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                            )
+                        )
+
+                        Text(
+                            text       = "Submódulos permitidos *",
+                            style      = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color      = MaterialTheme.colorScheme.onSurface
+                        )
+
+                        state.subModulos.forEach { sub ->
+                            OutlinedCard(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape    = RoundedCornerShape(14.dp),
+                                colors   = CardDefaults.outlinedCardColors(
+                                    containerColor = if (sub.seleccionado)
+                                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                                    else
+                                        MaterialTheme.colorScheme.surfaceContainerLow
+                                ),
+                                border  = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                                onClick = { viewModel.toggleSubModulo(sub.id) }
+                            ) {
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable(enabled = !state.cargando) { viewModel.toggleSubModulo(sub.id) }
-                                        .padding(horizontal = 16.dp, vertical = 14.dp)
+                                    modifier          = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
                                 ) {
                                     Checkbox(
                                         checked         = sub.seleccionado,
-                                        onCheckedChange = { viewModel.toggleSubModulo(sub.id) },
-                                        enabled         = !state.cargando
+                                        onCheckedChange = { viewModel.toggleSubModulo(sub.id) }
                                     )
-                                    Spacer(modifier = Modifier.width(10.dp))
-                                    Text(
-                                        text       = sub.nombre,
-                                        style      = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        color      = MaterialTheme.colorScheme.onSurface
-                                    )
-                                }
-                                if (index < state.subModulos.lastIndex) {
-                                    HorizontalDivider(
-                                        modifier = Modifier.padding(horizontal = 16.dp),
-                                        color    = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
-                                    )
+                                    Spacer(Modifier.width(10.dp))
+                                    Text(sub.nombre, fontWeight = FontWeight.SemiBold)
                                 }
                             }
                         }
-                    }
 
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Button(
-                        onClick = {
-                            viewModel.crearPerfil(
-                                nombrePerfil.trim(),
-                                descPerfil.ifBlank { null }
-                            )
-                        },
-                        enabled  = nombrePerfil.isNotBlank() && !state.cargando,
-                        modifier = Modifier.fillMaxWidth().height(50.dp),
-                        shape    = RoundedCornerShape(14.dp),
-                        colors   = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
-                    ) {
-                        if (state.cargando) {
-                            CircularProgressIndicator(
-                                modifier    = Modifier.size(20.dp),
-                                strokeWidth = 2.dp,
-                                color       = MaterialTheme.colorScheme.onSecondary
-                            )
-                        } else {
-                            Icon(Icons.Default.Save, null)
-                            Spacer(Modifier.width(8.dp))
-                            Text("Guardar Perfil", fontWeight = FontWeight.Bold)
+                        Button(
+                            onClick  = { viewModel.crearPerfil(nombrePerfil.trim(), descPerfil.ifBlank { null }) },
+                            enabled  = nombrePerfil.isNotBlank() && state.subModulos.any { it.seleccionado } && !state.cargando,
+                            modifier = Modifier.fillMaxWidth().height(52.dp),
+                            shape    = RoundedCornerShape(14.dp)
+                        ) {
+                            if (state.cargando) {
+                                CircularProgressIndicator(modifier = Modifier.size(22.dp), color = MaterialTheme.colorScheme.onPrimary)
+                            } else {
+                                Icon(Icons.Default.Save, null)
+                                Spacer(Modifier.width(8.dp))
+                                Text("Guardar Perfil", fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
                 }

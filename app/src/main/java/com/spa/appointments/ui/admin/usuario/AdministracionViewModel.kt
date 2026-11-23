@@ -6,6 +6,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.spa.appointments.core.utils.ApiErrorMapper
 import com.spa.appointments.domain.model.Cargo
 import com.spa.appointments.domain.model.ConsultaPerfil
 import com.spa.appointments.domain.model.CrearCargoRequest
@@ -33,32 +34,32 @@ class AdministracionViewModel @Inject constructor(
         viewModelScope.launch {
 
             repo.obtenerSubModulos()
-                .onSuccess {
-
-                    uiState = uiState.copy(subModulos = it)
+                .onSuccess { uiState = uiState.copy(subModulos = it) }
+                .onFailure {
+                    if (ApiErrorMapper.esForbidden(it)) uiState = uiState.copy(isForbidden = true)
+                    else Log.e("AdminVM", "SubModulos ERROR: ${it.message}")
                 }
-                .onFailure { Log.e("AdminVM", "SubModulos ERROR: ${it.message}") }
 
             repo.obtenerPerfiles()
-                .onSuccess {
-
-                    uiState = uiState.copy(perfiles = it)
+                .onSuccess { uiState = uiState.copy(perfiles = it) }
+                .onFailure {
+                    if (ApiErrorMapper.esForbidden(it)) uiState = uiState.copy(isForbidden = true)
+                    else Log.e("AdminVM", "Perfiles ERROR: ${it.message}")
                 }
-                .onFailure { Log.e("AdminVM", "Perfiles ERROR: ${it.message}") }
 
             repo.obtenerUsuarios()
-                .onSuccess {
-
-                    uiState = uiState.copy(usuarios = it)
+                .onSuccess { uiState = uiState.copy(usuarios = it) }
+                .onFailure {
+                    if (ApiErrorMapper.esForbidden(it)) uiState = uiState.copy(isForbidden = true)
+                    else Log.e("AdminVM", "Usuarios ERROR: ${it.message}")
                 }
-                .onFailure { Log.e("AdminVM", "Usuarios ERROR: ${it.message}") }
 
             repo.obtenerCargos()
-                .onSuccess {
-
-                    uiState = uiState.copy(cargos = it)
+                .onSuccess { uiState = uiState.copy(cargos = it) }
+                .onFailure {
+                    if (ApiErrorMapper.esForbidden(it)) uiState = uiState.copy(isForbidden = true)
+                    else Log.e("AdminVM", "Cargos ERROR: ${it.message}")
                 }
-                .onFailure { Log.e("AdminVM", "Cargos ERROR: ${it.message}") }
         }
     }
 
@@ -98,7 +99,7 @@ class AdministracionViewModel @Inject constructor(
                             )
                         }
                 }
-                .onFailure { uiState = uiState.copy(cargando = false, error = it.message) }
+                .onFailure { uiState = uiState.copy(cargando = false, error = ApiErrorMapper.parsearMensajeError(it)) }
         }
     }
 
@@ -108,7 +109,7 @@ class AdministracionViewModel @Inject constructor(
             uiState = uiState.copy(cargando = true)
             repo.crearUsuario(CrearUsuarioRequest(usuario, clave, idPerfil = idPerfil))
                 .onSuccess { uiState = uiState.copy(cargando = false, exitoUsuario = true) }
-                .onFailure { uiState = uiState.copy(cargando = false, error = it.message) }
+                .onFailure { uiState = uiState.copy(cargando = false, error = ApiErrorMapper.parsearMensajeError(it)) }
         }
     }
 
@@ -117,7 +118,6 @@ class AdministracionViewModel @Inject constructor(
             uiState = uiState.copy(cargando = true)
             repo.cambiarPerfilUsuario(idUsuario, idPerfil)
                 .onSuccess {
-                    // Refrescar lista local sin llamar de nuevo a la API
                     uiState = uiState.copy(
                         cargando = false,
                         usuarios = uiState.usuarios.map { u ->
@@ -130,7 +130,7 @@ class AdministracionViewModel @Inject constructor(
                         }
                     )
                 }
-                .onFailure { uiState = uiState.copy(cargando = false, error = it.message) }
+                .onFailure { uiState = uiState.copy(cargando = false, error = ApiErrorMapper.parsearMensajeError(it)) }
         }
     }
 
@@ -144,7 +144,7 @@ class AdministracionViewModel @Inject constructor(
                         uiState = uiState.copy(cargando = false, cargos = lista)
                     }
                 }
-                .onFailure { uiState = uiState.copy(cargando = false, error = it.message) }
+                .onFailure { uiState = uiState.copy(cargando = false, error = ApiErrorMapper.parsearMensajeError(it)) }
         }
     }
 
@@ -156,6 +156,8 @@ class AdministracionViewModel @Inject constructor(
                         if (it.id == id) it.copy(estado = estado) else it
                     }
                 )
+            }.onFailure {
+                uiState = uiState.copy(error = ApiErrorMapper.parsearMensajeError(it))
             }
         }
     }
@@ -170,6 +172,7 @@ data class AdministracionUiState(
     val usuarios     : List<Usuario>   = emptyList(),
     val cargos       : List<Cargo>     = emptyList(),
     val cargando     : Boolean         = false,
+    val isForbidden  : Boolean         = false,
     val error        : String?         = null,
     val exitoUsuario : Boolean         = false,
     val exitoPerfil  : Boolean         = false

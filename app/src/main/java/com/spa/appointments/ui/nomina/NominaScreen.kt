@@ -49,6 +49,7 @@ import com.spa.appointments.domain.model.NovedadNominaResponse
 import com.spa.appointments.domain.model.PeriodoNominaItem
 import com.spa.appointments.domain.model.PreliquidacionDetalleResponse
 import com.spa.appointments.domain.model.PreliquidacionResponse
+import com.spa.appointments.ui.components.SinPermisoContent
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -181,12 +182,18 @@ fun NominaScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = 16.dp)
-        ) {
+        if (uiState.isForbidden) {
+            SinPermisoContent(
+                modifier = Modifier.padding(padding),
+                onVolver = onBack
+            )
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(horizontal = 16.dp)
+            ) {
             Spacer(Modifier.height(12.dp))
 
             var anioFiltroSeleccionado by rememberSaveable { mutableStateOf<Int?>(null) }
@@ -502,6 +509,7 @@ fun NominaScreen(
                 }
             }
         }
+    }
     }
 
     // BottomSheet de Detalle de Preliquidación

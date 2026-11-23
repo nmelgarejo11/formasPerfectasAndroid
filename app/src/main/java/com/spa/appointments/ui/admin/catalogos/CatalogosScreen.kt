@@ -2,11 +2,9 @@
 package com.spa.appointments.ui.admin.catalogos
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -24,8 +22,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -34,11 +30,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.spa.appointments.R
 import com.spa.appointments.domain.model.CategoriaAdmin
 import com.spa.appointments.domain.model.ServicioAdmin
 import com.spa.appointments.domain.model.ServicioRequest
-import com.spa.appointments.ui.tema.MensajeWhatsAppField
+import com.spa.appointments.ui.components.SinPermisoContent
 
 // ─── Screen Principal ─────────────────────────────────────────────────────────
 
@@ -52,19 +47,18 @@ fun ServiciosAdminScreen(
     val categorias by viewModel.categorias.collectAsState()
     val uiState    by viewModel.uiState.collectAsState()
 
-    var showDialog by remember { mutableStateOf(false) }
-    var editando   by remember { mutableStateOf<ServicioAdmin?>(null) }
-    var busqueda   by remember { mutableStateOf("") }
+    var showDialog   by remember { mutableStateOf(false) }
+    var editando     by remember { mutableStateOf<ServicioAdmin?>(null) }
+    var busqueda     by remember { mutableStateOf("") }
+    var idCatFiltro  by remember { mutableStateOf<Int?>(null) }
 
-    var showPreciosRangosDialog by remember { mutableStateOf(false) }
-    var servicioRangoSeleccionado by remember { mutableStateOf<ServicioAdmin?>(null) }
+    var showDialogRangos    by remember { mutableStateOf(false) }
+    var servicioParaRangos  by remember { mutableStateOf<ServicioAdmin?>(null) }
 
-    val filtrados = remember(servicios, busqueda) {
-        if (busqueda.isBlank()) servicios
-        else servicios.filter {
-            it.nombre.contains(busqueda, ignoreCase = true) ||
-                    it.nombreCategoria.contains(busqueda, ignoreCase = true) ||
-                    (busqueda.contains("grupal", ignoreCase = true) && it.esGrupal)
+    val filtrados = remember(servicios, busqueda, idCatFiltro) {
+        servicios.filter { s ->
+            (idCatFiltro == null || s.idCategoria == idCatFiltro) &&
+                    (busqueda.isBlank() || s.nombre.contains(busqueda, ignoreCase = true))
         }
     }
 
@@ -76,14 +70,14 @@ fun ServiciosAdminScreen(
     }
 
     LaunchedEffect(uiState) {
-        when (val s = uiState) {
+        when (uiState) {
+            is CatalogosUiState.Error -> {
+                snackbarHostState.showSnackbar((uiState as CatalogosUiState.Error).mensaje)
+                viewModel.resetState()
+            }
             is CatalogosUiState.Success -> {
                 showDialog = false
                 editando   = null
-                viewModel.resetState()
-            }
-            is CatalogosUiState.Error -> {
-                snackbarHostState.showSnackbar(s.mensaje)
                 viewModel.resetState()
             }
             else -> Unit
@@ -102,7 +96,7 @@ fun ServiciosAdminScreen(
                                 style      = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
-                            if (servicios.isNotEmpty()) {
+                            if (servicios.isNotEmpty() && uiState !is CatalogosUiState.Forbidden) {
                                 Surface(
                                     shape    = RoundedCornerShape(50),
                                     color    = MaterialTheme.colorScheme.primaryContainer,
@@ -154,149 +148,200 @@ fun ServiciosAdminScreen(
             }
         },
         floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick        = { editando = null; showDialog = true },
-                icon           = { Icon(Icons.Default.Add, null) },
-                text           = { Text("Nuevo servicio", fontWeight = FontWeight.Bold) },
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor   = MaterialTheme.colorScheme.onPrimary,
-                shape          = RoundedCornerShape(16.dp)
-            )
+            if (uiState !is CatalogosUiState.Forbidden) {
+                ExtendedFloatingActionButton(
+                    onClick        = { editando = null; showDialog = true },
+                    icon           = { Icon(Icons.Default.Add, null) },
+                    text           = { Text("Nuevo servicio", fontWeight = FontWeight.Bold) },
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor   = MaterialTheme.colorScheme.onPrimary,
+                    shape          = RoundedCornerShape(16.dp)
+                )
+            }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
 
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
-            Spacer(Modifier.height(8.dp))
-
-            // ── Buscador Compacto Sin Etiqueta Flotante M3 ─────────────────
-            OutlinedTextField(
-                value         = busqueda,
-                onValueChange = { busqueda = it },
-                placeholder   = { Text("Buscar servicio o categoría…", style = MaterialTheme.typography.bodyMedium) },
-                leadingIcon   = { Icon(Icons.Default.Search, null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant) },
-                trailingIcon  = {
-                    if (busqueda.isNotBlank()) {
-                        IconButton(onClick = { busqueda = "" }) {
-                            Icon(Icons.Default.Clear, null, modifier = Modifier.size(18.dp))
-                        }
-                    }
-                },
-                modifier   = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 4.dp),
-                shape      = RoundedCornerShape(14.dp),
-                colors     = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                ),
-                singleLine = true
+        if (uiState is CatalogosUiState.Forbidden) {
+            SinPermisoContent(
+                modifier = Modifier.padding(padding),
+                onVolver = onBack
             )
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+            ) {
+                Spacer(Modifier.height(8.dp))
 
-            Box(modifier = Modifier.fillMaxSize()) {
-                when {
-                    uiState is CatalogosUiState.Loading && servicios.isEmpty() -> {
-                        Column(
-                            modifier            = Modifier.align(Alignment.Center),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            CircularProgressIndicator(
-                                color       = MaterialTheme.colorScheme.primary,
-                                trackColor  = MaterialTheme.colorScheme.primaryContainer,
-                                strokeWidth = 3.dp,
-                                modifier    = Modifier.size(36.dp)
-                            )
-                            Text(
-                                "Cargando servicios…",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                // ── Buscador M3 ───────────────────────────────────────────────
+                OutlinedTextField(
+                    value         = busqueda,
+                    onValueChange = { busqueda = it },
+                    label         = { Text("Buscar servicio") },
+                    leadingIcon   = { Icon(Icons.Default.Search, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                    trailingIcon  = {
+                        if (busqueda.isNotBlank()) {
+                            IconButton(onClick = { busqueda = "" }) {
+                                Icon(Icons.Default.Clear, null)
+                            }
                         }
-                    }
+                    },
+                    modifier   = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                    shape      = RoundedCornerShape(14.dp),
+                    colors     = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                    ),
+                    singleLine = true,
+                    enabled    = uiState !is CatalogosUiState.Loading
+                )
 
-                    filtrados.isEmpty() -> {
-                        val primaryColor = MaterialTheme.colorScheme.primary
+                // ── Filtro por Categoría M3 ─────────────────────────────────────
+                if (categorias.isNotEmpty()) {
+                    var expCategory by remember { mutableStateOf(false) }
 
+                    Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
                         OutlinedCard(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(24.dp)
-                                .align(Alignment.Center),
-                            shape  = RoundedCornerShape(24.dp),
-                            colors = CardDefaults.outlinedCardColors(
+                            onClick = { expCategory = true },
+                            shape   = RoundedCornerShape(12.dp),
+                            colors  = CardDefaults.outlinedCardColors(
                                 containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                            )
+                            ),
+                            border  = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
                         ) {
-                            Column(
-                                modifier            = Modifier.padding(32.dp).fillMaxWidth(),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(14.dp)
+                            Row(
+                                modifier          = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Box(
-                                    modifier         = Modifier.size(80.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Canvas(modifier = Modifier.fillMaxSize()) {
-                                        drawCircle(color = primaryColor.copy(alpha = 0.15f))
-                                    }
-                                    Surface(
-                                        shape = CircleShape,
-                                        color = MaterialTheme.colorScheme.surfaceContainerHigh
-                                    ) {
-                                        Icon(
-                                            imageVector        = if (busqueda.isBlank()) Icons.Default.Spa
-                                            else Icons.Default.SearchOff,
-                                            contentDescription = null,
-                                            modifier           = Modifier.padding(18.dp).size(36.dp),
-                                            tint               = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                }
                                 Text(
-                                    text       = if (busqueda.isBlank()) "Sin servicios aún" else "Sin resultados",
-                                    style      = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color      = MaterialTheme.colorScheme.onSurface
+                                    text = if (idCatFiltro == null) "Todas las categorías"
+                                    else categorias.firstOrNull { it.id == idCatFiltro }?.nombre ?: "Categoría",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.SemiBold
                                 )
-                                Text(
-                                    text      = if (busqueda.isBlank())
-                                        "Crea el primer servicio con el botón inferior."
-                                    else
-                                        "Ningún servicio coincide con \"$busqueda\".",
-                                    style     = MaterialTheme.typography.bodyMedium,
-                                    color     = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    textAlign = TextAlign.Center
+                                Icon(Icons.Default.ArrowDropDown, null)
+                            }
+                        }
+
+                        DropdownMenu(
+                            expanded         = expCategory,
+                            onDismissRequest = { expCategory = false },
+                            modifier         = Modifier.fillMaxWidth(0.9f)
+                        ) {
+                            DropdownMenuItem(
+                                text    = { Text("Todas las categorías", fontWeight = FontWeight.Bold) },
+                                onClick = { idCatFiltro = null; expCategory = false }
+                            )
+                            categorias.forEach { cat ->
+                                DropdownMenuItem(
+                                    text    = { Text(cat.nombre) },
+                                    onClick = { idCatFiltro = cat.id; expCategory = false }
                                 )
                             }
                         }
                     }
+                }
 
-                    else -> {
-                        LazyColumn(
-                            contentPadding      = PaddingValues(
-                                start  = 16.dp,
-                                end    = 16.dp,
-                                top    = 8.dp,
-                                bottom = 88.dp
-                            ),
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            items(filtrados, key = { it.id }) { srv ->
-                                ServicioAdminCard(
-                                    servicio = srv,
-                                    onEditar = { editando = srv; showDialog = true },
-                                    onToggle = { viewModel.toggleServicio(srv.id) },
-                                    onVerPreciosRangos = {
-                                        servicioRangoSeleccionado = srv
-                                        viewModel.cargarPreciosRangos(srv.id)
-                                        showPreciosRangosDialog = true
-                                    }
+                Box(modifier = Modifier.fillMaxSize()) {
+                    when {
+                        uiState is CatalogosUiState.Loading && servicios.isEmpty() -> {
+                            Column(
+                                modifier            = Modifier.align(Alignment.Center),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                CircularProgressIndicator(
+                                    color       = MaterialTheme.colorScheme.primary,
+                                    trackColor  = MaterialTheme.colorScheme.primaryContainer,
+                                    strokeWidth = 3.dp,
+                                    modifier    = Modifier.size(36.dp)
                                 )
+                                Text(
+                                    text  = "Cargando servicios…",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
+                        filtrados.isEmpty() -> {
+                            val primaryColor = MaterialTheme.colorScheme.primary
+
+                            OutlinedCard(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(24.dp)
+                                    .align(Alignment.Center),
+                                shape  = RoundedCornerShape(24.dp),
+                                colors = CardDefaults.outlinedCardColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                                )
+                            ) {
+                                Column(
+                                    modifier            = Modifier.padding(32.dp).fillMaxWidth(),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                                ) {
+                                    Box(
+                                        modifier         = Modifier.size(80.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Canvas(modifier = Modifier.fillMaxSize()) {
+                                            drawCircle(color = primaryColor.copy(alpha = 0.15f))
+                                        }
+                                        Surface(
+                                            shape = CircleShape,
+                                            color = MaterialTheme.colorScheme.surfaceContainerHigh
+                                        ) {
+                                            Icon(
+                                                imageVector        = if (busqueda.isBlank()) Icons.Default.Spa
+                                                else Icons.Default.SearchOff,
+                                                contentDescription = null,
+                                                modifier           = Modifier.padding(18.dp).size(36.dp),
+                                                tint               = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                    Text(
+                                        text       = if (busqueda.isBlank()) "Sin servicios aún" else "Sin resultados",
+                                        style      = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color      = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text      = if (busqueda.isBlank())
+                                            "Crea el primer servicio con el botón inferior."
+                                        else
+                                            "Ningún servicio coincide con \"$busqueda\".",
+                                        style     = MaterialTheme.typography.bodyMedium,
+                                        color     = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        textAlign = TextAlign.Center
+                                    )
+                                }
+                            }
+                        }
+
+                        else -> {
+                            LazyColumn(
+                                contentPadding      = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 88.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                items(filtrados, key = { it.id }) { s ->
+                                    ServicioAdminCard(
+                                        servicio    = s,
+                                        onEditar    = { editando = s; showDialog = true },
+                                        onVerRangos = {
+                                            servicioParaRangos = s
+                                            showDialogRangos   = true
+                                        },
+                                        onToggle    = { viewModel.toggleServicio(s.id) }
+                                    )
+                                }
                             }
                         }
                     }
@@ -307,188 +352,173 @@ fun ServiciosAdminScreen(
 
     if (showDialog) {
         ServicioDialog(
-            servicio             = editando,
-            categorias           = categorias,
-            todosLosServicios    = servicios,
-            guardando            = uiState is CatalogosUiState.Loading,
-            onGuardar            = { req -> viewModel.guardarServicio(editando?.id, req) },
-            onCopiarMensaje      = { mensaje, ids ->
-                viewModel.copiarMensajeWhatsApp(mensaje, ids) {
-                    showDialog = false
-                    editando = null
-                }
+            servicio   = editando,
+            categorias = categorias,
+            servicios  = servicios,
+            guardando  = uiState is CatalogosUiState.Loading,
+            onGuardar  = { id, req ->
+                viewModel.guardarServicio(id, req)
             },
-            onDismiss            = { showDialog = false; editando = null; viewModel.resetState() }
+            onCopiarMensajeWhatsApp = { mensajeWhatsApp, idsDestino, onSuccess ->
+                viewModel.copiarMensajeWhatsApp(mensajeWhatsApp, idsDestino, onSuccess)
+            },
+            onDismiss  = { showDialog = false; editando = null }
         )
     }
 
-    if (showPreciosRangosDialog && servicioRangoSeleccionado != null) {
+    if (showDialogRangos && servicioParaRangos != null) {
+        val servicio = servicioParaRangos!!
         val preciosRangos by viewModel.preciosRangos.collectAsState()
+
+        LaunchedEffect(servicio.id) {
+            viewModel.cargarPreciosRangos(servicio.id)
+        }
+
         PreciosPersonasDialog(
-            servicio = servicioRangoSeleccionado!!,
+            servicio = servicio,
             preciosRangos = preciosRangos,
-            onGuardarRango = { cant, prec, esPorPersona ->
-                viewModel.guardarPrecioRango(servicioRangoSeleccionado!!.id, cant, prec, esPorPersona)
+            onGuardarRango = { cant, precio, esPorPersona ->
+                viewModel.guardarPrecioRango(servicio.id, cant, precio, esPorPersona)
             },
             onEliminarRango = { idRango ->
-                viewModel.eliminarPrecioRango(servicioRangoSeleccionado!!.id, idRango)
+                viewModel.eliminarPrecioRango(servicio.id, idRango)
             },
             onDismiss = {
-                showPreciosRangosDialog = false
-                servicioRangoSeleccionado = null
+                showDialogRangos   = false
+                servicioParaRangos = null
             }
         )
     }
 }
 
-// ─── Card de Servicio Simplificada (2 Filas) M3 ───────────────────────────────
+// ─── Card Servicio M3 ──────────────────────────────────────────────────────────
 
 @Composable
 private fun ServicioAdminCard(
-    servicio: ServicioAdmin,
-    onEditar: () -> Unit,
-    onToggle: () -> Unit,
-    onVerPreciosRangos: () -> Unit
+    servicio    : ServicioAdmin,
+    onEditar    : () -> Unit,
+    onVerRangos : () -> Unit,
+    onToggle    : () -> Unit
 ) {
     OutlinedCard(
-        modifier = Modifier.fillMaxWidth(),
-        shape    = RoundedCornerShape(16.dp),
+        shape    = RoundedCornerShape(18.dp),
         colors   = CardDefaults.outlinedCardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow
         ),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+        border   = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
+        modifier = Modifier.fillMaxWidth()
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+                .padding(16.dp)
         ) {
-            // ── Fila 1: Icono, Nombre, Categoría, Precio Base y Switch ──────────
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                modifier          = Modifier.fillMaxWidth()
             ) {
                 Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = if (servicio.esGrupal)
-                        MaterialTheme.colorScheme.tertiaryContainer
-                    else
-                        MaterialTheme.colorScheme.primaryContainer,
-                    modifier = Modifier.size(42.dp)
+                    shape    = RoundedCornerShape(12.dp),
+                    color    = MaterialTheme.colorScheme.primaryContainer,
+                    modifier = Modifier.size(46.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
-                            imageVector = if (servicio.esGrupal) Icons.Default.Groups else Icons.Default.Spa,
+                            imageVector        = Icons.Default.Spa,
                             contentDescription = null,
-                            modifier = Modifier.size(20.dp),
-                            tint = if (servicio.esGrupal)
-                                MaterialTheme.colorScheme.onTertiaryContainer
-                            else
-                                MaterialTheme.colorScheme.onPrimaryContainer
+                            modifier           = Modifier.size(22.dp),
+                            tint               = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                     }
                 }
 
-                Spacer(Modifier.width(12.dp))
+                Spacer(Modifier.width(14.dp))
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = servicio.nombre,
-                        style = MaterialTheme.typography.titleMedium,
+                        text       = servicio.nombre,
+                        style      = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        color      = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = servicio.nombreCategoria,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        text     = servicio.nombreCategoria,
+                        style    = MaterialTheme.typography.bodySmall,
+                        color    = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.SemiBold
                     )
                 }
 
-                Spacer(Modifier.width(8.dp))
-
-                // Precio Base destacado
-                Text(
-                    text = "$ ${"%,.0f".format(servicio.precioBase)}",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-
-                Spacer(Modifier.width(6.dp))
-
                 Switch(
-                    checked = servicio.estado,
+                    checked         = servicio.estado,
                     onCheckedChange = { onToggle() },
-                    modifier = Modifier.scale(0.8f)
+                    modifier        = Modifier.scale(0.85f)
                 )
             }
 
-            HorizontalDivider(
-                thickness = 0.5.dp,
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
-            )
+            if (!servicio.descripcion.isNullOrBlank()) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text     = servicio.descripcion,
+                    style    = MaterialTheme.typography.bodySmall,
+                    color    = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
 
-            // ── Fila 2: Badges compactas + Botones de Acción M3 ───────────────
+            Spacer(Modifier.height(12.dp))
+            HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+            Spacer(Modifier.height(10.dp))
+
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier              = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment     = Alignment.CenterVertically
             ) {
-                Row(
-                    modifier = Modifier.weight(1f, fill = false),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Duración
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Surface(
                         shape = RoundedCornerShape(8.dp),
-                        color = MaterialTheme.colorScheme.surfaceContainerHigh
+                        color = MaterialTheme.colorScheme.secondaryContainer
                     ) {
                         Row(
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            modifier          = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Timer,
+                                imageVector = Icons.Default.Schedule,
                                 contentDescription = null,
-                                modifier = Modifier.size(12.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                modifier = Modifier.size(14.dp),
+                                tint = MaterialTheme.colorScheme.onSecondaryContainer
                             )
+                            Spacer(Modifier.width(4.dp))
                             Text(
-                                text = "${servicio.duracionMinutos} min",
+                                text  = "${servicio.duracionMinutos} min",
                                 style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
                             )
                         }
                     }
 
-                    // Badge Grupal
-                    if (servicio.esGrupal) {
+                    if (servicio.maxPersonas != null && servicio.maxPersonas > 1) {
                         Surface(
                             shape = RoundedCornerShape(8.dp),
                             color = MaterialTheme.colorScheme.tertiaryContainer
                         ) {
                             Row(
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                modifier          = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Groups,
                                     contentDescription = null,
-                                    modifier = Modifier.size(12.dp),
+                                    modifier = Modifier.size(14.dp),
                                     tint = MaterialTheme.colorScheme.onTertiaryContainer
                                 )
+                                Spacer(Modifier.width(4.dp))
                                 Text(
-                                    text = "Grupal",
+                                    text  = "Max ${servicio.maxPersonas}",
                                     style = MaterialTheme.typography.labelSmall,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onTertiaryContainer
@@ -496,143 +526,78 @@ private fun ServicioAdminCard(
                             }
                         }
                     }
-
-                    // Ícono de WhatsApp personalizado (Únicamente ícono compacto)
-                    if (!servicio.mensajeWhatsApp.isNullOrBlank()) {
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = Color(0xFFE7F8EE),
-                            modifier = Modifier.size(24.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    painter = painterResource(id = R.drawable.ic_whatsapp),
-                                    contentDescription = "WhatsApp personalizado",
-                                    tint = Color.Unspecified,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                            }
-                        }
-                    }
                 }
 
-                // Botones de acción compactos
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (servicio.esGrupal) {
-                        FilledTonalButton(
-                            onClick = onVerPreciosRangos,
-                            shape = RoundedCornerShape(8.dp),
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-                            colors = ButtonDefaults.filledTonalButtonColors(
-                                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onTertiaryContainer
-                            ),
-                            modifier = Modifier.height(32.dp)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (servicio.maxPersonas != null && servicio.maxPersonas > 1) {
+                        IconButton(
+                            onClick  = onVerRangos,
+                            modifier = Modifier.size(36.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Default.FormatListNumbered,
-                                contentDescription = null,
-                                modifier = Modifier.size(14.dp)
-                            )
-                            Spacer(Modifier.width(4.dp))
-                            Text(
-                                text = "Tarifas",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold
+                                imageVector        = Icons.Default.FormatListNumbered,
+                                contentDescription = "Precios por personas",
+                                tint               = MaterialTheme.colorScheme.secondary,
+                                modifier           = Modifier.size(20.dp)
                             )
                         }
                     }
 
                     IconButton(
-                        onClick = onEditar,
+                        onClick  = onEditar,
                         modifier = Modifier.size(36.dp)
                     ) {
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = MaterialTheme.colorScheme.secondaryContainer,
-                            modifier = Modifier.size(32.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector = Icons.Default.Edit,
-                                    contentDescription = "Editar",
-                                    modifier = Modifier.size(16.dp),
-                                    tint = MaterialTheme.colorScheme.onSecondaryContainer
-                                )
-                            }
-                        }
+                        Icon(
+                            imageVector        = Icons.Default.Edit,
+                            contentDescription = "Editar",
+                            tint               = MaterialTheme.colorScheme.primary,
+                            modifier           = Modifier.size(20.dp)
+                        )
                     }
+
+                    Text(
+                        text       = "$${"%,.0f".format(servicio.precioBase)}",
+                        style      = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color      = MaterialTheme.colorScheme.primary,
+                        modifier   = Modifier.padding(start = 6.dp)
+                    )
                 }
             }
         }
     }
 }
 
-// ─── Diálogo Crear / Editar M3 ─────────────────────────────────────────────────
+// ─── Diálogo Servicio M3 ───────────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ServicioDialog(
-    servicio:             ServicioAdmin?,
-    categorias:           List<CategoriaAdmin>,
-    todosLosServicios:    List<ServicioAdmin>,
-    guardando:            Boolean,
-    onGuardar:            (ServicioRequest) -> Unit,
-    onCopiarMensaje:      (String?, List<Int>) -> Unit,
-    onDismiss:            () -> Unit
+    servicio      : ServicioAdmin?,
+    categorias    : List<CategoriaAdmin>,
+    servicios     : List<ServicioAdmin>,
+    guardando     : Boolean,
+    onGuardar     : (id: Int?, req: ServicioRequest) -> Unit,
+    onCopiarMensajeWhatsApp: (mensajeWhatsApp: String?, idsServiciosDestino: List<Int>, onSuccess: () -> Unit) -> Unit,
+    onDismiss     : () -> Unit
 ) {
-    var nombre      by remember(servicio) { mutableStateOf(servicio?.nombre ?: "") }
-    var descripcion by remember(servicio) { mutableStateOf(servicio?.descripcion ?: "") }
-    var duracion    by remember(servicio) { mutableStateOf(servicio?.duracionMinutos?.toString() ?: "") }
-    var precio      by remember(servicio) { mutableStateOf(servicio?.precioBase?.toString() ?: "") }
-    var esGrupal    by remember(servicio) { mutableStateOf(servicio?.esGrupal ?: false) }
-    var maxPersonas by remember(servicio) { mutableStateOf(servicio?.maxPersonas?.toString() ?: "") }
-    var mensajeWhatsApp by remember(servicio) {
-        mutableStateOf(TextFieldValue(servicio?.mensajeWhatsApp ?: ""))
-    }
-    var mostrarDialogoCopiar by remember { mutableStateOf(false) }
+    var nombre           by remember(servicio) { mutableStateOf(servicio?.nombre ?: "") }
+    var desc             by remember(servicio) { mutableStateOf(servicio?.descripcion ?: "") }
+    var duracion         by remember(servicio) { mutableStateOf(servicio?.duracionMinutos?.toString() ?: "30") }
+    var precio           by remember(servicio) { mutableStateOf(servicio?.precioBase?.toString() ?: "0") }
+    var idCat            by remember(servicio) { mutableIntStateOf(servicio?.idCategoria ?: (categorias.firstOrNull()?.id ?: 0)) }
+    var esGrupal         by remember(servicio) { mutableStateOf(servicio?.maxPersonas != null && servicio.maxPersonas > 1) }
+    var maxPersonas      by remember(servicio) { mutableStateOf(servicio?.maxPersonas?.toString() ?: "2") }
+    var mensajeWhatsApp  by remember(servicio) { mutableStateOf(TextFieldValue(servicio?.mensajeWhatsApp ?: "")) }
 
-    val variablesWhatsApp = remember(esGrupal) {
-        if (esGrupal) {
-            listOf("{Nombre}", "{Apellido}", "{NombreCliente}", "{Fecha}", "{Hora}", "{Duracion}", "{Asistentes}")
-        } else {
-            listOf("{Nombre}", "{Apellido}", "{NombreCliente}", "{Fecha}", "{Hora}", "{Duracion}")
-        }
-    }
+    var tabSeleccionada  by remember { mutableIntStateOf(0) }
+    val idsSeleccionados = remember { mutableStateListOf<Int>() }
+    var estaCopianMensaje by remember { mutableStateOf(false) }
 
-    fun insertarVariableWhatsApp(variable: String) {
-        val texto = mensajeWhatsApp.text
-        val cursor = mensajeWhatsApp.selection.end.coerceIn(0, texto.length)
-        val nuevoTexto = texto.substring(0, cursor) + variable + texto.substring(cursor)
-        val nuevoCursor = cursor + variable.length
-        mensajeWhatsApp = TextFieldValue(
-            text = nuevoTexto,
-            selection = TextRange(nuevoCursor)
-        )
-    }
-
-    var iconoSeleccionado by remember(servicio) {
-        mutableStateOf(ICONOS_DISPONIBLES.firstOrNull { it.clave == servicio?.icono })
-    }
-
-    val categoriaInicial      = categorias.firstOrNull { it.id == servicio?.idCategoria }
-    var categoriaSeleccionada by remember(servicio) { mutableStateOf(categoriaInicial) }
-    var expandedCat           by remember { mutableStateOf(false) }
-
-    val maxPersonasInt = maxPersonas.toIntOrNull()
-    val maxPersonasValido = !esGrupal || (maxPersonasInt != null && maxPersonasInt > 1)
-
-    val esValido = nombre.isNotBlank()
-            && (duracion.toIntOrNull() ?: 0) > 0
-            && (precio.toDoubleOrNull() ?: -1.0) >= 0.0
-            && categoriaSeleccionada != null
-            && maxPersonasValido
+    val esNuevo = servicio == null
 
     AlertDialog(
-        onDismissRequest = { if (!guardando) onDismiss() },
+        onDismissRequest = { if (!guardando && !estaCopianMensaje) onDismiss() },
         shape            = RoundedCornerShape(28.dp),
         containerColor   = MaterialTheme.colorScheme.surfaceContainerHigh,
         icon = {
@@ -641,419 +606,7 @@ private fun ServicioDialog(
                 color = MaterialTheme.colorScheme.primaryContainer
             ) {
                 Icon(
-                    imageVector        = if (servicio != null) Icons.Default.Edit else Icons.Default.Add,
-                    contentDescription = null,
-                    tint               = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier           = Modifier.padding(12.dp).size(24.dp)
-                )
-            }
-        },
-        title = {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text       = if (servicio != null) "Editar servicio" else "Nuevo servicio",
-                    fontWeight = FontWeight.Bold,
-                    style      = MaterialTheme.typography.titleMedium,
-                    modifier   = Modifier.weight(1f)
-                )
-                if (esValido && !guardando) {
-                    IconButton(
-                        onClick = {
-                            onGuardar(
-                                ServicioRequest(
-                                    idCategoria     = categoriaSeleccionada!!.id,
-                                    nombre          = nombre.trim(),
-                                    descripcion     = descripcion.trim().ifBlank { null },
-                                    duracionMinutos = duracion.toInt(),
-                                    precioBase      = precio.toDouble(),
-                                    icono           = iconoSeleccionado?.clave,
-                                    esGrupal        = esGrupal,
-                                    maxPersonas     = if (esGrupal) maxPersonas.toIntOrNull() else null,
-                                    mensajeWhatsApp = mensajeWhatsApp.text.trim().ifEmpty { null }
-                                )
-                            )
-                        },
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        Surface(
-                            shape = RoundedCornerShape(10.dp),
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(32.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    Icons.Default.Save,
-                                    contentDescription = "Guardar",
-                                    tint = MaterialTheme.colorScheme.onPrimary,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        text = {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-                modifier            = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState())
-            ) {
-                // Dropdown Categoría
-                ExposedDropdownMenuBox(
-                    expanded         = expandedCat,
-                    onExpandedChange = { expandedCat = it }
-                ) {
-                    OutlinedTextField(
-                        value         = categoriaSeleccionada?.nombre ?: "Selecciona categoría",
-                        onValueChange = {},
-                        readOnly      = true,
-                        label         = { Text("Categoría *") },
-                        trailingIcon  = { ExposedDropdownMenuDefaults.TrailingIcon(expandedCat) },
-                        shape         = RoundedCornerShape(14.dp),
-                        colors        = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                        ),
-                        modifier      = Modifier
-                            .menuAnchor()
-                            .fillMaxWidth()
-                    )
-                    ExposedDropdownMenu(
-                        expanded         = expandedCat,
-                        onDismissRequest = { expandedCat = false }
-                    ) {
-                        categorias.filter { it.estado }.forEach { cat ->
-                            DropdownMenuItem(
-                                text    = { Text(cat.nombre) },
-                                onClick = { categoriaSeleccionada = cat; expandedCat = false }
-                            )
-                        }
-                    }
-                }
-
-                OutlinedTextField(
-                    value         = nombre,
-                    onValueChange = { nombre = it },
-                    label         = { Text("Nombre *") },
-                    leadingIcon   = { Icon(Icons.Default.Spa, null, tint = MaterialTheme.colorScheme.primary) },
-                    modifier      = Modifier.fillMaxWidth(),
-                    singleLine    = true,
-                    shape         = RoundedCornerShape(14.dp),
-                    colors        = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                    )
-                )
-
-                OutlinedTextField(
-                    value         = descripcion,
-                    onValueChange = { descripcion = it },
-                    label         = { Text("Descripción") },
-                    leadingIcon   = { Icon(Icons.Default.Notes, null, tint = MaterialTheme.colorScheme.primary) },
-                    modifier      = Modifier.fillMaxWidth(),
-                    maxLines      = 2,
-                    shape         = RoundedCornerShape(14.dp),
-                    colors        = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                    )
-                )
-
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        value           = duracion,
-                        onValueChange   = { duracion = it },
-                        label           = { Text("Min *") },
-                        leadingIcon     = { Icon(Icons.Default.Timer, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary) },
-                        modifier        = Modifier.weight(1f),
-                        singleLine      = true,
-                        shape           = RoundedCornerShape(14.dp),
-                        colors          = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                        ),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                    )
-                    OutlinedTextField(
-                        value           = precio,
-                        onValueChange   = { precio = it },
-                        label           = { Text("Precio ($) *") },
-                        leadingIcon     = { Icon(Icons.Default.AttachMoney, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary) },
-                        modifier        = Modifier.weight(1f),
-                        singleLine      = true,
-                        shape           = RoundedCornerShape(14.dp),
-                        colors          = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                        ),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
-                    )
-                }
-
-                HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
-
-                // Toggle Grupal
-                Row(
-                    modifier              = Modifier.fillMaxWidth(),
-                    verticalAlignment     = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Row(
-                        verticalAlignment     = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Surface(
-                            shape = RoundedCornerShape(10.dp),
-                            color = if (esGrupal)
-                                MaterialTheme.colorScheme.tertiaryContainer
-                            else
-                                MaterialTheme.colorScheme.surfaceContainerLow,
-                            modifier = Modifier.size(38.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector        = Icons.Default.Groups,
-                                    contentDescription = null,
-                                    modifier           = Modifier.size(20.dp),
-                                    tint               = if (esGrupal)
-                                        MaterialTheme.colorScheme.onTertiaryContainer
-                                    else
-                                        MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                        Column {
-                            Text(
-                                text       = "Modalidad grupal",
-                                style      = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                text  = "Múltiples clientes simultáneos",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                    Switch(
-                        checked         = esGrupal,
-                        onCheckedChange = { esGrupal = it },
-                        modifier        = Modifier.scale(0.85f)
-                    )
-                }
-
-                // Campo Máximo de personas (Obligatorio en servicios grupales)
-                AnimatedVisibility(
-                    visible = esGrupal,
-                    enter   = expandVertically(),
-                    exit    = shrinkVertically()
-                ) {
-                    val maxInt = maxPersonas.toIntOrNull()
-                    val esInvalidoMax = maxPersonas.isNotBlank() && (maxInt == null || maxInt <= 1)
-
-                    OutlinedTextField(
-                        value         = maxPersonas,
-                        onValueChange = { input -> maxPersonas = input.filter { it.isDigit() } },
-                        label         = { Text("Máximo de personas *") },
-                        leadingIcon   = { Icon(Icons.Default.Groups, null, tint = MaterialTheme.colorScheme.primary) },
-                        isError       = esInvalidoMax,
-                        supportingText = {
-                            if (esInvalidoMax) {
-                                Text(
-                                    text = "El máximo debe ser un número mayor a 1",
-                                    color = MaterialTheme.colorScheme.error
-                                )
-                            } else {
-                                Text(
-                                    text = "Obligatorio (mayor que 1)",
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        },
-                        singleLine    = true,
-                        shape         = RoundedCornerShape(14.dp),
-                        colors        = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                        ),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier      = Modifier.fillMaxWidth()
-                    )
-                }
-
-                // Hint Informativo
-                AnimatedVisibility(
-                    visible = esGrupal,
-                    enter   = expandVertically(),
-                    exit    = shrinkVertically()
-                ) {
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
-                    ) {
-                        Row(
-                            modifier              = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                            verticalAlignment     = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Icon(
-                                imageVector        = Icons.Default.Info,
-                                contentDescription = null,
-                                modifier           = Modifier.size(16.dp),
-                                tint               = MaterialTheme.colorScheme.tertiary
-                            )
-                            Text(
-                                text  = "Los datos del responsable se solicitarán al momento de crear la cita.",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onTertiaryContainer
-                            )
-                        }
-                    }
-                }
-
-                HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
-
-                // Mensaje Automático de WhatsApp
-                OutlinedCard(
-                    shape  = RoundedCornerShape(18.dp),
-                    colors = CardDefaults.outlinedCardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                    ),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    MensajeWhatsAppField(
-                        value              = mensajeWhatsApp,
-                        onValueChange      = { mensajeWhatsApp = it },
-                        variables          = variablesWhatsApp,
-                        onInsertarVariable = ::insertarVariableWhatsApp
-                    )
-                }
-
-                // Botón para copiar plantilla a otros servicios
-                if (servicio != null && mensajeWhatsApp.text.isNotBlank()) {
-                    Spacer(Modifier.height(4.dp))
-                    OutlinedButton(
-                        onClick  = { mostrarDialogoCopiar = true },
-                        shape    = RoundedCornerShape(12.dp),
-                        colors   = ButtonDefaults.outlinedButtonColors(
-                            contentColor = MaterialTheme.colorScheme.primary
-                        ),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.Default.ContentCopy, null, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("Copiar plantilla a otros servicios", style = MaterialTheme.typography.labelMedium)
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    onGuardar(
-                        ServicioRequest(
-                            idCategoria     = categoriaSeleccionada!!.id,
-                            nombre          = nombre.trim(),
-                            descripcion     = descripcion.trim().ifBlank { null },
-                            duracionMinutos = duracion.toInt(),
-                            precioBase      = precio.toDouble(),
-                            icono           = iconoSeleccionado?.clave,
-                            esGrupal        = esGrupal,
-                            maxPersonas     = if (esGrupal) maxPersonas.toIntOrNull() else null,
-                            mensajeWhatsApp = mensajeWhatsApp.text.trim().ifEmpty { null }
-                        )
-                    )
-                },
-                enabled  = esValido && !guardando,
-                shape    = RoundedCornerShape(12.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                if (guardando) {
-                    CircularProgressIndicator(
-                        modifier    = Modifier.size(18.dp),
-                        strokeWidth = 2.dp,
-                        color       = MaterialTheme.colorScheme.onPrimary
-                    )
-                } else {
-                    Icon(Icons.Default.Save, null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text("Guardar", fontWeight = FontWeight.Bold)
-                }
-            }
-        },
-        dismissButton = {
-            OutlinedButton(
-                onClick  = onDismiss,
-                enabled  = !guardando,
-                shape    = RoundedCornerShape(12.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) { Text("Cancelar") }
-        }
-    )
-
-    if (mostrarDialogoCopiar && servicio != null) {
-        CopiarMensajeServiciosDialog(
-            servicioOrigen       = servicio,
-            mensajeACopiar       = mensajeWhatsApp.text,
-            serviciosDisponibles = todosLosServicios,
-            guardando            = guardando,
-            onConfirmar          = { ids ->
-                onCopiarMensaje(mensajeWhatsApp.text.trim().ifEmpty { null }, ids)
-                mostrarDialogoCopiar = false
-            },
-            onDismiss            = { mostrarDialogoCopiar = false }
-        )
-    }
-}
-
-// ─── Diálogo Seleccionar Servicios para Copiar Mensaje ─────────────────────────
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun CopiarMensajeServiciosDialog(
-    servicioOrigen:       ServicioAdmin,
-    mensajeACopiar:       String,
-    serviciosDisponibles: List<ServicioAdmin>,
-    guardando:            Boolean,
-    onConfirmar:          (List<Int>) -> Unit,
-    onDismiss:            () -> Unit
-) {
-    val otrosServicios = remember(serviciosDisponibles, servicioOrigen) {
-        serviciosDisponibles.filter { it.id != servicioOrigen.id }
-    }
-
-    var busqueda by remember { mutableStateOf("") }
-    var idsSeleccionados by remember { mutableStateOf(setOf<Int>()) }
-
-    val serviciosFiltrados = remember(otrosServicios, busqueda) {
-        if (busqueda.isBlank()) otrosServicios
-        else otrosServicios.filter {
-            it.nombre.contains(busqueda, ignoreCase = true) ||
-                    it.nombreCategoria.contains(busqueda, ignoreCase = true)
-        }
-    }
-
-    val todosSeleccionados = serviciosFiltrados.isNotEmpty() &&
-            serviciosFiltrados.all { idsSeleccionados.contains(it.id) }
-
-    AlertDialog(
-        onDismissRequest = { if (!guardando) onDismiss() },
-        shape            = RoundedCornerShape(28.dp),
-        containerColor   = MaterialTheme.colorScheme.surfaceContainerHigh,
-        icon = {
-            Surface(
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.primaryContainer
-            ) {
-                Icon(
-                    imageVector        = Icons.Default.ContentCopy,
+                    imageVector        = if (esNuevo) Icons.Default.Add else Icons.Default.Edit,
                     contentDescription = null,
                     tint               = MaterialTheme.colorScheme.onPrimaryContainer,
                     modifier           = Modifier.padding(12.dp).size(24.dp)
@@ -1062,108 +615,229 @@ private fun CopiarMensajeServiciosDialog(
         },
         title = {
             Text(
-                text       = "Copiar mensaje de WhatsApp",
-                fontWeight = FontWeight.Bold,
+                text       = if (esNuevo) "Nuevo servicio" else "Editar servicio",
                 style      = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
                 textAlign  = TextAlign.Center,
                 modifier   = Modifier.fillMaxWidth()
             )
         },
         text = {
             Column(
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-                modifier            = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 480.dp)
             ) {
-                Text(
-                    text  = "Selecciona los servicios a los cuales deseas aplicar el mensaje de \"${servicioOrigen.nombre}\":",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                // Buscador
-                OutlinedTextField(
-                    value         = busqueda,
-                    onValueChange = { busqueda = it },
-                    placeholder   = { Text("Buscar servicio...") },
-                    leadingIcon   = { Icon(Icons.Default.Search, null, modifier = Modifier.size(18.dp)) },
-                    singleLine    = true,
-                    shape         = RoundedCornerShape(14.dp),
-                    colors        = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor   = MaterialTheme.colorScheme.surfaceContainerLow,
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow
-                    ),
-                    modifier      = Modifier.fillMaxWidth()
-                )
-
-                // Checkbox Seleccionar Todos
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier          = Modifier.fillMaxWidth()
-                ) {
-                    Checkbox(
-                        checked         = todosSeleccionados,
-                        onCheckedChange = { check ->
-                            val idsVisibles = serviciosFiltrados.map { it.id }.toSet()
-                            idsSeleccionados = if (check) {
-                                idsSeleccionados + idsVisibles
-                            } else {
-                                idsSeleccionados - idsVisibles
-                            }
-                        }
-                    )
-                    Text(
-                        text       = if (todosSeleccionados) "Desmarcar todos" else "Seleccionar todos (${serviciosFiltrados.size})",
-                        style      = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Bold
-                    )
+                if (!esNuevo) {
+                    PrimaryTabRow(selectedTabIndex = tabSeleccionada) {
+                        Tab(
+                            selected = tabSeleccionada == 0,
+                            onClick  = { tabSeleccionada = 0 },
+                            text     = { Text("General", fontWeight = FontWeight.Bold) }
+                        )
+                        Tab(
+                            selected = tabSeleccionada == 1,
+                            onClick  = { tabSeleccionada = 1 },
+                            text     = { Text("Replicar MSJ", fontWeight = FontWeight.Bold) }
+                        )
+                    }
+                    Spacer(Modifier.height(12.dp))
                 }
 
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                if (tabSeleccionada == 0) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        OutlinedTextField(
+                            value         = nombre,
+                            onValueChange = { nombre = it },
+                            label         = { Text("Nombre *") },
+                            modifier      = Modifier.fillMaxWidth(),
+                            singleLine    = true,
+                            shape         = RoundedCornerShape(14.dp)
+                        )
 
-                // Lista de servicios con Checkboxes
-                LazyColumn(
-                    modifier            = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 240.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    items(serviciosFiltrados, key = { it.id }) { srv ->
-                        val seleccionado = idsSeleccionados.contains(srv.id)
-                        Surface(
-                            shape    = RoundedCornerShape(10.dp),
-                            color    = if (seleccionado) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
-                                       else MaterialTheme.colorScheme.surfaceContainerLow,
-                            onClick  = {
-                                idsSeleccionados = if (seleccionado) {
-                                    idsSeleccionados - srv.id
-                                } else {
-                                    idsSeleccionados + srv.id
+                        OutlinedTextField(
+                            value         = desc,
+                            onValueChange = { desc = it },
+                            label         = { Text("Descripción") },
+                            modifier      = Modifier.fillMaxWidth(),
+                            minLines      = 2,
+                            shape         = RoundedCornerShape(14.dp)
+                        )
+
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            modifier              = Modifier.fillMaxWidth()
+                        ) {
+                            OutlinedTextField(
+                                value           = duracion,
+                                onValueChange   = { duracion = it },
+                                label           = { Text("Duración (min) *") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                singleLine      = true,
+                                modifier        = Modifier.weight(1f),
+                                shape           = RoundedCornerShape(14.dp)
+                            )
+
+                            OutlinedTextField(
+                                value           = precio,
+                                onValueChange   = { precio = it },
+                                label           = { Text("Precio base *") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                singleLine      = true,
+                                modifier        = Modifier.weight(1f),
+                                shape           = RoundedCornerShape(14.dp)
+                            )
+                        }
+
+                        if (categorias.isNotEmpty()) {
+                            var expCat by remember { mutableStateOf(false) }
+                            Box {
+                                OutlinedCard(
+                                    onClick = { expCat = true },
+                                    shape   = RoundedCornerShape(14.dp),
+                                    colors  = CardDefaults.outlinedCardColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                                    )
+                                ) {
+                                    Row(
+                                        modifier          = Modifier.fillMaxWidth().padding(14.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(
+                                            text = categorias.firstOrNull { it.id == idCat }?.nombre ?: "Seleccionar categoría",
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+                                        Icon(Icons.Default.ArrowDropDown, null)
+                                    }
+                                }
+
+                                DropdownMenu(
+                                    expanded         = expCat,
+                                    onDismissRequest = { expCat = false }
+                                ) {
+                                    categorias.forEach { cat ->
+                                        DropdownMenuItem(
+                                            text    = { Text(cat.nombre) },
+                                            onClick = { idCat = cat.id; expCat = false }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        Row(
+                            verticalAlignment     = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier              = Modifier.fillMaxWidth()
+                        ) {
+                            Text("¿Permite citas grupales?", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                            Switch(checked = esGrupal, onCheckedChange = { esGrupal = it })
+                        }
+
+                        AnimatedVisibility(visible = esGrupal) {
+                            OutlinedTextField(
+                                value           = maxPersonas,
+                                onValueChange   = { maxPersonas = it },
+                                label           = { Text("Máximo de personas *") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                singleLine      = true,
+                                modifier        = Modifier.fillMaxWidth(),
+                                shape           = RoundedCornerShape(14.dp)
+                            )
+                        }
+
+                        OutlinedTextField(
+                            value         = mensajeWhatsApp,
+                            onValueChange = { mensajeWhatsApp = it },
+                            label         = { Text("Plantilla WhatsApp (opcional)") },
+                            modifier      = Modifier.fillMaxWidth(),
+                            minLines      = 2,
+                            shape         = RoundedCornerShape(14.dp),
+                            trailingIcon  = {
+                                IconButton(
+                                    onClick = {
+                                        val c = mensajeWhatsApp.selection
+                                        val curText = mensajeWhatsApp.text
+                                        val ins = "{nombreCliente}"
+                                        val newText = StringBuilder(curText).insert(c.start, ins).toString()
+                                        val newPos = c.start + ins.length
+                                        mensajeWhatsApp = TextFieldValue(text = newText, selection = TextRange(newPos))
+                                    }
+                                ) {
+                                    Icon(Icons.Default.Add, contentDescription = "Insertar variable")
+                                }
+                            }
+                        )
+                    }
+                } else {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Text(
+                            text  = "Selecciona los servicios que recibirán este mensaje de WhatsApp:",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        val otrosServicios = servicios.filter { it.id != servicio?.id }
+                        if (otrosServicios.isEmpty()) {
+                            Text("No hay otros servicios para replicar.", style = MaterialTheme.typography.bodySmall)
+                        } else {
+                            otrosServicios.forEach { serv ->
+                                val sel = idsSeleccionados.contains(serv.id)
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier          = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            if (sel) idsSeleccionados.remove(serv.id)
+                                            else idsSeleccionados.add(serv.id)
+                                        }
+                                        .padding(vertical = 4.dp)
+                                ) {
+                                    Checkbox(
+                                        checked         = sel,
+                                        onCheckedChange = { checked ->
+                                            if (checked) idsSeleccionados.add(serv.id)
+                                            else idsSeleccionados.remove(serv.id)
+                                        }
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(serv.nombre, style = MaterialTheme.typography.bodyMedium)
+                                }
+                            }
+                        }
+
+                        Spacer(Modifier.height(10.dp))
+                        Button(
+                            onClick = {
+                                estaCopianMensaje = true
+                                onCopiarMensajeWhatsApp(
+                                    mensajeWhatsApp.text.ifBlank { null },
+                                    idsSeleccionados.toList()
+                                ) {
+                                    estaCopianMensaje = false
                                 }
                             },
-                            modifier = Modifier.fillMaxWidth()
+                            enabled = idsSeleccionados.isNotEmpty() && !estaCopianMensaje,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
                         ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier          = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
-                            ) {
-                                Checkbox(
-                                    checked         = seleccionado,
-                                    onCheckedChange = { check ->
-                                        idsSeleccionados = if (check) idsSeleccionados + srv.id else idsSeleccionados - srv.id
-                                    }
-                                )
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text       = srv.nombre,
-                                        style      = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    Text(
-                                        text  = srv.nombreCategoria,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
+                            if (estaCopianMensaje) {
+                                CircularProgressIndicator(modifier = Modifier.size(18.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
+                            } else {
+                                Icon(Icons.Default.ContentCopy, null, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text("Replicar mensaje", fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -1171,29 +845,46 @@ private fun CopiarMensajeServiciosDialog(
             }
         },
         confirmButton = {
-            Button(
-                onClick  = { onConfirmar(idsSeleccionados.toList()) },
-                enabled  = idsSeleccionados.isNotEmpty() && !guardando,
-                shape    = RoundedCornerShape(12.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                if (guardando) {
-                    CircularProgressIndicator(
-                        modifier    = Modifier.size(18.dp),
-                        strokeWidth = 2.dp,
-                        color       = MaterialTheme.colorScheme.onPrimary
-                    )
-                } else {
-                    Icon(Icons.Default.ContentCopy, null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text("Aplicar a (${idsSeleccionados.size}) servicios", fontWeight = FontWeight.Bold)
+            if (tabSeleccionada == 0) {
+                Button(
+                    onClick  = {
+                        val durMin  = duracion.toIntOrNull() ?: 30
+                        val precVal = precio.toDoubleOrNull() ?: 0.0
+                        val maxP    = if (esGrupal) maxPersonas.toIntOrNull() else null
+
+                        onGuardar(
+                            servicio?.id,
+                            ServicioRequest(
+                                idCategoria      = idCat,
+                                nombre           = nombre.trim(),
+                                descripcion      = desc.ifBlank { null },
+                                duracionMinutos  = durMin,
+                                precioBase       = precVal,
+                                icono            = null,
+                                esGrupal         = esGrupal,
+                                maxPersonas      = maxP,
+                                mensajeWhatsApp  = mensajeWhatsApp.text.ifBlank { null }
+                            )
+                        )
+                    },
+                    enabled  = nombre.isNotBlank() && idCat > 0 && !guardando,
+                    shape    = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    if (guardando) {
+                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
+                    } else {
+                        Icon(Icons.Default.Save, null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Guardar", fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         },
         dismissButton = {
             OutlinedButton(
                 onClick  = onDismiss,
-                enabled  = !guardando,
+                enabled  = !guardando && !estaCopianMensaje,
                 shape    = RoundedCornerShape(12.dp),
                 modifier = Modifier.fillMaxWidth()
             ) { Text("Cancelar") }
