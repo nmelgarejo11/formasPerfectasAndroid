@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
+import com.spa.appointments.core.theme.ThemeMode
 import com.spa.appointments.domain.model.ActualizarPerfilRequest
 
 // ─── Screen Principal ─────────────────────────────────────────────────────────
@@ -54,6 +55,7 @@ fun PerfilScreen(
     val focusManager = LocalFocusManager.current
     val uiState      by viewModel.uiState.collectAsState()
     val actionState  by viewModel.actionState.collectAsState()
+    val modoTema     by viewModel.modoTema.collectAsState()
 
     var nombreUsuario   by remember { mutableStateOf("") }
     var clave           by remember { mutableStateOf("") }
@@ -390,6 +392,60 @@ fun PerfilScreen(
                         }
                     }
 
+                    Spacer(Modifier.height(28.dp))
+
+                    // ── Sección Apariencia y Tema ──────────────────────────
+                    SectionHeader(
+                        icono  = Icons.Default.Palette,
+                        titulo = "APARIENCIA Y TEMA"
+                    )
+
+                    Spacer(Modifier.height(12.dp))
+
+                    OutlinedCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape    = RoundedCornerShape(18.dp),
+                        colors   = CardDefaults.outlinedCardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                        ),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            ThemeOptionItem(
+                                titulo       = "Predeterminado del sistema",
+                                subtitulo    = "Sigue la configuración de tu dispositivo",
+                                icono        = Icons.Default.SettingsSuggest,
+                                seleccionado = modoTema == ThemeMode.SYSTEM,
+                                onClick      = { viewModel.cambiarModoTema(ThemeMode.SYSTEM) }
+                            )
+                            HorizontalDivider(
+                                color    = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+                                modifier = Modifier.padding(horizontal = 8.dp)
+                            )
+                            ThemeOptionItem(
+                                titulo       = "Modo Claro",
+                                subtitulo    = "Fondo claro activado siempre",
+                                icono        = Icons.Default.LightMode,
+                                seleccionado = modoTema == ThemeMode.LIGHT,
+                                onClick      = { viewModel.cambiarModoTema(ThemeMode.LIGHT) }
+                            )
+                            HorizontalDivider(
+                                color    = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+                                modifier = Modifier.padding(horizontal = 8.dp)
+                            )
+                            ThemeOptionItem(
+                                titulo       = "Modo Oscuro",
+                                subtitulo    = "Fondo oscuro activado siempre",
+                                icono        = Icons.Default.DarkMode,
+                                seleccionado = modoTema == ThemeMode.DARK,
+                                onClick      = { viewModel.cambiarModoTema(ThemeMode.DARK) }
+                            )
+                        }
+                    }
+
                     Spacer(Modifier.height(32.dp))
 
                     // ── Botón Guardar ─────────────────────────────────────
@@ -460,5 +516,68 @@ private fun SectionHeader(
             fontWeight = FontWeight.Bold,
             color      = MaterialTheme.colorScheme.primary
         )
+    }
+}
+
+// ─── Opción de Tema M3 ─────────────────────────────────────────────────────────
+
+@Composable
+private fun ThemeOptionItem(
+    titulo:       String,
+    subtitulo:    String,
+    icono:        androidx.compose.ui.graphics.vector.ImageVector,
+    seleccionado: Boolean,
+    onClick:      () -> Unit
+) {
+    Surface(
+        onClick = onClick,
+        shape   = RoundedCornerShape(12.dp),
+        color   = if (seleccionado) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+                  else MaterialTheme.colorScheme.surfaceContainerLow
+    ) {
+        Row(
+            modifier          = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                shape    = CircleShape,
+                color    = if (seleccionado) MaterialTheme.colorScheme.primary
+                           else MaterialTheme.colorScheme.surfaceContainerHigh,
+                modifier = Modifier.size(36.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector        = icono,
+                        contentDescription = null,
+                        tint               = if (seleccionado) MaterialTheme.colorScheme.onPrimary
+                                             else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier           = Modifier.size(18.dp)
+                    )
+                }
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text       = titulo,
+                    style      = MaterialTheme.typography.bodyMedium,
+                    fontWeight = if (seleccionado) FontWeight.Bold else FontWeight.Medium,
+                    color      = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text  = subtitulo,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            RadioButton(
+                selected = seleccionado,
+                onClick  = onClick,
+                colors   = RadioButtonDefaults.colors(
+                    selectedColor = MaterialTheme.colorScheme.primary
+                )
+            )
+        }
     }
 }

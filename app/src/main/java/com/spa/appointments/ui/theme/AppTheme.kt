@@ -5,14 +5,21 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.graphics.Color
 import com.spa.appointments.core.theme.TemaStore
+import com.spa.appointments.core.theme.ThemeMode
 import com.spa.appointments.core.theme.hexToColor
 
 @Composable
 fun AppDynamicTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    content:   @Composable () -> Unit
+    content: @Composable () -> Unit
 ) {
     val tema by TemaStore.tema.collectAsState()
+    val modoTema by TemaStore.modoTema.collectAsState()
+
+    val isDark = when (modoTema) {
+        ThemeMode.LIGHT  -> false
+        ThemeMode.DARK   -> true
+        ThemeMode.SYSTEM -> isSystemInDarkTheme()
+    }
 
     val colorPrimario   = tema?.let { hexToColor(it.colorPrimario) }
         ?: Color(0xFF6650A4)
@@ -65,7 +72,7 @@ fun AppDynamicTheme(
     )
 
     MaterialTheme(
-        colorScheme = if (darkTheme) darkColors else lightColors,
+        colorScheme = if (isDark) darkColors else lightColors,
         typography  = Typography,
         content     = content
     )

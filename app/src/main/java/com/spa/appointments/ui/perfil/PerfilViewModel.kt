@@ -4,6 +4,9 @@ import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.spa.appointments.core.security.TokenStorage
+import com.spa.appointments.core.theme.TemaStore
+import com.spa.appointments.core.theme.ThemeMode
 import com.spa.appointments.core.utils.ApiErrorMapper
 import com.spa.appointments.domain.model.ActualizarPerfilRequest
 import com.spa.appointments.domain.model.Perfil
@@ -29,8 +32,16 @@ sealed class PerfilActionState {
 
 @HiltViewModel
 class PerfilViewModel @Inject constructor(
-    private val repository: PerfilRepository
+    private val repository: PerfilRepository,
+    private val tokenStorage: TokenStorage
 ) : ViewModel() {
+
+    val modoTema: StateFlow<ThemeMode> = TemaStore.modoTema
+
+    fun cambiarModoTema(modo: ThemeMode) {
+        tokenStorage.saveThemeMode(modo.name)
+        TemaStore.setModoTema(modo)
+    }
 
     private val _uiState = MutableStateFlow<PerfilUiState>(PerfilUiState.Loading)
     val uiState: StateFlow<PerfilUiState> = _uiState

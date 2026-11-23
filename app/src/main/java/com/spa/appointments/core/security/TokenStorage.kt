@@ -19,6 +19,7 @@ class TokenStorage(context: Context) {
         private const val LICENCIA_MENSAJE_KEY = "licencia_mensaje"
         private const val LICENCIA_DIAS_KEY    = "licencia_dias"
         private const val FCM_TOKEN_KEY = "fcm_token"
+        private const val THEME_MODE_KEY = "theme_mode"
     }
 
     fun saveLicencia(estado: String, mensaje: String, diasRestantes: Int) {
@@ -95,6 +96,12 @@ class TokenStorage(context: Context) {
     }
 
     fun getFcmToken(): String? = prefs.getString(FCM_TOKEN_KEY, null)
+
+    fun saveThemeMode(mode: String) {
+        prefs.edit().putString(THEME_MODE_KEY, mode).apply()
+    }
+
+    fun getThemeMode(): String = prefs.getString(THEME_MODE_KEY, "SYSTEM") ?: "SYSTEM"
 
     fun saveSession(
         accessToken: String,
