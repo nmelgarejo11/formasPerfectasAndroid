@@ -81,7 +81,7 @@ class HistorialViewModel @Inject constructor(
             val nuevoModo = if (actual == ModoVistaCitas.LISTA) ModoVistaCitas.CALENDARIO_DIA else ModoVistaCitas.LISTA
             if (nuevoModo == ModoVistaCitas.CALENDARIO_DIA) {
                 val fechaIso = _fechaCalendario.value.toString()
-                _filtros.value = FiltrosHistorial(fechaDesde = fechaIso, fechaHasta = fechaIso)
+                _filtros.update { it.copy(fechaDesde = fechaIso, fechaHasta = fechaIso) }
                 cargar()
             }
             nuevoModo
@@ -91,7 +91,18 @@ class HistorialViewModel @Inject constructor(
     fun setFechaCalendario(nuevaFecha: LocalDate) {
         _fechaCalendario.value = nuevaFecha
         val fechaIso = nuevaFecha.toString()
-        _filtros.value = FiltrosHistorial(fechaDesde = fechaIso, fechaHasta = fechaIso)
+        _filtros.update { it.copy(fechaDesde = fechaIso, fechaHasta = fechaIso) }
+        cargar()
+    }
+
+    fun seleccionarProfesional(id: Int?, nombre: String?) {
+        _filtros.update { actual ->
+            actual.copy(
+                idProfesional = id,
+                nombreProfesional = nombre,
+                esFiltroManual = id != null || actual.nombreCliente != null || actual.idEstado != null
+            )
+        }
         cargar()
     }
 

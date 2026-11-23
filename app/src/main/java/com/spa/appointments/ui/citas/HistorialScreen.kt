@@ -205,7 +205,7 @@ fun HistorialScreen(
 
             // Banner de filtros activos
             AnimatedVisibility(
-                visible = filtros.activo && !showFiltros && modoVista == ModoVistaCitas.LISTA,
+                visible = filtros.activo && !showFiltros,
                 enter   = expandVertically() + fadeIn(),
                 exit    = shrinkVertically() + fadeOut()
             ) {
@@ -225,7 +225,7 @@ fun HistorialScreen(
                         )
                         Spacer(Modifier.width(6.dp))
                         Text(
-                            text     = "Filtros aplicados",
+                            text     = if (filtros.nombreProfesional != null) "Filtrado por: ${filtros.nombreProfesional}" else "Filtros aplicados",
                             style    = MaterialTheme.typography.labelSmall,
                             color    = MaterialTheme.colorScheme.onSecondaryContainer,
                             modifier = Modifier.weight(1f)
@@ -269,14 +269,18 @@ fun HistorialScreen(
                     is HistorialUiState.Empty -> {
                         if (modoVista == ModoVistaCitas.CALENDARIO_DIA) {
                             CalendarioDiaView(
-                                citas             = emptyList(),
-                                fechaSeleccionada = fechaCalendario,
-                                onFechaChange     = { vm.setFechaCalendario(it) },
-                                onCitaClick       = { cita ->
+                                citas                         = emptyList(),
+                                fechaSeleccionada             = fechaCalendario,
+                                onFechaChange                 = { vm.setFechaCalendario(it) },
+                                onCitaClick                   = { cita ->
                                     citaSeleccionada = cita
                                     mostrarDetalle   = true
                                 },
-                                mensajeVacio      = "Sin historial aún para este día"
+                                mensajeVacio                  = "Sin historial aún para este día",
+                                profesionales                 = profesionales,
+                                idProfesionalSeleccionado     = filtros.idProfesional,
+                                nombreProfesionalSeleccionado = filtros.nombreProfesional,
+                                onProfesionalChange           = { id, nombre -> vm.seleccionarProfesional(id, nombre) }
                             )
                         } else {
                             EmptyHistorial(
@@ -347,14 +351,18 @@ fun HistorialScreen(
                     is HistorialUiState.Success -> {
                         if (modoVista == ModoVistaCitas.CALENDARIO_DIA) {
                             CalendarioDiaView(
-                                citas             = state.citas,
-                                fechaSeleccionada = fechaCalendario,
-                                onFechaChange     = { vm.setFechaCalendario(it) },
-                                onCitaClick       = { cita ->
+                                citas                         = state.citas,
+                                fechaSeleccionada             = fechaCalendario,
+                                onFechaChange                 = { vm.setFechaCalendario(it) },
+                                onCitaClick                   = { cita ->
                                     citaSeleccionada = cita
                                     mostrarDetalle   = true
                                 },
-                                mensajeVacio      = "Sin historial aún para este día"
+                                mensajeVacio                  = "Sin historial aún para este día",
+                                profesionales                 = profesionales,
+                                idProfesionalSeleccionado     = filtros.idProfesional,
+                                nombreProfesionalSeleccionado = filtros.nombreProfesional,
+                                onProfesionalChange           = { id, nombre -> vm.seleccionarProfesional(id, nombre) }
                             )
                         } else {
                             LazyColumn(

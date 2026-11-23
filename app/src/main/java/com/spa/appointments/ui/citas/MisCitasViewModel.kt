@@ -115,12 +115,20 @@ class MisCitasViewModel @Inject constructor(
 
     fun setFechaCalendario(nuevaFecha: LocalDate) {
         _fechaCalendario.value = nuevaFecha
-        // Si no es un filtro manual estricto, sincronizar el rango para traer citas de la nueva fecha
-        if (!_filtros.value.esFiltroManual) {
-            val fechaIso = nuevaFecha.toString()
-            _filtros.value = FiltrosMisCitas(fechaDesde = fechaIso, fechaHasta = fechaIso)
-            cargar()
+        val fechaIso = nuevaFecha.toString()
+        _filtros.update { it.copy(fechaDesde = fechaIso, fechaHasta = fechaIso) }
+        cargar()
+    }
+
+    fun seleccionarProfesional(id: Int?, nombre: String?) {
+        _filtros.update { actual ->
+            actual.copy(
+                idProfesional = id,
+                nombreProfesional = nombre,
+                esFiltroManual = id != null || actual.nombreCliente != null || actual.idEstado != null
+            )
         }
+        cargar()
     }
 
     fun cargar() {

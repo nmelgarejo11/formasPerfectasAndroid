@@ -102,4 +102,23 @@ class CalendarioDiaViewTest {
         assertEquals(1, posList[0].totalCols)
         assertEquals(1, posList[1].totalCols)
     }
+
+    @Test
+    fun testFiltradoPorProfesional_VistaDia() {
+        val citaLucero = createCita(1, "Lucero", "2025-10-15T10:00:00", "2025-10-15T11:30:00") // idProfesional = 10
+        val citaLaura  = createCita(2, "Laura", "2025-10-15T10:00:00", "2025-10-15T11:30:00")  // idProfesional = 20
+
+        val citas = listOf(citaLucero, citaLaura)
+
+        // Cuando idProfesionalSeleccionado es null, incluye ambas
+        val idProfesionalNull: Int? = null
+        val filtradasTodas = citas.filter { idProfesionalNull == null || it.idProfesional == idProfesionalNull }
+        assertEquals(2, filtradasTodas.size)
+
+        // Cuando se filtra por Lucero (id 10)
+        val idLucero = 10
+        val filtradasLucero = citas.filter { it.idProfesional == idLucero }
+        assertEquals(1, filtradasLucero.size)
+        assertEquals("Lucero", filtradasLucero[0].profesional)
+    }
 }

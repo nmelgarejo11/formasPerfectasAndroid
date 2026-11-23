@@ -121,7 +121,8 @@ fun MisCitasScreen(
         onBuscarClientes          = { query -> vm.buscarClientes(query) },
         onWhatsApp                = { idCita -> vm.abrirWhatsApp(idCita, context) },
         onResetAccion             = { vm.resetAccion() },
-        onCargarProfesionales     = { sedeId, servId -> vm.cargarProfesionales(sedeId, servId) }
+        onCargarProfesionales     = { sedeId, servId -> vm.cargarProfesionales(sedeId, servId) },
+        onSeleccionarProfesional  = { id, nom -> vm.seleccionarProfesional(id, nom) }
     )
 }
 
@@ -159,7 +160,8 @@ fun MisCitasContent(
     onBuscarClientes:          (String) -> Unit,
     onWhatsApp:                (Int) -> Unit,
     onResetAccion:             () -> Unit,
-    onCargarProfesionales:     (idSede: Int, idServicio: Int?) -> Unit
+    onCargarProfesionales:     (idSede: Int, idServicio: Int?) -> Unit,
+    onSeleccionarProfesional:  (id: Int?, nombre: String?) -> Unit = { _, _ -> }
 ) {
     var filtrosTemp by remember { mutableStateOf(FiltrosMisCitas()) }
 
@@ -571,7 +573,11 @@ fun MisCitasContent(
                                 onCitaClick = { cita ->
                                     citaAccion = cita
                                     mostrarDetalleCita = true
-                                }
+                                },
+                                profesionales = profesionales,
+                                idProfesionalSeleccionado = filtros.idProfesional,
+                                nombreProfesionalSeleccionado = filtros.nombreProfesional,
+                                onProfesionalChange = onSeleccionarProfesional
                             )
                         } else {
                             EmptyMisCitas(
@@ -645,7 +651,11 @@ fun MisCitasContent(
                                 onCitaClick = { cita ->
                                     citaAccion = cita
                                     mostrarDetalleCita = true
-                                }
+                                },
+                                profesionales = profesionales,
+                                idProfesionalSeleccionado = filtros.idProfesional,
+                                nombreProfesionalSeleccionado = filtros.nombreProfesional,
+                                onProfesionalChange = onSeleccionarProfesional
                             )
                         } else {
                             LazyColumn(

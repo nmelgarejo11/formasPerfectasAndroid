@@ -11,8 +11,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.EventNote
 import androidx.compose.material.icons.automirrored.filled.StickyNote2
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,6 +27,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.spa.appointments.domain.model.Cita
+import com.spa.appointments.domain.model.Profesional
 import com.spa.appointments.domain.model.ServicioCita
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
@@ -36,12 +40,16 @@ import java.util.Locale
 
 @Composable
 fun CalendarioDiaView(
-    citas:             List<Cita>,
-    fechaSeleccionada: LocalDate,
-    onFechaChange:     (LocalDate) -> Unit,
-    onCitaClick:       (Cita) -> Unit,
-    modifier:          Modifier = Modifier,
-    mensajeVacio:      String   = "Sin citas programadas para este día"
+    citas:                         List<Cita>,
+    fechaSeleccionada:             LocalDate,
+    onFechaChange:                 (LocalDate) -> Unit,
+    onCitaClick:                   (Cita) -> Unit,
+    modifier:                      Modifier = Modifier,
+    mensajeVacio:                  String   = "Sin citas programadas para este día",
+    profesionales:                 List<Profesional> = emptyList(),
+    idProfesionalSeleccionado:     Int? = null,
+    nombreProfesionalSeleccionado: String? = null,
+    onProfesionalChange:           ((id: Int?, nombre: String?) -> Unit)? = null
 ) {
     val localeEs         = Locale("es", "ES")
     val formatterDisplay = DateTimeFormatter.ofPattern("EEEE, d 'de' MMMM", localeEs)
@@ -49,7 +57,7 @@ fun CalendarioDiaView(
 
     Column(modifier = modifier.fillMaxSize()) {
 
-        // ── Cabecera de Navegación Diaria M3 ─────────────────────────────────
+        // ── Cabecera de Navegación Diaria y Filtro de Profesional M3 ───────────
         Surface(
             tonalElevation = 1.dp,
             color          = MaterialTheme.colorScheme.surfaceContainerLow,
@@ -130,6 +138,152 @@ fun CalendarioDiaView(
                     }
                 }
 
+                // Selector de Profesional en Vista Día
+                if (onProfesionalChange != null || profesionales.isNotEmpty()) {
+                    var expandedMenu by remember { mutableStateOf(false) }
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 12.dp, end = 12.dp, bottom = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Box {
+                            Surface(
+                                onClick = { expandedMenu = true },
+                                shape = RoundedCornerShape(12.dp),
+                                color = if (idProfesionalSeleccionado != null)
+                                    MaterialTheme.colorScheme.primaryContainer
+                                else
+                                    MaterialTheme.colorScheme.surfaceContainerHigh,
+                                border = androidx.compose.foundation.BorderStroke(
+                                    1.dp,
+                                    if (idProfesionalSeleccionado != null)
+                                        MaterialTheme.colorScheme.primary
+                                    else
+                                        MaterialTheme.colorScheme.outlineVariant
+                                )
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Person,
+                                        contentDescription = "Filtrar por profesional",
+                                        tint = if (idProfesionalSeleccionado != null)
+                                            MaterialTheme.colorScheme.onPrimaryContainer
+                                        else
+                                            MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Text(
+                                        text = nombreProfesionalSeleccionado ?: "Todos los profesionales",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = if (idProfesionalSeleccionado != null)
+                                            MaterialTheme.colorScheme.onPrimaryContainer
+                                        else
+                                            MaterialTheme.colorScheme.onSurface,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Icon(
+                                        imageVector = Icons.Default.ArrowDropDown,
+                                        contentDescription = null,
+                                        tint = if (idProfesionalSeleccionado != null)
+                                            MaterialTheme.colorScheme.onPrimaryContainer
+                                        else
+                                            MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            }
+
+                            DropdownMenu(
+                                expanded = expandedMenu,
+                                onDismissRequest = { expandedMenu = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Group,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(18.dp),
+                                                tint = if (idProfesionalSeleccionado == null)
+                                                    MaterialTheme.colorScheme.primary
+                                                else
+                                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                            Text(
+                                                text = "Todos los profesionales",
+                                                fontWeight = if (idProfesionalSeleccionado == null) FontWeight.Bold else FontWeight.Normal,
+                                                color = if (idProfesionalSeleccionado == null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                            )
+                                        }
+                                    },
+                                    onClick = {
+                                        expandedMenu = false
+                                        onProfesionalChange?.invoke(null, null)
+                                    }
+                                )
+
+                                if (profesionales.isNotEmpty()) {
+                                    HorizontalDivider()
+                                }
+
+                                profesionales.forEach { prof ->
+                                    val esSeleccionado = idProfesionalSeleccionado == prof.id
+                                    DropdownMenuItem(
+                                        text = {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Person,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(18.dp),
+                                                    tint = if (esSeleccionado)
+                                                        MaterialTheme.colorScheme.primary
+                                                    else
+                                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                                Column {
+                                                    Text(
+                                                        text = prof.nombre,
+                                                        fontWeight = if (esSeleccionado) FontWeight.Bold else FontWeight.Medium,
+                                                        color = if (esSeleccionado) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                                    )
+                                                    prof.cargo?.let { cargo ->
+                                                        if (cargo.isNotBlank()) {
+                                                            Text(
+                                                                text = cargo,
+                                                                style = MaterialTheme.typography.labelSmall,
+                                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        onClick = {
+                                            expandedMenu = false
+                                            onProfesionalChange?.invoke(prof.id, prof.nombre)
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
                 HorizontalDivider(
                     thickness = 1.dp,
                     color     = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
@@ -138,10 +292,12 @@ fun CalendarioDiaView(
         }
 
         // ── Filtrado y Posicionamiento de Citas para el Día Seleccionado ───────
-        val citasPosicionadas = remember(citas, fechaSeleccionada) {
+        val citasPosicionadas = remember(citas, fechaSeleccionada, idProfesionalSeleccionado) {
             val citasDelDia = citas.filter { cita ->
                 val inicio = parseFechaHora(cita.fechaHoraInicio)
-                inicio?.toLocalDate() == fechaSeleccionada
+                val coincideFecha = inicio?.toLocalDate() == fechaSeleccionada
+                val coincideProf = idProfesionalSeleccionado == null || cita.idProfesional == idProfesionalSeleccionado
+                coincideFecha && coincideProf
             }
             calcularPosicionesCitas(citasDelDia)
         }
