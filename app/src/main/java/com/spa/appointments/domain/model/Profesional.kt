@@ -12,6 +12,7 @@ data class Profesional(
     @Json(name = "foto")           val foto: String?,
     @Json(name = "telefono")       val telefono: String?,
     @Json(name = "email")          val email: String?,
+    @Json(name = "color")          val color: String? = null,
     @Json(name = "idCargo")        val idCargo: Int,
     @Json(name = "cargo")          val cargo: String,
     @Json(name = "idSede")         val idSede: Int,

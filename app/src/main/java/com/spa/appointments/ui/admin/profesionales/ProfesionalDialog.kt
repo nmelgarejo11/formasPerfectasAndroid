@@ -1,6 +1,9 @@
 // Ruta: app/src/main/java/com/spa/appointments/ui/admin/profesionales/ProfesionalDialog.kt
 package com.spa.appointments.ui.admin.profesionales
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -13,6 +16,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -35,6 +40,7 @@ fun ProfesionalDialog(
     var apellido        by remember(profesional) { mutableStateOf(profesional?.apellido ?: "") }
     var telefono        by remember(profesional) { mutableStateOf(profesional?.telefono ?: "") }
     var email           by remember(profesional) { mutableStateOf(profesional?.email    ?: "") }
+    var color           by remember(profesional) { mutableStateOf(profesional?.color    ?: "#2196F3") }
     var identificacion  by remember(profesional) { mutableStateOf(profesional?.identificacion ?: "") }
     var numeroCuenta    by remember(profesional) { mutableStateOf(profesional?.numeroCuenta ?: "") }
 
@@ -254,6 +260,78 @@ fun ProfesionalDialog(
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
                     )
 
+                    // Color de identificación
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = "Color en Agenda / Mis Citas",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        val coloresPreset = remember {
+                            listOf("#2196F3", "#4CAF50", "#E91E63", "#9C27B0", "#FF9800", "#00BCD4", "#3F51B5", "#009688", "#FF5722", "#673AB7")
+                        }
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            coloresPreset.take(5).forEach { colorHex ->
+                                val selected = color.equals(colorHex, ignoreCase = true)
+                                val parsedColor = remember(colorHex) {
+                                    try { Color(android.graphics.Color.parseColor(colorHex)) } catch (_: Exception) { Color.Gray }
+                                }
+                                Box(
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .clip(CircleShape)
+                                        .background(parsedColor)
+                                        .then(
+                                            if (selected) Modifier.border(2.5.dp, MaterialTheme.colorScheme.onSurface, CircleShape)
+                                            else Modifier
+                                        )
+                                        .clickable { color = colorHex },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    if (selected) {
+                                        Icon(Icons.Outlined.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                                    }
+                                }
+                            }
+                        }
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            coloresPreset.drop(5).forEach { colorHex ->
+                                val selected = color.equals(colorHex, ignoreCase = true)
+                                val parsedColor = remember(colorHex) {
+                                    try { Color(android.graphics.Color.parseColor(colorHex)) } catch (_: Exception) { Color.Gray }
+                                }
+                                Box(
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .clip(CircleShape)
+                                        .background(parsedColor)
+                                        .then(
+                                            if (selected) Modifier.border(2.5.dp, MaterialTheme.colorScheme.onSurface, CircleShape)
+                                            else Modifier
+                                        )
+                                        .clickable { color = colorHex },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    if (selected) {
+                                        Icon(Icons.Outlined.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), thickness = 0.5.dp)
 
                     Text(
@@ -381,6 +459,7 @@ fun ProfesionalDialog(
                                     apellido        = apellido.trim(),
                                     telefono        = telefono.trim().ifBlank { null },
                                     email           = email.trim().ifBlank { null },
+                                    color           = color.trim().ifBlank { null },
                                     idTipoDocumento = tipoDocSeleccionado?.id,
                                     identificacion  = identificacion.trim().ifBlank { null },
                                     idBanco         = bancoSeleccionado?.id,

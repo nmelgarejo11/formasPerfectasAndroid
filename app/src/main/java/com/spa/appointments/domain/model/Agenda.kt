@@ -73,6 +73,7 @@ data class Cita(
     @Json(name = "profesional")               val profesional: String,
     @Json(name = "fotoProfesional")           val fotoProfesional: String?,
     @Json(name = "cargoProfesional")          val cargoProfesional: String?,
+    @Json(name = "colorProfesional")          val colorProfesional: String? = null,
     @Json(name = "sede")                      val sede: String,
     @Json(name = "servicios")                 val servicios: String?,
     @Json(name = "total")                     val total: Double,

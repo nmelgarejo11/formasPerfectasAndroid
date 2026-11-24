@@ -433,8 +433,9 @@ fun CalendarioDiaView(
                         val colWidth   = anchoDisponible / pos.totalColumns
                         val leftOffset = colWidth * pos.columnIndex
 
-                        val colorBase  = parseColorHex(cita.colorEstado) ?: MaterialTheme.colorScheme.primary
-                        val tieneNotas = !cita.notas.isNullOrBlank()
+                        val colorBase   = parseColorHex(cita.colorEstado) ?: MaterialTheme.colorScheme.primary
+                        val colorFranja = parseColorHex(cita.colorProfesional) ?: colorBase
+                        val tieneNotas  = !cita.notas.isNullOrBlank()
 
                         val isNarrow       = pos.totalColumns > 1
                         val fontSizeHora   = if (isNarrow) 8.5.sp else 9.5.sp
@@ -461,13 +462,13 @@ fun CalendarioDiaView(
                                         .fillMaxSize(),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    // Borde indicador de estado destacado
+                                    // Borde indicador del profesional en la franja de la tarjeta
                                     Box(
                                         modifier = Modifier
                                             .width(3.5.dp)
                                             .fillMaxHeight()
                                             .clip(CircleShape)
-                                            .background(colorBase)
+                                            .background(colorFranja)
                                     )
 
                                     Spacer(Modifier.width(4.dp))

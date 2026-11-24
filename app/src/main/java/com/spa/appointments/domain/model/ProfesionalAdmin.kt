@@ -18,7 +18,8 @@ data class ProfesionalAdmin(
     @Json(name = "identificacion")  val identificacion: String? = null,
     @Json(name = "idBanco")         val idBanco: Int? = null,
     @Json(name = "idTipoCuenta")    val idTipoCuenta: Int? = null,
-    @Json(name = "numeroCuenta")    val numeroCuenta: String? = null
+    @Json(name = "numeroCuenta")    val numeroCuenta: String? = null,
+    @Json(name = "color")           val color: String? = null
 )
 
 @JsonClass(generateAdapter = true)
@@ -28,6 +29,7 @@ data class ProfesionalRequest(
     @Json(name = "apellido")        val apellido: String,
     @Json(name = "telefono")        val telefono: String?,
     @Json(name = "email")           val email: String?,
+    @Json(name = "color")           val color: String? = null,
     @Json(name = "idTipoDocumento") val idTipoDocumento: Int? = null,
     @Json(name = "identificacion")  val identificacion: String? = null,
     @Json(name = "idBanco")         val idBanco: Int? = null,

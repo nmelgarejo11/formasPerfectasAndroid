@@ -6,6 +6,8 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -57,11 +59,12 @@ fun PerfilScreen(
     val actionState  by viewModel.actionState.collectAsState()
     val modoTema     by viewModel.modoTema.collectAsState()
 
-    var nombreUsuario   by remember { mutableStateOf("") }
-    var clave           by remember { mutableStateOf("") }
-    var claveVisible    by remember { mutableStateOf(false) }
-    var initialized     by remember { mutableStateOf(false) }
-    var fotoUri         by remember { mutableStateOf<Uri?>(null) }
+    var nombreUsuario    by remember { mutableStateOf("") }
+    var clave            by remember { mutableStateOf("") }
+    var claveVisible     by remember { mutableStateOf(false) }
+    var colorProfesional by remember { mutableStateOf<String?>(null) }
+    var initialized      by remember { mutableStateOf(false) }
+    var fotoUri          by remember { mutableStateOf<Uri?>(null) }
 
     val fotoLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -70,9 +73,10 @@ fun PerfilScreen(
     }
 
     if (uiState is PerfilUiState.Success && !initialized) {
-        val p          = (uiState as PerfilUiState.Success).perfil
-        nombreUsuario = p.nombreUsuario
-        initialized    = true
+        val p             = (uiState as PerfilUiState.Success).perfil
+        nombreUsuario    = p.nombreUsuario
+        colorProfesional = p.colorProfesional ?: "#2196F3"
+        initialized       = true
     }
 
     val snackbarHostState = remember { SnackbarHostState() }
@@ -394,6 +398,104 @@ fun PerfilScreen(
 
                     Spacer(Modifier.height(28.dp))
 
+                    // ── Sección Color de Identificación ────────────────────
+                    SectionHeader(
+                        icono  = Icons.Default.Palette,
+                        titulo = "COLOR DE IDENTIFICACIÓN EN MIS CITAS"
+                    )
+
+                    Spacer(Modifier.height(12.dp))
+
+                    OutlinedCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape    = RoundedCornerShape(18.dp),
+                        colors   = CardDefaults.outlinedCardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                        ),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Text(
+                                text = "Elige tu color distintivo",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "Este color se mostrará en la franja lateral de la tarjeta de tus citas en la vista por día.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+
+                            val coloresPreset = remember {
+                                listOf("#2196F3", "#4CAF50", "#E91E63", "#9C27B0", "#FF9800", "#00BCD4", "#3F51B5", "#009688", "#FF5722", "#673AB7")
+                            }
+
+                            Row(
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
+                            ) {
+                                coloresPreset.take(5).forEach { colorHex ->
+                                    val selected = colorProfesional.equals(colorHex, ignoreCase = true)
+                                    val parsedColor = remember(colorHex) {
+                                        try { androidx.compose.ui.graphics.Color(android.graphics.Color.parseColor(colorHex)) } catch (_: Exception) { androidx.compose.ui.graphics.Color.Gray }
+                                    }
+                                    Box(
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .clip(CircleShape)
+                                            .background(parsedColor)
+                                            .then(
+                                                if (selected) Modifier.border(3.dp, MaterialTheme.colorScheme.onSurface, CircleShape)
+                                                else Modifier
+                                            )
+                                            .clickable { colorProfesional = colorHex },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        if (selected) {
+                                            Icon(Icons.Default.Check, contentDescription = null, tint = androidx.compose.ui.graphics.Color.White, modifier = Modifier.size(20.dp))
+                                        }
+                                    }
+                                }
+                            }
+
+                            Row(
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                coloresPreset.drop(5).forEach { colorHex ->
+                                    val selected = colorProfesional.equals(colorHex, ignoreCase = true)
+                                    val parsedColor = remember(colorHex) {
+                                        try { androidx.compose.ui.graphics.Color(android.graphics.Color.parseColor(colorHex)) } catch (_: Exception) { androidx.compose.ui.graphics.Color.Gray }
+                                    }
+                                    Box(
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .clip(CircleShape)
+                                            .background(parsedColor)
+                                            .then(
+                                                if (selected) Modifier.border(3.dp, MaterialTheme.colorScheme.onSurface, CircleShape)
+                                                else Modifier
+                                            )
+                                            .clickable { colorProfesional = colorHex },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        if (selected) {
+                                            Icon(Icons.Default.Check, contentDescription = null, tint = androidx.compose.ui.graphics.Color.White, modifier = Modifier.size(20.dp))
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(Modifier.height(28.dp))
+
                     // ── Sección Apariencia y Tema ──────────────────────────
                     SectionHeader(
                         icono  = Icons.Default.Palette,
@@ -454,8 +556,9 @@ fun PerfilScreen(
                             focusManager.clearFocus()
                             viewModel.actualizarPerfil(
                                 ActualizarPerfilRequest(
-                                    nombreUsuario = nombreUsuario,
-                                    clave         = clave.ifBlank { null }
+                                    nombreUsuario    = nombreUsuario,
+                                    clave            = clave.ifBlank { null },
+                                    colorProfesional = colorProfesional
                                 )
                             )
                         },

@@ -7,13 +7,15 @@ data class Perfil(
     @Json(name = "idUsuario") val idUsuario: Int = 0,
     @Json(name = "usuario") val usuario: String = "",
     @Json(name = "nombreUsuario") val nombreUsuario: String = "",
-    @Json(name = "fotoUrl") val fotoUrl: String? = null
+    @Json(name = "fotoUrl") val fotoUrl: String? = null,
+    @Json(name = "colorProfesional") val colorProfesional: String? = null
 )
 
 @JsonClass(generateAdapter = true)
 data class ActualizarPerfilRequest(
     @Json(name = "nombreUsuario") val nombreUsuario: String,
-    @Json(name = "clave") val clave: String? = null
+    @Json(name = "clave") val clave: String? = null,
+    @Json(name = "colorProfesional") val colorProfesional: String? = null
 )
 
 @JsonClass(generateAdapter = true)
