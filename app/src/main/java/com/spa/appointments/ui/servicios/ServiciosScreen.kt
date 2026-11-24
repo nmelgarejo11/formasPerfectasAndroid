@@ -272,11 +272,6 @@ fun ServiciosScreen(
                                             if (estaSeleccionado) {
                                                 serviciosSeleccionados.remove(servicio)
                                             } else {
-                                                if (servicio.esGrupal) {
-                                                    serviciosSeleccionados.clear()
-                                                } else {
-                                                    serviciosSeleccionados.removeAll { it.esGrupal }
-                                                }
                                                 serviciosSeleccionados.add(servicio)
                                             }
                                         },

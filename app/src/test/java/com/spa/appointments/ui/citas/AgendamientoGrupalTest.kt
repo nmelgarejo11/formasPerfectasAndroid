@@ -191,4 +191,25 @@ class AgendamientoGrupalTest {
         assertEquals("Bigote", sharedVm.serviciosConfigurados[1].servicio.nombre)
         assertEquals(0, sharedVm.servicioActualIndex)
     }
+
+    @Test
+    fun testPrepararCitaMultipleServicios_ConServiciosGrupalesYMixtos() {
+        val sharedVm = ReservaSharedViewModel()
+        val servIndividual = com.spa.appointments.domain.model.Servicio(id = 1, idCategoria = 1, categoria = "Facial", nombre = "Limpieza Facial", descripcion = null, duracionMinutos = 45, precioBase = 80000.0, icono = null, esGrupal = false, maxPersonas = null)
+        val servGrupal1 = com.spa.appointments.domain.model.Servicio(id = 2, idCategoria = 2, categoria = "Spa", nombre = "Jacuzzi Grupal", descripcion = null, duracionMinutos = 60, precioBase = 120000.0, icono = null, esGrupal = true, maxPersonas = 4)
+        val servGrupal2 = com.spa.appointments.domain.model.Servicio(id = 3, idCategoria = 2, categoria = "Spa", nombre = "Sauna Grupal", descripcion = null, duracionMinutos = 30, precioBase = 60000.0, icono = null, esGrupal = true, maxPersonas = 6)
+
+        val listaServiciosSeleccionados = listOf(servIndividual, servGrupal1, servGrupal2)
+
+        sharedVm.prepararCitaMultipleServicios(listaServiciosSeleccionados)
+
+        assertTrue(sharedVm.esMultiple)
+        assertEquals(false, sharedVm.esGrupal)
+        assertEquals(3, sharedVm.serviciosConfigurados.size)
+        assertEquals("Limpieza Facial", sharedVm.serviciosConfigurados[0].servicio.nombre)
+        assertEquals("Jacuzzi Grupal", sharedVm.serviciosConfigurados[1].servicio.nombre)
+        assertEquals("Sauna Grupal", sharedVm.serviciosConfigurados[2].servicio.nombre)
+        assertTrue(sharedVm.serviciosConfigurados[1].servicio.esGrupal)
+        assertTrue(sharedVm.serviciosConfigurados[2].servicio.esGrupal)
+    }
 }
