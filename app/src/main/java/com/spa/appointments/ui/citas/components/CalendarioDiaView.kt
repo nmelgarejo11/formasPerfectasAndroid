@@ -22,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -306,6 +307,20 @@ fun CalendarioDiaView(
         val horaInicioConfig = 6 // 06:00 AM
         val horaFinConfig    = 22  // 10:00 PM
         val altoPorHoraDp    = 72.dp
+
+        val density = LocalDensity.current
+        LaunchedEffect(fechaSeleccionada) {
+            if (esHoy) {
+                val ahora = LocalTime.now()
+                val horaClamped = ahora.hour.coerceIn(horaInicioConfig, horaFinConfig)
+                val minutosTranscurridos = (horaClamped - horaInicioConfig) * 60 + ahora.minute
+                val minutosOffset = (minutosTranscurridos - 30).coerceAtLeast(0)
+                val targetPx = with(density) { (minutosOffset * (72.0 / 60.0)).dp.toPx() }.toInt()
+                scrollState.scrollTo(targetPx)
+            } else {
+                scrollState.scrollTo(0)
+            }
+        }
 
         Box(
             modifier = Modifier
