@@ -117,7 +117,7 @@ fun MisCitasScreen(
         onToggleModoVista         = { vm.toggleModoVista() },
         onFechaCalendarioChange   = { vm.setFechaCalendario(it) },
         onCancelarCita            = { vm.cancelarCita(it) },
-        onReagendarCitaDirecto    = { id, idProf, ini, fin, idServ -> vm.reagendarCitaDirecto(id, idProf, ini, fin, idServ) },
+        onReagendarCitaDirecto    = { id, idProf, ini, fin, idServ, ignorar -> vm.reagendarCitaDirecto(id, idProf, ini, fin, idServ, ignorar) },
         onFinalizarCita           = { idCita, idMetodo, idDetalle, pFinal, obs -> vm.finalizarCita(idCita, idMetodo, idDetalle, pFinal, obs) },
         onAsignarCitaGrupal       = { idCita, ids, ini, fin -> vm.asignarCitaGrupal(idCita, ids, ini, fin) },
         onCargarDisponibilidad    = { idProf, idSede, fecha, duracion, idCitaExcluir -> vm.cargarDisponibilidad(idProf, idSede, fecha, duracion, idCitaExcluir) },
@@ -157,7 +157,7 @@ fun MisCitasContent(
     onToggleModoVista:         () -> Unit,
     onFechaCalendarioChange:   (LocalDate) -> Unit,
     onCancelarCita:            (Int) -> Unit,
-    onReagendarCitaDirecto:    (idCita: Int, idProfesional: Int, inicioIso: String, finIso: String, idServicio: Int?) -> Unit,
+    onReagendarCitaDirecto:    (idCita: Int, idProfesional: Int, inicioIso: String, finIso: String, idServicio: Int?, ignorarOcupacion: Boolean) -> Unit,
     onFinalizarCita:           (idCita: Int, idMetodo: Int, idDetalle: Int?, precioFinal: Double?, observaciones: String?) -> Unit,
     onAsignarCitaGrupal:       (idCita: Int, idsProfesionales: List<Int>?, fechaInicio: String?, fechaFin: String?) -> Unit,
     onCargarDisponibilidad:    (idProfesional: Int, idSede: Int, fecha: String, duracion: Int, idCitaExcluir: Int?) -> Unit,
@@ -284,9 +284,9 @@ fun MisCitasContent(
             slotsDisponibles = slotsDisponibles,
             onCargarProfesionales = { idSede, idServ -> onCargarProfesionales(idSede, idServ) },
             onCargarDisponibilidad = onCargarDisponibilidad,
-            onConfirmarModificacion = { idCita, idProf, iniIso, finIso, idServ ->
+            onConfirmarModificacion = { idCita, idProf, iniIso, finIso, idServ, ignorar ->
                 mostrarReagendar = false
-                onReagendarCitaDirecto(idCita, idProf, iniIso, finIso, idServ)
+                onReagendarCitaDirecto(idCita, idProf, iniIso, finIso, idServ, ignorar)
             },
             onDismiss = { mostrarReagendar = false }
         )
@@ -1970,7 +1970,7 @@ private fun MisCitasPreviewLoading() {
             onToggleModoVista         = {},
             onFechaCalendarioChange   = {},
             onCancelarCita            = {},
-            onReagendarCitaDirecto    = { _, _, _, _, _ -> },
+            onReagendarCitaDirecto    = { _, _, _, _, _, _ -> },
             onFinalizarCita           = { _, _, _, _, _ -> },
             onAsignarCitaGrupal       = { _, _, _, _ -> },
             onCargarDisponibilidad    = { _, _, _, _, _ -> },
@@ -2009,7 +2009,7 @@ private fun MisCitasPreviewEmptySinFiltros() {
             onToggleModoVista         = {},
             onFechaCalendarioChange   = {},
             onCancelarCita            = {},
-            onReagendarCitaDirecto    = { _, _, _, _, _ -> },
+            onReagendarCitaDirecto    = { _, _, _, _, _, _ -> },
             onFinalizarCita           = { _, _, _, _, _ -> },
             onAsignarCitaGrupal       = { _, _, _, _ -> },
             onCargarDisponibilidad    = { _, _, _, _, _ -> },
@@ -2048,7 +2048,7 @@ private fun MisCitasPreviewEmptyConFiltros() {
             onToggleModoVista         = {},
             onFechaCalendarioChange   = {},
             onCancelarCita            = {},
-            onReagendarCitaDirecto    = { _, _, _, _, _ -> },
+            onReagendarCitaDirecto    = { _, _, _, _, _, _ -> },
             onFinalizarCita           = { _, _, _, _, _ -> },
             onAsignarCitaGrupal       = { _, _, _, _ -> },
             onCargarDisponibilidad    = { _, _, _, _, _ -> },
@@ -2087,7 +2087,7 @@ private fun MisCitasPreviewError() {
             onToggleModoVista         = {},
             onFechaCalendarioChange   = {},
             onCancelarCita            = {},
-            onReagendarCitaDirecto    = { _, _, _, _, _ -> },
+            onReagendarCitaDirecto    = { _, _, _, _, _, _ -> },
             onFinalizarCita           = { _, _, _, _, _ -> },
             onAsignarCitaGrupal       = { _, _, _, _ -> },
             onCargarDisponibilidad    = { _, _, _, _, _ -> },
@@ -2126,7 +2126,7 @@ private fun MisCitasPreviewSuccess() {
             onToggleModoVista         = {},
             onFechaCalendarioChange   = {},
             onCancelarCita            = {},
-            onReagendarCitaDirecto    = { _, _, _, _, _ -> },
+            onReagendarCitaDirecto    = { _, _, _, _, _, _ -> },
             onFinalizarCita           = { _, _, _, _, _ -> },
             onAsignarCitaGrupal       = { _, _, _, _ -> },
             onCargarDisponibilidad    = { _, _, _, _, _ -> },

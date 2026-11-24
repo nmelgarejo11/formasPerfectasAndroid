@@ -206,12 +206,13 @@ class MisCitasViewModel @Inject constructor(
         idProfesional: Int,
         fechaHoraInicio: String,
         fechaHoraFin: String,
-        idServicio: Int? = null
+        idServicio: Int? = null,
+        ignorarOcupacion: Boolean = false
     ) {
         viewModelScope.launch {
             _accionState.value = AccionUiState.Loading
             try {
-                val resp = repo.reagendarCitaDirecto(idCita, idProfesional, fechaHoraInicio, fechaHoraFin, idServicio)
+                val resp = repo.reagendarCitaDirecto(idCita, idProfesional, fechaHoraInicio, fechaHoraFin, idServicio, ignorarOcupacion)
                 if (resp.ok) {
                     _accionState.value = AccionUiState.Success(resp.mensaje)
                     cargar()

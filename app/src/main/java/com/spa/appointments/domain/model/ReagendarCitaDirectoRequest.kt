@@ -8,5 +8,6 @@ data class ReagendarCitaDirectoRequest(
     @Json(name = "idProfesional")   val idProfesional: Int,
     @Json(name = "fechaHoraInicio") val fechaHoraInicio: String,
     @Json(name = "fechaHoraFin")    val fechaHoraFin: String,
-    @Json(name = "idServicio")      val idServicio: Int? = null
+    @Json(name = "idServicio")      val idServicio: Int? = null,
+    @Json(name = "ignorarOcupacion") val ignorarOcupacion: Boolean = false
 )

@@ -15,11 +15,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.EditCalendar
 import androidx.compose.material.icons.filled.EventBusy
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Spa
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -55,7 +55,7 @@ fun ModificarCitaDialog(
     slotsDisponibles: List<SlotDisponible>,
     onCargarProfesionales: (idSede: Int, idServicio: Int?) -> Unit,
     onCargarDisponibilidad: (idProfesional: Int, idSede: Int, fecha: String, duracion: Int, idCitaExcluir: Int?) -> Unit,
-    onConfirmarModificacion: (idCita: Int, idProfesional: Int, fechaHoraInicio: String, fechaHoraFin: String, idServicio: Int?) -> Unit,
+    onConfirmarModificacion: (idCita: Int, idProfesional: Int, fechaHoraInicio: String, fechaHoraFin: String, idServicio: Int?, ignorarOcupacion: Boolean) -> Unit,
     onDismiss: () -> Unit
 ) {
     val idServicioOriginal = remember(cita.servicios) {
@@ -74,6 +74,7 @@ fun ModificarCitaDialog(
 
     var fechaSeleccionada by remember { mutableStateOf(LocalDate.now()) }
     var slotSeleccionado by remember { mutableStateOf<SlotDisponible?>(null) }
+    var ignorarOcupacion by remember { mutableStateOf(false) }
 
     val formatterFechaIso = DateTimeFormatter.ofPattern("yyyy-MM-dd")
 
@@ -141,6 +142,33 @@ fun ModificarCitaDialog(
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState())
             ) {
+                if (ignorarOcupacion || slotSeleccionado?.disponible == false) {
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.errorContainer,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.Warning,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onErrorContainer,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                text = "⚠️ ATENCIÓN: Esta cita se agendará sobreasignando el horario",
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        }
+                    }
+                }
+
                 Text(
                     text = "Ajusta el servicio, profesional, fecha y nuevo horario disponible.",
                     style = MaterialTheme.typography.bodySmall,
@@ -393,13 +421,90 @@ fun ModificarCitaDialog(
                     }
                 }
 
+                // Opción Switch para Sobreasignar
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (ignorarOcupacion)
+                            MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.25f)
+                        else
+                            MaterialTheme.colorScheme.surfaceVariant
+                    ),
+                    border = if (ignorarOcupacion)
+                        BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
+                    else null
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Warning,
+                                contentDescription = null,
+                                tint = if (ignorarOcupacion) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Column {
+                                Text(
+                                    text = "Sobreasignar cita (Ignorar ocupación)",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (ignorarOcupacion) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "Permite agendar en franjas ocupadas",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontSize = 10.sp
+                                )
+                            }
+                        }
+                        Switch(
+                            checked = ignorarOcupacion,
+                            onCheckedChange = { ignorarOcupacion = it }
+                        )
+                    }
+                }
+
                 // 5. Grid de Slots de Horario
-                Text(
-                    text = "Horarios disponibles:",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+                val slotsAMostrar = if (ignorarOcupacion) slotsDisponibles else slotsDisponibles.filter { it.disponible }
+                val slotsDisponiblesCount = slotsDisponibles.count { it.disponible }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = if (ignorarOcupacion) "Todas las franjas:" else "Horarios disponibles:",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Surface(
+                        shape = RoundedCornerShape(50),
+                        color = if (ignorarOcupacion) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primaryContainer
+                    ) {
+                        Text(
+                            text     = if (ignorarOcupacion) "${slotsDisponibles.size} franjas (${slotsDisponiblesCount} libres)" else "$slotsDisponiblesCount disponibles",
+                            style    = MaterialTheme.typography.labelSmall,
+                            color    = if (ignorarOcupacion) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onPrimaryContainer,
+                            maxLines = 1,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                        )
+                    }
+                }
 
                 if (cargandoSlots) {
                     Box(
@@ -410,7 +515,7 @@ fun ModificarCitaDialog(
                     ) {
                         CircularProgressIndicator(modifier = Modifier.size(24.dp))
                     }
-                } else if (slotsDisponibles.none { it.disponible }) {
+                } else if (slotsAMostrar.isEmpty()) {
                     Surface(
                         shape = RoundedCornerShape(10.dp),
                         color = MaterialTheme.colorScheme.surfaceVariant,
@@ -428,15 +533,17 @@ fun ModificarCitaDialog(
                             )
                             Spacer(Modifier.width(8.dp))
                             Text(
-                                text = "No hay horarios disponibles para esta fecha.",
+                                text = if (!ignorarOcupacion && slotsDisponibles.isNotEmpty())
+                                    "No hay horarios libres. Activa 'Sobreasignar cita' para forzar una franja."
+                                else
+                                    "No hay horarios disponibles para esta fecha.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
                 } else {
-                    val slotsValidos = slotsDisponibles.filter { it.disponible }
-                    val filas = slotsValidos.chunked(3)
+                    val filas = slotsAMostrar.chunked(3)
 
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         filas.forEach { fila ->
@@ -446,27 +553,53 @@ fun ModificarCitaDialog(
                             ) {
                                 fila.forEach { slot ->
                                     val esSeleccionado = slotSeleccionado == slot
+                                    val esOcupado = !slot.disponible
+
+                                    val containerColor = when {
+                                        esSeleccionado && esOcupado -> MaterialTheme.colorScheme.error
+                                        esSeleccionado -> MaterialTheme.colorScheme.primary
+                                        esOcupado -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f)
+                                        else -> MaterialTheme.colorScheme.surfaceVariant
+                                    }
+
+                                    val textColor = when {
+                                        esSeleccionado -> MaterialTheme.colorScheme.onPrimary
+                                        esOcupado -> MaterialTheme.colorScheme.error
+                                        else -> MaterialTheme.colorScheme.onSurface
+                                    }
+
+                                    val borderStyle = when {
+                                        esSeleccionado -> null
+                                        esOcupado -> BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
+                                        else -> BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+                                    }
 
                                     Surface(
                                         shape = RoundedCornerShape(10.dp),
-                                        color = if (esSeleccionado) MaterialTheme.colorScheme.primary
-                                        else MaterialTheme.colorScheme.surfaceVariant,
-                                        border = if (esSeleccionado) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)),
+                                        color = containerColor,
+                                        border = borderStyle,
                                         modifier = Modifier
                                             .weight(1f)
                                             .clickable { slotSeleccionado = slot }
                                     ) {
-                                        Box(
-                                            contentAlignment = Alignment.Center,
-                                            modifier = Modifier.padding(vertical = 10.dp)
+                                        Column(
+                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                            modifier = Modifier.padding(vertical = 8.dp)
                                         ) {
                                             Text(
                                                 text = formatearHora12h(slot.horaInicio),
                                                 style = MaterialTheme.typography.labelSmall,
                                                 fontWeight = FontWeight.Bold,
-                                                color = if (esSeleccionado) MaterialTheme.colorScheme.onPrimary
-                                                else MaterialTheme.colorScheme.onSurface
+                                                color = textColor
                                             )
+                                            if (esOcupado) {
+                                                Text(
+                                                    text = "Ocupado",
+                                                    fontSize = 9.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = if (esSeleccionado) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.error
+                                                )
+                                            }
                                         }
                                     }
                                 }
@@ -496,7 +629,7 @@ fun ModificarCitaDialog(
                         val horaFinClean = String.format(Locale.US, "%02d:%02d:00", horaFinLocal.hour, horaFinLocal.minute)
                         val finIso = "${fechaIso}T${horaFinClean}"
 
-                        onConfirmarModificacion(cita.id, prof.id, inicioIso, finIso, servicioSeleccionado?.id)
+                        onConfirmarModificacion(cita.id, prof.id, inicioIso, finIso, servicioSeleccionado?.id, ignorarOcupacion)
                     }
                 },
                 enabled = slotSeleccionado != null && profesionalSeleccionado != null,
@@ -530,7 +663,7 @@ fun ReagendarCitaDirectoDialog(
     cargandoSlots: Boolean,
     slotsDisponibles: List<SlotDisponible>,
     onCargarDisponibilidad: (idProfesional: Int, idSede: Int, fecha: String, duracion: Int, idCitaExcluir: Int?) -> Unit,
-    onConfirmarReagendamiento: (idCita: Int, idProfesional: Int, fechaHoraInicio: String, fechaHoraFin: String) -> Unit,
+    onConfirmarReagendamiento: (idCita: Int, idProfesional: Int, fechaHoraInicio: String, fechaHoraFin: String, ignorarOcupacion: Boolean) -> Unit,
     onDismiss: () -> Unit
 ) {
     ModificarCitaDialog(
@@ -541,8 +674,8 @@ fun ReagendarCitaDirectoDialog(
         slotsDisponibles = slotsDisponibles,
         onCargarProfesionales = { _, _ -> },
         onCargarDisponibilidad = onCargarDisponibilidad,
-        onConfirmarModificacion = { idCita, idProf, ini, fin, _ ->
-            onConfirmarReagendamiento(idCita, idProf, ini, fin)
+        onConfirmarModificacion = { idCita, idProf, ini, fin, _, ignorar ->
+            onConfirmarReagendamiento(idCita, idProf, ini, fin, ignorar)
         },
         onDismiss = onDismiss
     )
