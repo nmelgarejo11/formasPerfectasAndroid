@@ -29,7 +29,8 @@ data class CrearCitaRequest(
     @Json(name = "responsableNombre")   val responsableNombre: String?,
     @Json(name = "responsableTelefono") val responsableTelefono: String?,
     @Json(name = "responsableEmail")    val responsableEmail: String?,
-    @Json(name = "servicios")     val servicios: List<ServicioDetalle>
+    @Json(name = "servicios")     val servicios: List<ServicioDetalle>,
+    @Json(name = "ignorarOcupacion") val ignorarOcupacion: Boolean = false
 )
 
 @JsonClass(generateAdapter = true)
@@ -38,7 +39,8 @@ data class CrearCitaGrupalItem(
     @Json(name = "fechaInicio")   val fechaInicio: String,
     @Json(name = "fechaFin")      val fechaFin: String,
     @Json(name = "notas")         val notas: String?,
-    @Json(name = "servicios")     val servicios: List<ServicioDetalle>
+    @Json(name = "servicios")     val servicios: List<ServicioDetalle>,
+    @Json(name = "ignorarOcupacion") val ignorarOcupacion: Boolean = false
 )
 
 @JsonClass(generateAdapter = true)

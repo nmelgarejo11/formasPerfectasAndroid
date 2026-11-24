@@ -50,6 +50,13 @@ class DisponibilidadViewModel @Inject constructor(
     private val _duracionPersonalizada = MutableStateFlow<Int?>(null)
     val duracionPersonalizada: StateFlow<Int?> = _duracionPersonalizada
 
+    private val _ignorarOcupacion = MutableStateFlow(false)
+    val ignorarOcupacion: StateFlow<Boolean> = _ignorarOcupacion
+
+    fun toggleIgnorarOcupacion(enabled: Boolean) {
+        _ignorarOcupacion.value = enabled
+    }
+
     val duracionEfectiva: Int
         get() = _duracionPersonalizada.value ?: servicio?.duracionMinutos ?: 60
 
@@ -323,7 +330,8 @@ class DisponibilidadViewModel @Inject constructor(
                     cantidadPersonas    = sharedVm.cantidadPersonas,
                     responsableNombre   = sharedVm.responsableNombre.ifBlank { null },
                     responsableTelefono = sharedVm.responsableTelefono.ifBlank { null },
-                    responsableEmail    = sharedVm.responsableCorreo.ifBlank { null }
+                    responsableEmail    = sharedVm.responsableCorreo.ifBlank { null },
+                    ignorarOcupacion    = _ignorarOcupacion.value
                 )
 
                 val response = repo.crearCita(request)
@@ -410,7 +418,8 @@ class DisponibilidadViewModel @Inject constructor(
                             fechaInicio = fechaInicioStr,
                             fechaFin = fechaFinStr,
                             notas = notaAsistente,
-                            servicios = serviciosDetalleAsistente
+                            servicios = serviciosDetalleAsistente,
+                            ignorarOcupacion = _ignorarOcupacion.value
                         )
                     )
                 }
@@ -491,7 +500,8 @@ class DisponibilidadViewModel @Inject constructor(
                                     precio     = servItem.precioBase,
                                     duracion   = servItem.duracionMinutos
                                 )
-                            )
+                            ),
+                            ignorarOcupacion = _ignorarOcupacion.value
                         )
                     )
                 }

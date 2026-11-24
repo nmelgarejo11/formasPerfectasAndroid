@@ -72,6 +72,7 @@ fun DisponibilidadScreen(
     val fechaSeleccionada by vm.fechaSeleccionada.collectAsState()
     val slotSeleccionado  by vm.slotSeleccionado.collectAsState()
     val precioCalculado   by vm.precioCalculado.collectAsState()
+    val ignorarOcupacion  by vm.ignorarOcupacion.collectAsState()
 
     val precioMostrar = when {
         sharedVm.esMultiple && sharedVm.serviciosConfigurados.isNotEmpty() -> {
@@ -129,6 +130,33 @@ fun DisponibilidadScreen(
             },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    if (ignorarOcupacion || slotSeleccionado?.disponible == false) {
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.errorContainer,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.Warning,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onErrorContainer,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    text = "⚠️ ATENCIÓN: Esta cita se agendará sobreasignando el horario",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                            }
+                        }
+                    }
+
                     if (sharedVm.esMultiple && sharedVm.serviciosConfigurados.isNotEmpty()) {
                         ConfirmacionFila(
                             icono = Icons.Default.Person,
@@ -515,6 +543,13 @@ fun DisponibilidadScreen(
 
             Spacer(Modifier.height(8.dp))
 
+            OpcionSobreasignacion(
+                checked = ignorarOcupacion,
+                onCheckedChange = { vm.toggleIgnorarOcupacion(it) }
+            )
+
+            Spacer(Modifier.height(8.dp))
+
             SelectorFecha(
                 fechaSeleccionada   = fechaSeleccionada,
                 onFechaSeleccionada = { vm.seleccionarFecha(it, sharedVm) }
@@ -551,6 +586,7 @@ fun DisponibilidadScreen(
                     SlotsGrid(
                         slots            = state.slots,
                         slotSeleccionado = slotSeleccionado,
+                        ignorarOcupacion = ignorarOcupacion,
                         onSlotClick      = { vm.seleccionarSlot(it) }
                     )
                 }
@@ -807,24 +843,100 @@ private fun SelectorFecha(fechaSeleccionada: LocalDate, onFechaSeleccionada: (Lo
 }
 
 @Composable
-private fun SlotsGrid(slots: List<SlotDisponible>, slotSeleccionado: SlotDisponible?, onSlotClick: (SlotDisponible) -> Unit) {
-    val slotsDisponibles = slots.filter { it.disponible }
-    Column(modifier = Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text(text = "Horarios disponibles", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-            if (slotsDisponibles.isNotEmpty()) {
-                Surface(shape = RoundedCornerShape(50), color = MaterialTheme.colorScheme.primaryContainer) {
+private fun OpcionSobreasignacion(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (checked)
+                MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.25f)
+            else
+                MaterialTheme.colorScheme.surfaceContainerLow
+        ),
+        border = if (checked)
+            androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
+        else
+            null
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Warning,
+                    contentDescription = null,
+                    tint = if (checked) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(Modifier.width(10.dp))
+                Column {
                     Text(
-                        text     = "${slotsDisponibles.size} disponibles",
-                        style    = MaterialTheme.typography.labelSmall,
-                        color    = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                        text = "Sobreasignar cita (Ignorar ocupación)",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = if (checked) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Permite agendar en franjas ocupadas o con conflicto",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
+            Switch(
+                checked = checked,
+                onCheckedChange = onCheckedChange
+            )
+        }
+    }
+}
+
+@Composable
+private fun SlotsGrid(
+    slots: List<SlotDisponible>,
+    slotSeleccionado: SlotDisponible?,
+    ignorarOcupacion: Boolean,
+    onSlotClick: (SlotDisponible) -> Unit
+) {
+    val slotsAMostrar = if (ignorarOcupacion) slots else slots.filter { it.disponible }
+    val slotsDisponiblesCount = slots.count { it.disponible }
+
+    Column(modifier = Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = if (ignorarOcupacion) "Todas las franjas" else "Horarios disponibles",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f, fill = false)
+            )
+            Spacer(Modifier.width(8.dp))
+            Surface(
+                shape = RoundedCornerShape(50),
+                color = if (ignorarOcupacion) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primaryContainer
+            ) {
+                Text(
+                    text     = if (ignorarOcupacion) "${slots.size} franjas (${slotsDisponiblesCount} libres)" else "$slotsDisponiblesCount disponibles",
+                    style    = MaterialTheme.typography.labelSmall,
+                    color    = if (ignorarOcupacion) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onPrimaryContainer,
+                    maxLines = 1,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                )
+            }
         }
 
-        if (slotsDisponibles.isEmpty()) {
+        if (slotsAMostrar.isEmpty()) {
             OutlinedCard(
                 shape  = RoundedCornerShape(16.dp),
                 colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
@@ -833,31 +945,70 @@ private fun SlotsGrid(slots: List<SlotDisponible>, slotSeleccionado: SlotDisponi
                 Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.EventBusy, null, modifier = Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.width(12.dp))
-                    Text(text = "No hay horarios disponibles para este día.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        text = if (!ignorarOcupacion && slots.isNotEmpty())
+                            "No hay horarios libres. Activa 'Sobreasignar cita' para forzar una franja."
+                        else
+                            "No hay horarios disponibles para este día.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
                 }
             }
             return
         }
 
-        val filas = slotsDisponibles.chunked(3)
+        val filas = slotsAMostrar.chunked(3)
         filas.forEach { fila ->
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                 fila.forEach { slot ->
                     val seleccionado = slot == slotSeleccionado
+                    val esOcupado    = !slot.disponible
+
+                    val containerColor = when {
+                        seleccionado && esOcupado -> MaterialTheme.colorScheme.error
+                        seleccionado -> MaterialTheme.colorScheme.primary
+                        esOcupado -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f)
+                        else -> MaterialTheme.colorScheme.surfaceContainerLow
+                    }
+
+                    val textColor = when {
+                        seleccionado -> MaterialTheme.colorScheme.onPrimary
+                        esOcupado -> MaterialTheme.colorScheme.error
+                        else -> MaterialTheme.colorScheme.onSurface
+                    }
+
+                    val borderColor = when {
+                        seleccionado -> null
+                        esOcupado -> androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
+                        else -> androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                    }
+
                     Surface(
                         shape  = RoundedCornerShape(12.dp),
-                        color  = if (seleccionado) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerLow,
-                        border = if (seleccionado) null else androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+                        color  = containerColor,
+                        border = borderColor,
                         modifier = Modifier.weight(1f).clickable { onSlotClick(slot) }
                     ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(vertical = 12.dp)) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier            = Modifier.padding(vertical = 10.dp)
+                        ) {
                             Text(
-                                text      = formatearHora12h(slot.horaInicio),
-                                textAlign = TextAlign.Center,
+                                text       = formatearHora12h(slot.horaInicio),
+                                textAlign  = TextAlign.Center,
                                 fontWeight = if (seleccionado) FontWeight.Bold else FontWeight.Medium,
-                                fontSize  = 13.sp,
-                                color     = if (seleccionado) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+                                fontSize   = 13.sp,
+                                color      = textColor
                             )
+                            if (esOcupado) {
+                                Text(
+                                    text       = "Ocupado",
+                                    fontSize   = 9.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color      = if (seleccionado) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.error
+                                )
+                            }
                         }
                     }
                 }
