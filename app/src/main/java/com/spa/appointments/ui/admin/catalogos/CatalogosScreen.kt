@@ -6,6 +6,7 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -35,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.spa.appointments.R
 import com.spa.appointments.domain.model.CategoriaAdmin
+import com.spa.appointments.domain.model.ProfesionalAdmin
 import com.spa.appointments.domain.model.ServicioAdmin
 import com.spa.appointments.domain.model.ServicioRequest
 import com.spa.appointments.ui.components.SinPermisoContent
@@ -48,9 +50,10 @@ fun ServiciosAdminScreen(
     onBack: () -> Unit,
     viewModel: CatalogosViewModel = hiltViewModel()
 ) {
-    val servicios  by viewModel.servicios.collectAsState()
-    val categorias by viewModel.categorias.collectAsState()
-    val uiState    by viewModel.uiState.collectAsState()
+    val servicios     by viewModel.servicios.collectAsState()
+    val categorias    by viewModel.categorias.collectAsState()
+    val profesionales by viewModel.profesionales.collectAsState()
+    val uiState       by viewModel.uiState.collectAsState()
 
     var showDialog   by remember { mutableStateOf(false) }
     var editando     by remember { mutableStateOf<ServicioAdmin?>(null) }
@@ -360,6 +363,7 @@ fun ServiciosAdminScreen(
             servicio          = editando,
             categorias        = categorias,
             todosLosServicios = servicios,
+            profesionales     = profesionales,
             guardando         = uiState is CatalogosUiState.Loading,
             onGuardar         = { id, req ->
                 viewModel.guardarServicio(id, req)
@@ -619,6 +623,7 @@ private fun ServicioDialog(
     servicio:             ServicioAdmin?,
     categorias:           List<CategoriaAdmin>,
     todosLosServicios:    List<ServicioAdmin>,
+    profesionales:        List<ProfesionalAdmin> = emptyList(),
     guardando:            Boolean,
     onGuardar:            (id: Int?, req: ServicioRequest) -> Unit,
     onCopiarMensaje:      (mensajeWhatsApp: String?, idsServiciosDestino: List<Int>) -> Unit,
@@ -642,6 +647,9 @@ private fun ServicioDialog(
         mutableStateOf(TextFieldValue(servicio?.mensajeWhatsApp ?: ""))
     }
     var mostrarDialogoCopiar by remember { mutableStateOf(false) }
+
+    val profesionalesActivos = remember(profesionales) { profesionales.filter { it.estado } }
+    var seleccionadosProfesionales by remember { mutableStateOf(setOf<Int>()) }
 
     val variablesWhatsApp = remember(esGrupal) {
         if (esGrupal) {
@@ -893,7 +901,98 @@ private fun ServicioDialog(
                     )
                 }
 
-                HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                // Asignar a profesionales (Opcional en creación)
+                if (esNuevo && profesionalesActivos.isNotEmpty()) {
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+
+                    OutlinedCard(
+                        shape  = RoundedCornerShape(18.dp),
+                        colors = CardDefaults.outlinedCardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                        ),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Surface(
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = MaterialTheme.colorScheme.primaryContainer,
+                                    modifier = Modifier.size(36.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            imageVector = Icons.Default.Person,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                }
+                                Column {
+                                    Text(
+                                        text = "Asignar a profesionales (Opcional)",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        text = "Selecciona quienes prestarán este servicio",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(max = 160.dp)
+                                    .verticalScroll(rememberScrollState()),
+                                verticalArrangement = Arrangement.spacedBy(2.dp)
+                            ) {
+                                profesionalesActivos.forEach { prof ->
+                                    val checked = seleccionadosProfesionales.contains(prof.id)
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable {
+                                                seleccionadosProfesionales = if (checked) {
+                                                    seleccionadosProfesionales - prof.id
+                                                } else {
+                                                    seleccionadosProfesionales + prof.id
+                                                }
+                                            }
+                                            .padding(vertical = 2.dp, horizontal = 4.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(
+                                            text = "${prof.nombre} ${prof.apellido}".trim(),
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                        Checkbox(
+                                            checked = checked,
+                                            onCheckedChange = { isChecked ->
+                                                seleccionadosProfesionales = if (isChecked) {
+                                                    seleccionadosProfesionales + prof.id
+                                                } else {
+                                                    seleccionadosProfesionales - prof.id
+                                                }
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
 
                 // Mensaje Automático de WhatsApp
                 OutlinedCard(
@@ -941,15 +1040,16 @@ private fun ServicioDialog(
                         onGuardar(
                             servicio?.id,
                             ServicioRequest(
-                                idCategoria     = categoriaSeleccionada!!.id,
-                                nombre          = nombre.trim(),
-                                descripcion     = desc.trim().ifBlank { null },
-                                duracionMinutos = durMin,
-                                precioBase      = precVal,
-                                icono           = null,
-                                esGrupal        = esGrupal,
-                                maxPersonas     = maxP,
-                                mensajeWhatsApp = mensajeWhatsApp.text.trim().ifEmpty { null }
+                                idCategoria      = categoriaSeleccionada!!.id,
+                                nombre           = nombre.trim(),
+                                descripcion      = desc.trim().ifBlank { null },
+                                duracionMinutos  = durMin,
+                                precioBase       = precVal,
+                                icono            = null,
+                                esGrupal         = esGrupal,
+                                maxPersonas      = maxP,
+                                mensajeWhatsApp  = mensajeWhatsApp.text.trim().ifEmpty { null },
+                                idsProfesionales = if (esNuevo && seleccionadosProfesionales.isNotEmpty()) seleccionadosProfesionales.toList() else null
                             )
                         )
                     }

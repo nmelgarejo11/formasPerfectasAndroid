@@ -39,15 +39,16 @@ data class ServicioAdmin(
 
 @JsonClass(generateAdapter = true)
 data class ServicioRequest(
-    @Json(name = "idCategoria")     val idCategoria: Int,
-    @Json(name = "nombre")          val nombre: String,
-    @Json(name = "descripcion")     val descripcion: String?,
-    @Json(name = "duracionMinutos") val duracionMinutos: Int,
-    @Json(name = "precioBase")      val precioBase: Double,
-    @Json(name = "icono")           val icono: String?,
-    @Json(name = "esGrupal")        val esGrupal: Boolean,
-    @Json(name = "maxPersonas")      val maxPersonas: Int? = null,
-    @Json(name = "mensajeWhatsApp") val mensajeWhatsApp: String? = null
+    @Json(name = "idCategoria")      val idCategoria: Int,
+    @Json(name = "nombre")           val nombre: String,
+    @Json(name = "descripcion")      val descripcion: String?,
+    @Json(name = "duracionMinutos")  val duracionMinutos: Int,
+    @Json(name = "precioBase")       val precioBase: Double,
+    @Json(name = "icono")            val icono: String?,
+    @Json(name = "esGrupal")         val esGrupal: Boolean,
+    @Json(name = "maxPersonas")       val maxPersonas: Int? = null,
+    @Json(name = "mensajeWhatsApp")  val mensajeWhatsApp: String? = null,
+    @Json(name = "idsProfesionales") val idsProfesionales: List<Int>? = null
 )
 
 @JsonClass(generateAdapter = true)

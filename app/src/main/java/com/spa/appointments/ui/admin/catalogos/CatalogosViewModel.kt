@@ -30,6 +30,9 @@ class CatalogosViewModel @Inject constructor(
     private val _servicios = MutableStateFlow<List<ServicioAdmin>>(emptyList())
     val servicios: StateFlow<List<ServicioAdmin>> = _servicios
 
+    private val _profesionales = MutableStateFlow<List<ProfesionalAdmin>>(emptyList())
+    val profesionales: StateFlow<List<ProfesionalAdmin>> = _profesionales
+
     private val _preciosRangos = MutableStateFlow<List<ServicioPrecioRango>>(emptyList())
     val preciosRangos: StateFlow<List<ServicioPrecioRango>> = _preciosRangos
 
@@ -88,6 +91,7 @@ class CatalogosViewModel @Inject constructor(
             _uiState.value = CatalogosUiState.Loading
             try {
                 _servicios.value = repo.getServicios()
+                runCatching { _profesionales.value = repo.getProfesionales() }
                 _uiState.value = CatalogosUiState.Idle
             } catch (e: Exception) {
                 if (ApiErrorMapper.esForbidden(e)) {
