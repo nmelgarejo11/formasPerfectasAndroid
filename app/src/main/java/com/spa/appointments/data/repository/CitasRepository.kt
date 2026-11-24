@@ -63,10 +63,11 @@ class CitasRepository @Inject constructor(
         idCita: Int,
         idProfesional: Int,
         fechaHoraInicio: String,
-        fechaHoraFin: String
+        fechaHoraFin: String,
+        idServicio: Int? = null
     ): AccionCitaResponse = api.reagendarCitaDirecto(
         idCita,
-        ReagendarCitaDirectoRequest(idProfesional, fechaHoraInicio, fechaHoraFin)
+        ReagendarCitaDirectoRequest(idProfesional, fechaHoraInicio, fechaHoraFin, idServicio)
     )
 
     // data/repository/CitasRepository.kt  (agregar al final de la clase existente)

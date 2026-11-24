@@ -7,20 +7,19 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.EditCalendar
 import androidx.compose.material.icons.filled.EventBusy
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Spa
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -34,8 +33,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.spa.appointments.domain.model.Cita
 import com.spa.appointments.domain.model.Profesional
+import com.spa.appointments.domain.model.Servicio
 import com.spa.appointments.domain.model.ServicioCita
-import java.util.Calendar
 import com.spa.appointments.domain.model.SlotDisponible
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
@@ -43,19 +42,31 @@ import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
+import java.util.Calendar
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ReagendarCitaDirectoDialog(
+fun ModificarCitaDialog(
     cita: Cita,
+    servicios: List<Servicio>,
     profesionales: List<Profesional>,
     cargandoSlots: Boolean,
     slotsDisponibles: List<SlotDisponible>,
+    onCargarProfesionales: (idSede: Int, idServicio: Int?) -> Unit,
     onCargarDisponibilidad: (idProfesional: Int, idSede: Int, fecha: String, duracion: Int) -> Unit,
-    onConfirmarReagendamiento: (idCita: Int, idProfesional: Int, fechaHoraInicio: String, fechaHoraFin: String) -> Unit,
+    onConfirmarModificacion: (idCita: Int, idProfesional: Int, fechaHoraInicio: String, fechaHoraFin: String, idServicio: Int?) -> Unit,
     onDismiss: () -> Unit
 ) {
+    val idServicioOriginal = remember(cita.servicios) {
+        extraerIdServicioOriginal(cita.servicios)
+    }
+
+    var servicioSeleccionado by remember(cita, servicios) {
+        mutableStateOf(servicios.firstOrNull { it.id == idServicioOriginal } ?: servicios.firstOrNull())
+    }
+    var expandedServicio by remember { mutableStateOf(false) }
+
     var profesionalSeleccionado by remember(cita, profesionales) {
         mutableStateOf(profesionales.firstOrNull { it.id == cita.idProfesional } ?: profesionales.firstOrNull())
     }
@@ -69,8 +80,23 @@ fun ReagendarCitaDirectoDialog(
     val duracionOriginal = remember(cita.servicios) {
         extraerDuracionServicio(cita.servicios)
     }
-    var duracionPersonalizada by remember(cita) {
-        mutableIntStateOf(duracionOriginal)
+    var duracionPersonalizada by remember(cita, servicioSeleccionado) {
+        mutableIntStateOf(servicioSeleccionado?.duracionMinutos ?: duracionOriginal)
+    }
+
+    // Al seleccionar o cambiar servicio, solicitar la lista de profesionales capacitados
+    LaunchedEffect(servicioSeleccionado) {
+        val idServ = servicioSeleccionado?.id
+        if (idServ != null) {
+            onCargarProfesionales(cita.idSede, idServ)
+        }
+    }
+
+    // Cuando se actualice la lista de profesionales, ajustar la selección si el actual ya no está
+    LaunchedEffect(profesionales) {
+        if (profesionales.isNotEmpty() && profesionales.none { it.id == profesionalSeleccionado?.id }) {
+            profesionalSeleccionado = profesionales.firstOrNull()
+        }
     }
 
     // Cargar slots cuando cambia profesional, fecha o duración
@@ -93,7 +119,7 @@ fun ReagendarCitaDirectoDialog(
         containerColor = MaterialTheme.colorScheme.surface,
         icon = {
             Icon(
-                Icons.Default.EditCalendar,
+                Icons.Default.Edit,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(32.dp)
@@ -101,7 +127,7 @@ fun ReagendarCitaDirectoDialog(
         },
         title = {
             Text(
-                "Reagendar Cita",
+                "Modificar Cita",
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth()
@@ -115,12 +141,49 @@ fun ReagendarCitaDirectoDialog(
                     .verticalScroll(rememberScrollState())
             ) {
                 Text(
-                    text = "Selecciona el profesional habilitado, fecha y nuevo horario disponible.",
+                    text = "Ajusta el servicio, profesional, fecha y nuevo horario disponible.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                // 1. Selector de Profesional Habilitado
+                // 1. Selector de Servicio (Si hay lista disponible)
+                if (servicios.isNotEmpty()) {
+                    ExposedDropdownMenuBox(
+                        expanded = expandedServicio,
+                        onExpandedChange = { expandedServicio = it }
+                    ) {
+                        OutlinedTextField(
+                            value = servicioSeleccionado?.nombre ?: "Seleccionar servicio",
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Servicio") },
+                            leadingIcon = { Icon(Icons.Default.Spa, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expandedServicio) },
+                            modifier = Modifier
+                                .menuAnchor()
+                                .fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+
+                        ExposedDropdownMenu(
+                            expanded = expandedServicio,
+                            onDismissRequest = { expandedServicio = false }
+                        ) {
+                            servicios.forEach { serv ->
+                                DropdownMenuItem(
+                                    text = { Text("${serv.nombre} (${serv.duracionMinutos} min)") },
+                                    onClick = {
+                                        servicioSeleccionado = serv
+                                        duracionPersonalizada = serv.duracionMinutos
+                                        expandedServicio = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // 2. Selector de Profesional Habilitado
                 ExposedDropdownMenuBox(
                     expanded = expandedProf,
                     onExpandedChange = { expandedProf = it }
@@ -154,7 +217,7 @@ fun ReagendarCitaDirectoDialog(
                     }
                 }
 
-                // 2. Selector de Duración de Cita (Ingreso libre de minutos)
+                // 3. Selector de Duración de Cita (Ingreso libre de minutos)
                 var textoInputDuracion by remember(duracionPersonalizada) {
                     mutableStateOf(duracionPersonalizada.toString())
                 }
@@ -171,7 +234,7 @@ fun ReagendarCitaDirectoDialog(
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "Original: $duracionOriginal min",
+                        text = "Sugerida: ${servicioSeleccionado?.duracionMinutos ?: duracionOriginal} min",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -229,7 +292,7 @@ fun ReagendarCitaDirectoDialog(
                     }
                 }
 
-                // 3. Selector de Fecha (Carrusel de días + Botón Calendario)
+                // 4. Selector de Fecha (Carrusel de días + Botón Calendario)
                 val context = LocalContext.current
                 var mostrarDatePickerDialog by remember { mutableStateOf(false) }
 
@@ -329,7 +392,7 @@ fun ReagendarCitaDirectoDialog(
                     }
                 }
 
-                // 3. Grid de Slots de Horario
+                // 5. Grid de Slots de Horario
                 Text(
                     text = "Horarios disponibles:",
                     style = MaterialTheme.typography.labelMedium,
@@ -432,7 +495,7 @@ fun ReagendarCitaDirectoDialog(
                         val horaFinClean = String.format(Locale.US, "%02d:%02d:00", horaFinLocal.hour, horaFinLocal.minute)
                         val finIso = "${fechaIso}T${horaFinClean}"
 
-                        onConfirmarReagendamiento(cita.id, prof.id, inicioIso, finIso)
+                        onConfirmarModificacion(cita.id, prof.id, inicioIso, finIso, servicioSeleccionado?.id)
                     }
                 },
                 enabled = slotSeleccionado != null && profesionalSeleccionado != null,
@@ -442,7 +505,7 @@ fun ReagendarCitaDirectoDialog(
                 Icon(Icons.Default.Schedule, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))
                 Text(
-                    text = slotSeleccionado?.let { "Confirmar a las ${formatearHora12h(it.horaInicio)}" } ?: "Confirmar Reagendamiento",
+                    text = slotSeleccionado?.let { "Guardar Cambios (${formatearHora12h(it.horaInicio)})" } ?: "Guardar Cambios",
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -456,6 +519,31 @@ fun ReagendarCitaDirectoDialog(
                 Text("Cancelar")
             }
         }
+    )
+}
+
+@Composable
+fun ReagendarCitaDirectoDialog(
+    cita: Cita,
+    profesionales: List<Profesional>,
+    cargandoSlots: Boolean,
+    slotsDisponibles: List<SlotDisponible>,
+    onCargarDisponibilidad: (idProfesional: Int, idSede: Int, fecha: String, duracion: Int) -> Unit,
+    onConfirmarReagendamiento: (idCita: Int, idProfesional: Int, fechaHoraInicio: String, fechaHoraFin: String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    ModificarCitaDialog(
+        cita = cita,
+        servicios = emptyList(),
+        profesionales = profesionales,
+        cargandoSlots = cargandoSlots,
+        slotsDisponibles = slotsDisponibles,
+        onCargarProfesionales = { _, _ -> },
+        onCargarDisponibilidad = onCargarDisponibilidad,
+        onConfirmarModificacion = { idCita, idProf, ini, fin, _ ->
+            onConfirmarReagendamiento(idCita, idProf, ini, fin)
+        },
+        onDismiss = onDismiss
     )
 }
 
@@ -486,5 +574,17 @@ private fun extraerDuracionServicio(json: String?): Int {
         lista.firstOrNull()?.duracion ?: 60
     } catch (e: Exception) {
         60
+    }
+}
+
+private fun extraerIdServicioOriginal(json: String?): Int? {
+    if (json.isNullOrBlank()) return null
+    return try {
+        val moshi = Moshi.Builder().addLast(KotlinJsonAdapterFactory()).build()
+        val type = Types.newParameterizedType(List::class.java, ServicioCita::class.java)
+        val lista = moshi.adapter<List<ServicioCita>>(type).fromJson(json) ?: emptyList()
+        lista.firstOrNull()?.id
+    } catch (e: Exception) {
+        null
     }
 }

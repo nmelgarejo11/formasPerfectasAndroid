@@ -47,9 +47,10 @@ import com.spa.appointments.domain.model.MetodoPagoDetalle
 import com.spa.appointments.domain.model.Profesional
 import com.spa.appointments.domain.model.ServicioCita
 import com.spa.appointments.domain.model.SlotDisponible
+import com.spa.appointments.domain.model.Servicio
 import com.spa.appointments.ui.citas.components.AsignarCitaGrupalClienteDialog
 import com.spa.appointments.ui.citas.components.CalendarioDiaView
-import com.spa.appointments.ui.citas.components.ReagendarCitaDirectoDialog
+import com.spa.appointments.ui.citas.components.ModificarCitaDialog
 import com.spa.appointments.ui.theme.AppDynamicTheme
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
@@ -65,7 +66,7 @@ import java.util.TimeZone
 fun MisCitasScreen(
     onBack:               () -> Unit,
     onVerHistorial:       () -> Unit,
-    onVerReagendamientos: () -> Unit,
+    onVerReagendamientos: () -> Unit = {},
     vm: MisCitasViewModel = hiltViewModel()
 ) {
     val uiState             by vm.uiState.collectAsState()
@@ -75,6 +76,7 @@ fun MisCitasScreen(
     val estados             by vm.estados.collectAsState()
     val showFiltros         by vm.mostrarFiltros.collectAsState()
     val profesionales       by vm.profesionales.collectAsState()
+    val servicios           by vm.servicios.collectAsState()
     val modoVista           by vm.modoVista.collectAsState()
     val fechaCalendario     by vm.fechaCalendario.collectAsState()
     val slotsDisponibles    by vm.slotsDisponibles.collectAsState()
@@ -99,6 +101,7 @@ fun MisCitasScreen(
         estados                   = estados,
         showFiltros               = showFiltros,
         profesionales             = profesionales,
+        servicios                 = servicios,
         modoVista                 = modoVista,
         fechaCalendario           = fechaCalendario,
         slotsDisponibles          = slotsDisponibles,
@@ -114,7 +117,7 @@ fun MisCitasScreen(
         onToggleModoVista         = { vm.toggleModoVista() },
         onFechaCalendarioChange   = { vm.setFechaCalendario(it) },
         onCancelarCita            = { vm.cancelarCita(it) },
-        onReagendarCitaDirecto    = { id, idProf, ini, fin -> vm.reagendarCitaDirecto(id, idProf, ini, fin) },
+        onReagendarCitaDirecto    = { id, idProf, ini, fin, idServ -> vm.reagendarCitaDirecto(id, idProf, ini, fin, idServ) },
         onFinalizarCita           = { idCita, idMetodo, idDetalle, pFinal, obs -> vm.finalizarCita(idCita, idMetodo, idDetalle, pFinal, obs) },
         onAsignarCitaGrupal       = { idCita, ids, ini, fin -> vm.asignarCitaGrupal(idCita, ids, ini, fin) },
         onCargarDisponibilidad    = { idProf, idSede, fecha, duracion -> vm.cargarDisponibilidad(idProf, idSede, fecha, duracion) },
@@ -138,6 +141,7 @@ fun MisCitasContent(
     estados:                   List<EstadoCita>,
     showFiltros:               Boolean,
     profesionales:             List<Profesional>,
+    servicios:                 List<Servicio> = emptyList(),
     modoVista:                 ModoVistaCitas,
     fechaCalendario:           LocalDate,
     slotsDisponibles:          List<SlotDisponible>,
@@ -153,7 +157,7 @@ fun MisCitasContent(
     onToggleModoVista:         () -> Unit,
     onFechaCalendarioChange:   (LocalDate) -> Unit,
     onCancelarCita:            (Int) -> Unit,
-    onReagendarCitaDirecto:    (idCita: Int, idProfesional: Int, inicioIso: String, finIso: String) -> Unit,
+    onReagendarCitaDirecto:    (idCita: Int, idProfesional: Int, inicioIso: String, finIso: String, idServicio: Int?) -> Unit,
     onFinalizarCita:           (idCita: Int, idMetodo: Int, idDetalle: Int?, precioFinal: Double?, observaciones: String?) -> Unit,
     onAsignarCitaGrupal:       (idCita: Int, idsProfesionales: List<Int>?, fechaInicio: String?, fechaFin: String?) -> Unit,
     onCargarDisponibilidad:    (idProfesional: Int, idSede: Int, fecha: String, duracion: Int) -> Unit,
@@ -270,17 +274,19 @@ fun MisCitasContent(
         )
     }
 
-    // ── Diálogo: Reagendar Directo ──────────────────────────────────────────
+    // ── Diálogo: Modificar Cita ──────────────────────────────────────────────
     if (mostrarReagendar && citaAccion != null) {
-        ReagendarCitaDirectoDialog(
+        ModificarCitaDialog(
             cita = citaAccion!!,
+            servicios = servicios,
             profesionales = profesionales,
             cargandoSlots = cargandoSlots,
             slotsDisponibles = slotsDisponibles,
+            onCargarProfesionales = { idSede, idServ -> onCargarProfesionales(idSede, idServ) },
             onCargarDisponibilidad = onCargarDisponibilidad,
-            onConfirmarReagendamiento = { idCita, idProf, iniIso, finIso ->
+            onConfirmarModificacion = { idCita, idProf, iniIso, finIso, idServ ->
                 mostrarReagendar = false
-                onReagendarCitaDirecto(idCita, idProf, iniIso, finIso)
+                onReagendarCitaDirecto(idCita, idProf, iniIso, finIso, idServ)
             },
             onDismiss = { mostrarReagendar = false }
         )
@@ -472,11 +478,6 @@ fun MisCitasContent(
                             expanded         = menuExpanded,
                             onDismissRequest = { menuExpanded = false }
                         ) {
-                            DropdownMenuItem(
-                                text        = { Text("Reagendamientos") },
-                                leadingIcon = { Icon(Icons.Default.EditCalendar, null) },
-                                onClick     = { menuExpanded = false; onVerReagendamientos() }
-                            )
                             DropdownMenuItem(
                                 text        = { Text("Historial") },
                                 leadingIcon = { Icon(Icons.Default.History, null) },
@@ -1197,10 +1198,10 @@ private fun CitaCard(
                             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
                             shape    = RoundedCornerShape(12.dp)
                         ) {
-                            Icon(Icons.Default.EditCalendar, null, modifier = Modifier.size(15.dp))
+                            Icon(Icons.Default.Edit, null, modifier = Modifier.size(15.dp))
                             Spacer(Modifier.width(4.dp))
                             Text(
-                                "Reagendar",
+                                "Modificar",
                                 style = MaterialTheme.typography.labelMedium,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
@@ -1969,7 +1970,7 @@ private fun MisCitasPreviewLoading() {
             onToggleModoVista         = {},
             onFechaCalendarioChange   = {},
             onCancelarCita            = {},
-            onReagendarCitaDirecto    = { _, _, _, _ -> },
+            onReagendarCitaDirecto    = { _, _, _, _, _ -> },
             onFinalizarCita           = { _, _, _, _, _ -> },
             onAsignarCitaGrupal       = { _, _, _, _ -> },
             onCargarDisponibilidad    = { _, _, _, _ -> },
@@ -2008,7 +2009,7 @@ private fun MisCitasPreviewEmptySinFiltros() {
             onToggleModoVista         = {},
             onFechaCalendarioChange   = {},
             onCancelarCita            = {},
-            onReagendarCitaDirecto    = { _, _, _, _ -> },
+            onReagendarCitaDirecto    = { _, _, _, _, _ -> },
             onFinalizarCita           = { _, _, _, _, _ -> },
             onAsignarCitaGrupal       = { _, _, _, _ -> },
             onCargarDisponibilidad    = { _, _, _, _ -> },
@@ -2047,7 +2048,7 @@ private fun MisCitasPreviewEmptyConFiltros() {
             onToggleModoVista         = {},
             onFechaCalendarioChange   = {},
             onCancelarCita            = {},
-            onReagendarCitaDirecto    = { _, _, _, _ -> },
+            onReagendarCitaDirecto    = { _, _, _, _, _ -> },
             onFinalizarCita           = { _, _, _, _, _ -> },
             onAsignarCitaGrupal       = { _, _, _, _ -> },
             onCargarDisponibilidad    = { _, _, _, _ -> },
@@ -2086,7 +2087,7 @@ private fun MisCitasPreviewError() {
             onToggleModoVista         = {},
             onFechaCalendarioChange   = {},
             onCancelarCita            = {},
-            onReagendarCitaDirecto    = { _, _, _, _ -> },
+            onReagendarCitaDirecto    = { _, _, _, _, _ -> },
             onFinalizarCita           = { _, _, _, _, _ -> },
             onAsignarCitaGrupal       = { _, _, _, _ -> },
             onCargarDisponibilidad    = { _, _, _, _ -> },
@@ -2125,7 +2126,7 @@ private fun MisCitasPreviewSuccess() {
             onToggleModoVista         = {},
             onFechaCalendarioChange   = {},
             onCancelarCita            = {},
-            onReagendarCitaDirecto    = { _, _, _, _ -> },
+            onReagendarCitaDirecto    = { _, _, _, _, _ -> },
             onFinalizarCita           = { _, _, _, _, _ -> },
             onAsignarCitaGrupal       = { _, _, _, _ -> },
             onCargarDisponibilidad    = { _, _, _, _ -> },

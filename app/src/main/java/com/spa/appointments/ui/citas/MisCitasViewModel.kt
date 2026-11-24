@@ -76,6 +76,9 @@ class MisCitasViewModel @Inject constructor(
     private val _profesionales = MutableStateFlow<List<Profesional>>(emptyList())
     val profesionales: StateFlow<List<Profesional>> = _profesionales.asStateFlow()
 
+    private val _servicios = MutableStateFlow<List<com.spa.appointments.domain.model.Servicio>>(emptyList())
+    val servicios: StateFlow<List<com.spa.appointments.domain.model.Servicio>> = _servicios.asStateFlow()
+
     // ── Lote 2: Modo de Vista Calendario / Lista ─────────────────────────────
     private val _modoVista = MutableStateFlow(ModoVistaCitas.CALENDARIO_DIA)
     val modoVista: StateFlow<ModoVistaCitas> = _modoVista.asStateFlow()
@@ -103,6 +106,7 @@ class MisCitasViewModel @Inject constructor(
         cargarEstados()
         cargarMetodosPago()
         cargarProfesionales()
+        cargarServicios()
         _filtros.value = filtroHoy()
         cargar()
     }
@@ -196,17 +200,18 @@ class MisCitasViewModel @Inject constructor(
         }
     }
 
-    // Reagendamiento Directo (Sin generar solicitud)
+    // Reagendamiento / Modificación Directa
     fun reagendarCitaDirecto(
         idCita: Int,
         idProfesional: Int,
         fechaHoraInicio: String,
-        fechaHoraFin: String
+        fechaHoraFin: String,
+        idServicio: Int? = null
     ) {
         viewModelScope.launch {
             _accionState.value = AccionUiState.Loading
             try {
-                val resp = repo.reagendarCitaDirecto(idCita, idProfesional, fechaHoraInicio, fechaHoraFin)
+                val resp = repo.reagendarCitaDirecto(idCita, idProfesional, fechaHoraInicio, fechaHoraFin, idServicio)
                 if (resp.ok) {
                     _accionState.value = AccionUiState.Success(resp.mensaje)
                     cargar()
@@ -215,9 +220,16 @@ class MisCitasViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 _accionState.value = AccionUiState.Error(
-                    e.localizedMessage ?: "Error al reagendar la cita"
+                    e.localizedMessage ?: "Error al modificar la cita"
                 )
             }
+        }
+    }
+
+    fun cargarServicios() {
+        viewModelScope.launch {
+            runCatching { repo.getServicios() }
+                .onSuccess { _servicios.value = it }
         }
     }
 
