@@ -27,9 +27,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import android.widget.Toast
 import com.spa.appointments.domain.model.Cita
 import com.spa.appointments.domain.model.EstadoCita
 import com.spa.appointments.domain.model.Profesional
+import com.spa.appointments.ui.citas.components.AjustarEstadoCitaDialog
 import com.spa.appointments.ui.citas.components.CalendarioDiaView
 import java.util.Calendar
 import java.util.Locale
@@ -51,12 +53,45 @@ fun HistorialScreen(
     val modoVista       by vm.modoVista.collectAsState()
     val fechaCalendario by vm.fechaCalendario.collectAsState()
 
+    val citaParaAjuste          by vm.citaParaAjuste.collectAsState()
+    val mostrarDialogAjuste     by vm.mostrarDialogAjuste.collectAsState()
+    val guardandoAjuste         by vm.guardandoAjuste.collectAsState()
+    val estadosActivas          by vm.estadosActivas.collectAsState()
+    val haySolapamiento         by vm.haySolapamiento.collectAsState()
+    val verificandoSolapamiento by vm.verificandoSolapamiento.collectAsState()
+
+    val context = LocalContext.current
+    LaunchedEffect(Unit) {
+        vm.mensajeFeedback.collect { msg ->
+            Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+        }
+    }
+
     var filtrosTemp      by remember { mutableStateOf(FiltrosHistorial()) }
     var citaSeleccionada by remember { mutableStateOf<Cita?>(null) }
     var mostrarDetalle    by remember { mutableStateOf(false) }
 
     // Conteo para subtítulo
     val totalCitas = (uiState as? HistorialUiState.Success)?.citas?.size
+
+    // ── Diálogo de Ajuste de Estado ───────────────────────────────────────────
+    if (mostrarDialogAjuste && citaParaAjuste != null) {
+        AjustarEstadoCitaDialog(
+            cita = citaParaAjuste!!,
+            estadosActivas = estadosActivas,
+            guardando = guardandoAjuste,
+            haySolapamiento = haySolapamiento,
+            verificandoSolapamiento = verificandoSolapamiento,
+            onDismiss = { vm.cerrarDialogAjuste() },
+            onConfirmar = { idEstado, motivo ->
+                vm.cambiarEstadoCita(
+                    idCita = citaParaAjuste!!.id,
+                    idEstado = idEstado,
+                    motivo = motivo
+                )
+            }
+        )
+    }
 
     // ── Pop-Up Detalle Cita (Desde vista Calendario) ──────────────────────────
     if (mostrarDetalle && citaSeleccionada != null) {
@@ -71,7 +106,7 @@ fun HistorialScreen(
                         .fillMaxWidth()
                         .padding(top = 8.dp)
                 ) {
-                    HistorialCitaCard(cita = c)
+                    HistorialCitaCard(cita = c, onAjustarEstado = { vm.abrirDialogAjuste(it) })
                 }
             },
             confirmButton = {
@@ -370,7 +405,7 @@ fun HistorialScreen(
                                 verticalArrangement = Arrangement.spacedBy(14.dp)
                             ) {
                                 items(state.citas, key = { it.id }) { cita ->
-                                    HistorialCitaCard(cita = cita)
+                                    HistorialCitaCard(cita = cita, onAjustarEstado = { vm.abrirDialogAjuste(it) })
                                 }
                             }
                         }
@@ -706,7 +741,10 @@ private fun ProfesionalDropdown(
 // ─── Tarjeta de Cita M3 ────────────────────────────────────────────────────────
 
 @Composable
-private fun HistorialCitaCard(cita: Cita) {
+private fun HistorialCitaCard(
+    cita: Cita,
+    onAjustarEstado: (Cita) -> Unit
+) {
     val defaultPrimary = MaterialTheme.colorScheme.primary
     val colorEstado    = remember(cita.colorEstado, defaultPrimary) {
         runCatching {
@@ -917,29 +955,57 @@ private fun HistorialCitaCard(cita: Cita) {
                     Spacer(Modifier.height(8.dp))
                 }
 
-                // ── Total con Fondo Destacado ─────────────────────────────
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = MaterialTheme.colorScheme.primaryContainer
+                // ── Total con Fondo Destacado + Botón Ajustar Estado ─────
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        modifier          = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 10.dp, vertical = 6.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment     = Alignment.CenterVertically
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        modifier = Modifier.weight(1f)
                     ) {
-                        Text(
-                            text  = "Total Cobrado",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        Row(
+                            modifier          = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment     = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text  = "Total Cobrado",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                            Text(
+                                text       = "${"$%,.0f".format(cita.total)}",
+                                style      = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.Bold,
+                                color      = MaterialTheme.colorScheme.onPrimaryContainer,
+                                fontSize   = 13.sp
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.width(8.dp))
+
+                    OutlinedButton(
+                        onClick = { onAjustarEstado(cita) },
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                        modifier = Modifier.height(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Tune,
+                            contentDescription = "Ajustar estado",
+                            modifier = Modifier.size(13.dp)
                         )
+                        Spacer(Modifier.width(4.dp))
                         Text(
-                            text       = "${"$%,.0f".format(cita.total)}",
-                            style      = MaterialTheme.typography.bodySmall,
-                            fontWeight = FontWeight.Bold,
-                            color      = MaterialTheme.colorScheme.onPrimaryContainer,
-                            fontSize   = 13.sp
+                            text = "Ajustar",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 }

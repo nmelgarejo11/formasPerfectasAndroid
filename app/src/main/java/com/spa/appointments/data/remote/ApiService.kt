@@ -86,6 +86,12 @@ interface ApiService {
         @Body request: ReagendarCitaDirectoRequest
     ): AccionCitaResponse
 
+    @PUT("Citas/{id}/cambiar-estado")
+    suspend fun cambiarEstadoCita(
+        @Path("id") idCita: Int,
+        @Body request: CambiarEstadoCitaRequest
+    ): AccionCitaResponse
+
     @GET("Citas/estados")
     suspend fun getEstadosCita(
         @Query("grupo") grupo: String? = null

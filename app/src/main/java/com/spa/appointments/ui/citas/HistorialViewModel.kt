@@ -49,6 +49,9 @@ class HistorialViewModel @Inject constructor(
     private val _estados        = MutableStateFlow<List<EstadoCita>>(emptyList())
     val estados: StateFlow<List<EstadoCita>> = _estados.asStateFlow()
 
+    private val _estadosActivas = MutableStateFlow<List<EstadoCita>>(emptyList())
+    val estadosActivas: StateFlow<List<EstadoCita>> = _estadosActivas.asStateFlow()
+
     private val _profesionales  = MutableStateFlow<List<Profesional>>(emptyList())
     val profesionales: StateFlow<List<Profesional>> = _profesionales.asStateFlow()
 
@@ -58,6 +61,25 @@ class HistorialViewModel @Inject constructor(
     private val _fechaCalendario = MutableStateFlow(LocalDate.now())
     val fechaCalendario: StateFlow<LocalDate> = _fechaCalendario.asStateFlow()
 
+    // Estados para Ajuste de Estado
+    private val _citaParaAjuste    = MutableStateFlow<Cita?>(null)
+    val citaParaAjuste: StateFlow<Cita?> = _citaParaAjuste.asStateFlow()
+
+    private val _mostrarDialogAjuste = MutableStateFlow(false)
+    val mostrarDialogAjuste: StateFlow<Boolean> = _mostrarDialogAjuste.asStateFlow()
+
+    private val _guardandoAjuste   = MutableStateFlow(false)
+    val guardandoAjuste: StateFlow<Boolean> = _guardandoAjuste.asStateFlow()
+
+    private val _haySolapamiento   = MutableStateFlow(false)
+    val haySolapamiento: StateFlow<Boolean> = _haySolapamiento.asStateFlow()
+
+    private val _verificandoSolapamiento = MutableStateFlow(false)
+    val verificandoSolapamiento: StateFlow<Boolean> = _verificandoSolapamiento.asStateFlow()
+
+    private val _mensajeFeedback   = MutableSharedFlow<String>()
+    val mensajeFeedback: SharedFlow<String> = _mensajeFeedback.asSharedFlow()
+
     companion object {
         fun hoyIso(): String = LocalDate.now().toString()
         fun filtroHoy() = FiltrosHistorial(fechaDesde = hoyIso(), fechaHasta = hoyIso())
@@ -65,6 +87,7 @@ class HistorialViewModel @Inject constructor(
 
     init {
         cargarEstados()
+        cargarEstadosActivas()
         cargarProfesionales()
         cargar()
     }
@@ -113,6 +136,13 @@ class HistorialViewModel @Inject constructor(
         }
     }
 
+    private fun cargarEstadosActivas() {
+        viewModelScope.launch {
+            runCatching { repo.getEstadosCita("ACTIVAS") }
+                .onSuccess { _estadosActivas.value = it }
+        }
+    }
+
     fun cargar() {
         viewModelScope.launch {
             _uiState.value = HistorialUiState.Loading
@@ -138,14 +168,90 @@ class HistorialViewModel @Inject constructor(
     fun toggleFiltros() { _mostrarFiltros.update { !it } }
 
     fun aplicarFiltros(nuevos: FiltrosHistorial) {
-        _filtros.value        = nuevos.copy(esFiltroManual = true)  // ← marca manual
+        _filtros.value        = nuevos.copy(esFiltroManual = true)
         _mostrarFiltros.value = false
         cargar()
     }
 
     fun limpiarFiltros() {
-        _filtros.value = filtroHoy()   // vuelve a hoy, sin banner
+        _filtros.value = filtroHoy()
         _fechaCalendario.value = LocalDate.now()
         cargar()
+    }
+
+    // ── Acciones de Ajuste de Estado ──────────────────────────────────────────
+
+    fun abrirDialogAjuste(cita: Cita) {
+        _citaParaAjuste.value = cita
+        _mostrarDialogAjuste.value = true
+        verificarSolapamiento(cita)
+    }
+
+    fun cerrarDialogAjuste() {
+        _mostrarDialogAjuste.value = false
+        _citaParaAjuste.value = null
+        _haySolapamiento.value = false
+    }
+
+    private fun verificarSolapamiento(cita: Cita) {
+        viewModelScope.launch {
+            _verificandoSolapamiento.value = true
+            try {
+                val fechaIso = cita.fechaHoraInicio.take(10)
+                val citasActivas = repo.getCitasActivas(
+                    fechaDesde = fechaIso,
+                    fechaHasta = fechaIso,
+                    idProfesional = cita.idProfesional
+                )
+                val inicioA = cita.fechaHoraInicio
+                val finA = cita.fechaHoraFin
+
+                val tieneSolapamiento = citasActivas.any { c ->
+                    c.id != cita.id && (inicioA < c.fechaHoraFin && finA > c.fechaHoraInicio)
+                }
+                _haySolapamiento.value = tieneSolapamiento
+            } catch (e: Exception) {
+                _haySolapamiento.value = false
+            } finally {
+                _verificandoSolapamiento.value = false
+            }
+        }
+    }
+
+    fun cambiarEstadoCita(
+        idCita: Int,
+        idEstado: Int,
+        motivo: String?,
+        idMetodoPago: Int? = null,
+        idMetodoPagoDetalle: Int? = null
+    ) {
+        viewModelScope.launch {
+            _guardandoAjuste.value = true
+            try {
+                val resp = repo.cambiarEstadoCita(
+                    idCita = idCita,
+                    idEstado = idEstado,
+                    motivo = motivo,
+                    idMetodoPago = idMetodoPago,
+                    idMetodoPagoDetalle = idMetodoPagoDetalle
+                )
+                if (resp.ok) {
+                    val msgFinal = if (_haySolapamiento.value) {
+                        "${resp.mensaje ?: "Estado actualizado"}. (Nota: Se detectó solapamiento con otra cita agendada)"
+                    } else {
+                        resp.mensaje ?: "Estado de la cita actualizado correctamente"
+                    }
+                    _mensajeFeedback.emit(msgFinal)
+                    cerrarDialogAjuste()
+                    cargar()
+                } else {
+                    _mensajeFeedback.emit(resp.mensaje ?: "Error al actualizar el estado de la cita")
+                }
+            } catch (e: Exception) {
+                _mensajeFeedback.emit(e.localizedMessage ?: "Error de red al actualizar el estado")
+            } finally {
+                _guardandoAjuste.value = false
+            }
+        }
     }
 }

@@ -99,6 +99,22 @@ class CitasRepository @Inject constructor(
     suspend fun getEstadosCita(grupo: String? = null): List<EstadoCita> =
         api.getEstadosCita(grupo)
 
+    suspend fun cambiarEstadoCita(
+        idCita: Int,
+        idEstado: Int,
+        motivo: String? = null,
+        idMetodoPago: Int? = null,
+        idMetodoPagoDetalle: Int? = null
+    ): AccionCitaResponse = api.cambiarEstadoCita(
+        idCita,
+        CambiarEstadoCitaRequest(
+            idEstado = idEstado,
+            motivo = motivo,
+            idMetodoPago = idMetodoPago,
+            idMetodoPagoDetalle = idMetodoPagoDetalle
+        )
+    )
+
     suspend fun getWhatsAppCita(idCita: Int): WhatsAppCitaInfo {
         val response = api.getWhatsAppCita(idCita)
         if (!response.isSuccessful)
