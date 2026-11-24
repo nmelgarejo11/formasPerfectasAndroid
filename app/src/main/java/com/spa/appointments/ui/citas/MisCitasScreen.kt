@@ -51,6 +51,7 @@ import com.spa.appointments.domain.model.Servicio
 import com.spa.appointments.ui.citas.components.AsignarCitaGrupalClienteDialog
 import com.spa.appointments.ui.citas.components.CalendarioDiaView
 import com.spa.appointments.ui.citas.components.ModificarCitaDialog
+import com.spa.appointments.ui.citas.components.RegistrarCitaPasadaDialog
 import com.spa.appointments.ui.theme.AppDynamicTheme
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
@@ -125,7 +126,11 @@ fun MisCitasScreen(
         onWhatsApp                = { idCita -> vm.abrirWhatsApp(idCita, context) },
         onResetAccion             = { vm.resetAccion() },
         onCargarProfesionales     = { sedeId, servId -> vm.cargarProfesionales(sedeId, servId) },
-        onSeleccionarProfesional  = { id, nom -> vm.seleccionarProfesional(id, nom) }
+        onSeleccionarProfesional  = { id, nom -> vm.seleccionarProfesional(id, nom) },
+        onObtenerProfesionalesPorServicio = { idServ -> vm.obtenerProfesionalesPorServicio(idServ) },
+        onRegistrarCitaPasada     = { sede, cli, servsWithProfs, dur, ini, fin, met, det, pFin, obs ->
+            vm.registrarCitaPasada(sede, cli, servsWithProfs, dur, ini, fin, met, det, pFin, obs)
+        }
     )
 }
 
@@ -165,16 +170,30 @@ fun MisCitasContent(
     onWhatsApp:                (Int) -> Unit,
     onResetAccion:             () -> Unit,
     onCargarProfesionales:     (idSede: Int, idServicio: Int?) -> Unit,
-    onSeleccionarProfesional:  (id: Int?, nombre: String?) -> Unit = { _, _ -> }
+    onSeleccionarProfesional:  (id: Int?, nombre: String?) -> Unit = { _, _ -> },
+    onObtenerProfesionalesPorServicio: suspend (idServicio: Int) -> List<Profesional> = { emptyList() },
+    onRegistrarCitaPasada:     (
+        idSede: Int,
+        idCliente: Int,
+        serviciosConProfesional: List<Pair<Servicio, Profesional>>,
+        duracionTotalMinutos: Int,
+        fechaHoraInicioIso: String,
+        fechaHoraFinIso: String,
+        idMetodoPago: Int,
+        idMetodoPagoDetalle: Int?,
+        precioFinal: Double,
+        notas: String?
+    ) -> Unit = { _, _, _, _, _, _, _, _, _, _ -> }
 ) {
     var filtrosTemp by remember { mutableStateOf(FiltrosMisCitas()) }
 
-    var citaAccion         by remember { mutableStateOf<Cita?>(null) }
-    var mostrarCancelar    by remember { mutableStateOf(false) }
-    var mostrarReagendar   by remember { mutableStateOf(false) }
-    var mostrarFinalizar   by remember { mutableStateOf(false) }
-    var mostrarAsignar     by remember { mutableStateOf(false) }
-    var mostrarDetalleCita by remember { mutableStateOf(false) }
+    var citaAccion             by remember { mutableStateOf<Cita?>(null) }
+    var mostrarCancelar        by remember { mutableStateOf(false) }
+    var mostrarReagendar       by remember { mutableStateOf(false) }
+    var mostrarFinalizar       by remember { mutableStateOf(false) }
+    var mostrarAsignar         by remember { mutableStateOf(false) }
+    var mostrarDetalleCita     by remember { mutableStateOf(false) }
+    var mostrarRegistrarPasada by remember { mutableStateOf(false) }
 
     val snackbarHost = remember { SnackbarHostState() }
     val totalCitas   = (uiState as? MisCitasUiState.Success)?.citas?.size
@@ -400,6 +419,26 @@ fun MisCitasContent(
         )
     }
 
+    // ── Diálogo: Registrar Cita Pasada ──────────────────────────────────────
+    if (mostrarRegistrarPasada) {
+        RegistrarCitaPasadaDialog(
+            clientesDisponibles = clientesEncontrados,
+            servicios = servicios,
+            profesionalesBase = profesionales,
+            metodosPago = metodosPago,
+            onBuscarCliente = onBuscarClientes,
+            onObtenerProfesionalesPorServicio = onObtenerProfesionalesPorServicio,
+            onConfirmar = { idSede, idCliente, serviciosConProfesional, duracionTotalMinutos, fechaHoraInicioIso, fechaHoraFinIso, idMetodoPago, idMetodoPagoDetalle, precioFinal, notas ->
+                mostrarRegistrarPasada = false
+                onRegistrarCitaPasada(
+                    idSede, idCliente, serviciosConProfesional, duracionTotalMinutos,
+                    fechaHoraInicioIso, fechaHoraFinIso, idMetodoPago, idMetodoPagoDetalle, precioFinal, notas
+                )
+            },
+            onDismiss = { mostrarRegistrarPasada = false }
+        )
+    }
+
     // ── Scaffold M3 ──────────────────────────────────────────────────────────
     Scaffold(
         topBar = {
@@ -478,6 +517,17 @@ fun MisCitasContent(
                             expanded         = menuExpanded,
                             onDismissRequest = { menuExpanded = false }
                         ) {
+                            DropdownMenuItem(
+                                text        = { Text("Registrar cita pasada") },
+                                leadingIcon = { Icon(Icons.Default.HistoryEdu, null) },
+                                onClick     = {
+                                    menuExpanded = false
+                                    onCargarProfesionales(1, null)
+                                    onBuscarClientes("")
+                                    mostrarRegistrarPasada = true
+                                }
+                            )
+                            HorizontalDivider()
                             DropdownMenuItem(
                                 text        = { Text("Historial") },
                                 leadingIcon = { Icon(Icons.Default.History, null) },

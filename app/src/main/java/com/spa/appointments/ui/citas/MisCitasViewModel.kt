@@ -7,9 +7,11 @@ import com.spa.appointments.data.repository.ClienteRepository
 import com.spa.appointments.domain.model.AsignarCitaGrupalRequest
 import com.spa.appointments.domain.model.Cita
 import com.spa.appointments.domain.model.Cliente
+import com.spa.appointments.domain.model.CrearCitaRequest
 import com.spa.appointments.domain.model.EstadoCita
 import com.spa.appointments.domain.model.MetodoPago
 import com.spa.appointments.domain.model.Profesional
+import com.spa.appointments.domain.model.ServicioDetalle
 import com.spa.appointments.domain.model.SlotDisponible
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
@@ -280,6 +282,80 @@ class MisCitasViewModel @Inject constructor(
         }
     }
 
+    fun registrarCitaPasada(
+        idSede: Int,
+        idCliente: Int,
+        serviciosConProfesional: List<Pair<com.spa.appointments.domain.model.Servicio, Profesional>>,
+        duracionTotalMinutos: Int,
+        fechaHoraInicioIso: String,
+        fechaHoraFinIso: String,
+        idMetodoPago: Int,
+        idMetodoPagoDetalle: Int?,
+        precioFinal: Double,
+        notas: String?
+    ) {
+        if (serviciosConProfesional.isEmpty()) return
+
+        viewModelScope.launch {
+            _accionState.value = AccionUiState.Loading
+            try {
+                // Agrupar por profesional si hay servicios asignados a distintos profesionales
+                val grupos = serviciosConProfesional.groupBy { it.second }
+                val totalGrupos = grupos.size
+                var creadasExito = 0
+
+                for ((prof, items) in grupos) {
+                    val serviciosDetalle = items.map { (serv, _) ->
+                        ServicioDetalle(
+                            idServicio = serv.id,
+                            precio = serv.precioBase,
+                            duracion = serv.duracionMinutos
+                        )
+                    }
+
+                    val reqCrear = CrearCitaRequest(
+                        idSede = if (prof.idSede > 0) prof.idSede else idSede,
+                        idCliente = idCliente,
+                        idProfesional = prof.id,
+                        fechaInicio = fechaHoraInicioIso,
+                        fechaFin = fechaHoraFinIso,
+                        notas = notas,
+                        cantidadPersonas = 1,
+                        responsableNombre = null,
+                        responsableTelefono = null,
+                        responsableEmail = null,
+                        servicios = serviciosDetalle,
+                        ignorarOcupacion = true
+                    )
+
+                    val respCrear = repo.crearCita(reqCrear)
+                    if (respCrear.idCita > 0) {
+                        val precioProporcional = if (totalGrupos == 1) precioFinal else items.sumOf { it.first.precioBase }
+                        repo.finalizarCita(
+                            idCita = respCrear.idCita,
+                            idMetodoPago = idMetodoPago,
+                            idMetodoPagoDetalle = idMetodoPagoDetalle,
+                            precioFinal = precioProporcional,
+                            observaciones = notas ?: "Cita pasada"
+                        )
+                        creadasExito++
+                    }
+                }
+
+                if (creadasExito > 0) {
+                    _accionState.value = AccionUiState.Success("Cita(s) de fecha pasada registrada(s) y finalizada(s) con éxito.")
+                    cargar()
+                } else {
+                    _accionState.value = AccionUiState.Error("No se pudo registrar la cita pasada.")
+                }
+            } catch (e: Exception) {
+                _accionState.value = AccionUiState.Error(
+                    e.localizedMessage ?: "Error al registrar la cita pasada"
+                )
+            }
+        }
+    }
+
     fun resetAccion() { _accionState.value = AccionUiState.Idle }
 
     fun abrirWhatsApp(idCita: Int, context: android.content.Context) {
@@ -344,6 +420,14 @@ class MisCitasViewModel @Inject constructor(
         viewModelScope.launch {
             runCatching { repo.getProfesionales(idSede = idSede, idServicio = idServicio) }
                 .onSuccess { _profesionales.value = it }
+        }
+    }
+
+    suspend fun obtenerProfesionalesPorServicio(idServicio: Int): List<Profesional> {
+        return try {
+            repo.getProfesionales(idSede = null, idServicio = idServicio)
+        } catch (e: Exception) {
+            emptyList()
         }
     }
 }
