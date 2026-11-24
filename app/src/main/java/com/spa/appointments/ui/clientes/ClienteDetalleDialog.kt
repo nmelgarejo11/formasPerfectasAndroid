@@ -165,6 +165,16 @@ fun ClienteDetalleDialog(
                 viewModel.resetActionState()
                 onDismiss()
             }
+            is ClienteActionState.Error -> {
+                val mensaje = (actionState as ClienteActionState.Error).mensaje
+                if (mensaje.contains("registrado", ignoreCase = true) ||
+                    mensaje.contains("celular", ignoreCase = true) ||
+                    mensaje.contains("teléfono", ignoreCase = true) ||
+                    mensaje.contains("cliente", ignoreCase = true)
+                ) {
+                    telefonoError = mensaje
+                }
+            }
             else -> Unit
         }
     }
@@ -249,6 +259,33 @@ fun ClienteDetalleDialog(
                             .verticalScroll(rememberScrollState()),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
+                        if (actionState is ClienteActionState.Error) {
+                            val msg = (actionState as ClienteActionState.Error).mensaje
+                            Surface(
+                                color = MaterialTheme.colorScheme.errorContainer,
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        Icons.Outlined.ErrorOutline,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onErrorContainer,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(
+                                        text = msg,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onErrorContainer,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
+                        }
                         // Card Asistente de Voz M3
                         OutlinedCard(
                             modifier = Modifier.fillMaxWidth(),

@@ -195,6 +195,24 @@ class ClientesViewModel @Inject constructor(
     fun crearCliente(request: CrearClienteRequest) {
         viewModelScope.launch {
             _actionState.value = ClienteActionState.Loading
+
+            val telefonoSanitizado = request.telefono?.replace(" ", "")?.trim()
+            if (!telefonoSanitizado.isNullOrBlank()) {
+                val busquedaExistente = runCatching {
+                    repository.buscarClientes(busqueda = telefonoSanitizado)
+                }.getOrDefault(emptyList())
+
+                val yaExiste = busquedaExistente.any { cliente ->
+                    val telCliente = cliente.telefono?.replace(" ", "")?.trim()
+                    telCliente == telefonoSanitizado
+                }
+
+                if (yaExiste) {
+                    _actionState.value = ClienteActionState.Error("El Cliente ya se encuentra registrado")
+                    return@launch
+                }
+            }
+
             runCatching { repository.crearCliente(request) }
                 .onSuccess { _actionState.value = ClienteActionState.Success }
                 .onFailure { _actionState.value = ClienteActionState.Error(ApiErrorMapper.parsearMensajeError(it)) }

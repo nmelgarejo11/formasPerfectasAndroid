@@ -2,6 +2,7 @@ package com.spa.appointments.ui.clientes
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.spa.appointments.core.utils.ApiErrorMapper
 import com.spa.appointments.data.repository.ClienteRepository
 import com.spa.appointments.domain.model.Cliente
 import com.spa.appointments.domain.model.CrearClienteRequest
@@ -144,6 +145,18 @@ class SeleccionarClienteViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = SeleccionarClienteUiState.Creando
             try {
+                val telefonoSanitizado = telefono?.replace(" ", "")?.trim()
+                if (!telefonoSanitizado.isNullOrBlank()) {
+                    val existentes = repo.buscarClientes(busqueda = telefonoSanitizado)
+                    val yaExiste = existentes.any { cliente ->
+                        cliente.telefono?.replace(" ", "")?.trim() == telefonoSanitizado
+                    }
+                    if (yaExiste) {
+                        _uiState.value = SeleccionarClienteUiState.Error("El Cliente ya se encuentra registrado")
+                        return@launch
+                    }
+                }
+
                 val cliente = repo.crearCliente(
                     CrearClienteRequest(
                         nombre   = nombre,
@@ -155,7 +168,7 @@ class SeleccionarClienteViewModel @Inject constructor(
                 onCreado(cliente)
             } catch (e: Exception) {
                 _uiState.value = SeleccionarClienteUiState.Error(
-                    e.localizedMessage ?: "Error al crear cliente"
+                    ApiErrorMapper.parsearMensajeError(e)
                 )
             }
         }
