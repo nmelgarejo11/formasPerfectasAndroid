@@ -947,7 +947,7 @@ private fun SlotsGrid(
                     Spacer(Modifier.width(12.dp))
                     Text(
                         text = if (!ignorarOcupacion && slots.isNotEmpty())
-                            "No hay horarios libres. Activa 'Sobreasignar cita' para forzar una franja."
+                            "No hay franjas libres sin conflicto para la duración de la cita en esta fecha. Activa 'Sobreasignar cita' para forzar una franja u opcionalmente ajusta los minutos."
                         else
                             "No hay horarios disponibles para este día.",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,

@@ -72,7 +72,21 @@ fun ModificarCitaDialog(
     }
     var expandedProf by remember { mutableStateOf(false) }
 
-    var fechaSeleccionada by remember { mutableStateOf(LocalDate.now()) }
+    val fechaInicialCita = remember(cita.fechaHoraInicio) {
+        try {
+            if (cita.fechaHoraInicio.isNotBlank()) {
+                val cleanStr = cita.fechaHoraInicio.take(10)
+                val parsed = LocalDate.parse(cleanStr)
+                if (parsed.isBefore(LocalDate.now())) LocalDate.now() else parsed
+            } else {
+                LocalDate.now()
+            }
+        } catch (e: Exception) {
+            LocalDate.now()
+        }
+    }
+
+    var fechaSeleccionada by remember(cita) { mutableStateOf(fechaInicialCita) }
     var slotSeleccionado by remember { mutableStateOf<SlotDisponible?>(null) }
     var ignorarOcupacion by remember { mutableStateOf(false) }
 
@@ -534,7 +548,7 @@ fun ModificarCitaDialog(
                             Spacer(Modifier.width(8.dp))
                             Text(
                                 text = if (!ignorarOcupacion && slotsDisponibles.isNotEmpty())
-                                    "No hay horarios libres. Activa 'Sobreasignar cita' para forzar una franja."
+                                    "No hay franjas libres sin conflicto para la duración de $duracionPersonalizada min en esta fecha. Activa 'Sobreasignar cita' para forzar una franja u opcionalmente reduce la duración."
                                 else
                                     "No hay horarios disponibles para esta fecha.",
                                 style = MaterialTheme.typography.bodySmall,
