@@ -282,16 +282,23 @@ fun AppNav(pendingDestination: androidx.compose.runtime.MutableState<String?>) {
 
             if (servicio != null) {
                 DisponibilidadScreen(
-                    servicio     = servicio,
-                    profesional  = profesional,
-                    onBack       = { nav.popBackStack() },
-                    onCitaCreada = {
+                    servicio          = servicio,
+                    profesional       = profesional,
+                    onBack            = { nav.popBackStack() },
+                    onCitaCreada      = {
                         nav.navigate(Routes.MIS_CITAS) {
                             popUpTo(Routes.SERVICIOS) { this.inclusive = true }
                         }
                     },
-                    sharedVm     = sharedVm,
-                    vm           = dispVm
+                    onSeguirAgendando = {
+                        if (!nav.popBackStack(Routes.SERVICIOS, inclusive = false)) {
+                            nav.navigate(Routes.SERVICIOS) {
+                                popUpTo(Routes.HOME)
+                            }
+                        }
+                    },
+                    sharedVm          = sharedVm,
+                    vm                = dispVm
                 )
             }
         }

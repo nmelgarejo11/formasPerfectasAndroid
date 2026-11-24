@@ -44,11 +44,12 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DisponibilidadScreen(
-    servicio:     Servicio,
-    profesional:  Profesional?,
-    onBack:       () -> Unit,
-    onCitaCreada: () -> Unit,
-    sharedVm:     ReservaSharedViewModel,
+    servicio:          Servicio,
+    profesional:       Profesional?,
+    onBack:            () -> Unit,
+    onCitaCreada:      () -> Unit,
+    onSeguirAgendando: () -> Unit = {},
+    sharedVm:          ReservaSharedViewModel,
     vm: DisponibilidadViewModel = hiltViewModel()
 ) {
     val profActual = when {
@@ -347,16 +348,32 @@ fun DisponibilidadScreen(
                 )
             },
             confirmButton = {
-                Button(
-                    onClick = {
-                        mostrarExito = false
-                        vm.resetear()
-                        sharedVm.limpiarReserva()
-                        onCitaCreada()
-                    },
-                    shape    = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text("Ver mis citas") }
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = {
+                            mostrarExito = false
+                            vm.resetear()
+                            sharedVm.limpiarReserva()
+                            onCitaCreada()
+                        },
+                        shape    = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("Ver mis citas") }
+
+                    OutlinedButton(
+                        onClick = {
+                            mostrarExito = false
+                            vm.resetear()
+                            sharedVm.limpiarReserva()
+                            onSeguirAgendando()
+                        },
+                        shape    = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("Seguir agendando") }
+                }
             }
         )
     }
