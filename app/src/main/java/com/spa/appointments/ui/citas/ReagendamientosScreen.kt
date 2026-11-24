@@ -533,7 +533,8 @@ private fun AprobarConDisponibilidadDialog(
         viewModel.cargarSlotsParaReagendar(
             idProfesional = cita.idProfesional,
             idSede        = cita.idSede,
-            duracionMin   = duracionMin
+            duracionMin   = duracionMin,
+            idCitaExcluir = cita.id
         )
     }
 

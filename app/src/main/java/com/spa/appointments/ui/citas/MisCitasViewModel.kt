@@ -233,11 +233,11 @@ class MisCitasViewModel @Inject constructor(
         }
     }
 
-    fun cargarDisponibilidad(idProfesional: Int, idSede: Int, fecha: String, duracion: Int) {
+    fun cargarDisponibilidad(idProfesional: Int, idSede: Int, fecha: String, duracion: Int, idCitaExcluir: Int? = null) {
         viewModelScope.launch {
             _cargandoSlots.value = true
             try {
-                val slots = repo.getDisponibilidad(idProfesional, idSede, fecha, duracion)
+                val slots = repo.getDisponibilidad(idProfesional, idSede, fecha, duracion, idCitaExcluir)
                 _slotsDisponibles.value = slots
             } catch (e: Exception) {
                 _slotsDisponibles.value = emptyList()

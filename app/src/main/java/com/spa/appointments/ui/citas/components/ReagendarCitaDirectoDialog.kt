@@ -54,7 +54,7 @@ fun ModificarCitaDialog(
     cargandoSlots: Boolean,
     slotsDisponibles: List<SlotDisponible>,
     onCargarProfesionales: (idSede: Int, idServicio: Int?) -> Unit,
-    onCargarDisponibilidad: (idProfesional: Int, idSede: Int, fecha: String, duracion: Int) -> Unit,
+    onCargarDisponibilidad: (idProfesional: Int, idSede: Int, fecha: String, duracion: Int, idCitaExcluir: Int?) -> Unit,
     onConfirmarModificacion: (idCita: Int, idProfesional: Int, fechaHoraInicio: String, fechaHoraFin: String, idServicio: Int?) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -108,7 +108,8 @@ fun ModificarCitaDialog(
                 prof.id,
                 cita.idSede,
                 fechaSeleccionada.format(formatterFechaIso),
-                duracionPersonalizada
+                duracionPersonalizada,
+                cita.id
             )
         }
     }
@@ -528,7 +529,7 @@ fun ReagendarCitaDirectoDialog(
     profesionales: List<Profesional>,
     cargandoSlots: Boolean,
     slotsDisponibles: List<SlotDisponible>,
-    onCargarDisponibilidad: (idProfesional: Int, idSede: Int, fecha: String, duracion: Int) -> Unit,
+    onCargarDisponibilidad: (idProfesional: Int, idSede: Int, fecha: String, duracion: Int, idCitaExcluir: Int?) -> Unit,
     onConfirmarReagendamiento: (idCita: Int, idProfesional: Int, fechaHoraInicio: String, fechaHoraFin: String) -> Unit,
     onDismiss: () -> Unit
 ) {

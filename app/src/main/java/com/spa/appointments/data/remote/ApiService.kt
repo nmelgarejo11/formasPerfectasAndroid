@@ -38,7 +38,8 @@ interface ApiService {
         @Query("idProfesional") idProfesional: Int,
         @Query("idSede")        idSede: Int,
         @Query("fecha")         fecha: String,
-        @Query("duracion")      duracion: Int
+        @Query("duracion")      duracion: Int,
+        @Query("idCitaExcluir") idCitaExcluir: Int? = null
     ): List<SlotDisponible>
 
     // ── Citas ─────────────────────────────────────

@@ -120,7 +120,7 @@ fun MisCitasScreen(
         onReagendarCitaDirecto    = { id, idProf, ini, fin, idServ -> vm.reagendarCitaDirecto(id, idProf, ini, fin, idServ) },
         onFinalizarCita           = { idCita, idMetodo, idDetalle, pFinal, obs -> vm.finalizarCita(idCita, idMetodo, idDetalle, pFinal, obs) },
         onAsignarCitaGrupal       = { idCita, ids, ini, fin -> vm.asignarCitaGrupal(idCita, ids, ini, fin) },
-        onCargarDisponibilidad    = { idProf, idSede, fecha, duracion -> vm.cargarDisponibilidad(idProf, idSede, fecha, duracion) },
+        onCargarDisponibilidad    = { idProf, idSede, fecha, duracion, idCitaExcluir -> vm.cargarDisponibilidad(idProf, idSede, fecha, duracion, idCitaExcluir) },
         onBuscarClientes          = { query -> vm.buscarClientes(query) },
         onWhatsApp                = { idCita -> vm.abrirWhatsApp(idCita, context) },
         onResetAccion             = { vm.resetAccion() },
@@ -160,7 +160,7 @@ fun MisCitasContent(
     onReagendarCitaDirecto:    (idCita: Int, idProfesional: Int, inicioIso: String, finIso: String, idServicio: Int?) -> Unit,
     onFinalizarCita:           (idCita: Int, idMetodo: Int, idDetalle: Int?, precioFinal: Double?, observaciones: String?) -> Unit,
     onAsignarCitaGrupal:       (idCita: Int, idsProfesionales: List<Int>?, fechaInicio: String?, fechaFin: String?) -> Unit,
-    onCargarDisponibilidad:    (idProfesional: Int, idSede: Int, fecha: String, duracion: Int) -> Unit,
+    onCargarDisponibilidad:    (idProfesional: Int, idSede: Int, fecha: String, duracion: Int, idCitaExcluir: Int?) -> Unit,
     onBuscarClientes:          (String) -> Unit,
     onWhatsApp:                (Int) -> Unit,
     onResetAccion:             () -> Unit,
@@ -1605,7 +1605,7 @@ private fun AsignarCitaGrupalDialog(
     slotsDisponibles:      List<SlotDisponible>,
     cargandoSlots:         Boolean,
     onCargarProfesionales: (Int) -> Unit,
-    onCargarDisponibilidad:(idProfesional: Int, idSede: Int, fecha: String, duracion: Int) -> Unit,
+    onCargarDisponibilidad:(idProfesional: Int, idSede: Int, fecha: String, duracion: Int, idCitaExcluir: Int?) -> Unit,
     onConfirm:             (idsProfesionales: List<Int>?, fechaHoraInicio: String?, fechaHoraFin: String?) -> Unit,
     onDismiss:             () -> Unit
 ) {
@@ -1625,7 +1625,7 @@ private fun AsignarCitaGrupalDialog(
         val f = fechaSeleccionada
         if (!f.isNullOrBlank()) {
             horaSeleccionada = null
-            onCargarDisponibilidad(cita.idProfesional, cita.idSede, f, duracion)
+            onCargarDisponibilidad(cita.idProfesional, cita.idSede, f, duracion, cita.id)
         }
     }
 
@@ -1973,7 +1973,7 @@ private fun MisCitasPreviewLoading() {
             onReagendarCitaDirecto    = { _, _, _, _, _ -> },
             onFinalizarCita           = { _, _, _, _, _ -> },
             onAsignarCitaGrupal       = { _, _, _, _ -> },
-            onCargarDisponibilidad    = { _, _, _, _ -> },
+            onCargarDisponibilidad    = { _, _, _, _, _ -> },
             onBuscarClientes          = {},
             onWhatsApp                = {},
             onResetAccion             = {},
@@ -2012,7 +2012,7 @@ private fun MisCitasPreviewEmptySinFiltros() {
             onReagendarCitaDirecto    = { _, _, _, _, _ -> },
             onFinalizarCita           = { _, _, _, _, _ -> },
             onAsignarCitaGrupal       = { _, _, _, _ -> },
-            onCargarDisponibilidad    = { _, _, _, _ -> },
+            onCargarDisponibilidad    = { _, _, _, _, _ -> },
             onBuscarClientes          = {},
             onWhatsApp                = {},
             onResetAccion             = {},
@@ -2051,7 +2051,7 @@ private fun MisCitasPreviewEmptyConFiltros() {
             onReagendarCitaDirecto    = { _, _, _, _, _ -> },
             onFinalizarCita           = { _, _, _, _, _ -> },
             onAsignarCitaGrupal       = { _, _, _, _ -> },
-            onCargarDisponibilidad    = { _, _, _, _ -> },
+            onCargarDisponibilidad    = { _, _, _, _, _ -> },
             onBuscarClientes          = {},
             onWhatsApp                = {},
             onResetAccion             = {},
@@ -2090,7 +2090,7 @@ private fun MisCitasPreviewError() {
             onReagendarCitaDirecto    = { _, _, _, _, _ -> },
             onFinalizarCita           = { _, _, _, _, _ -> },
             onAsignarCitaGrupal       = { _, _, _, _ -> },
-            onCargarDisponibilidad    = { _, _, _, _ -> },
+            onCargarDisponibilidad    = { _, _, _, _, _ -> },
             onBuscarClientes          = {},
             onWhatsApp                = {},
             onResetAccion             = {},
@@ -2129,7 +2129,7 @@ private fun MisCitasPreviewSuccess() {
             onReagendarCitaDirecto    = { _, _, _, _, _ -> },
             onFinalizarCita           = { _, _, _, _, _ -> },
             onAsignarCitaGrupal       = { _, _, _, _ -> },
-            onCargarDisponibilidad    = { _, _, _, _ -> },
+            onCargarDisponibilidad    = { _, _, _, _, _ -> },
             onBuscarClientes          = {},
             onWhatsApp                = {},
             onResetAccion             = {},

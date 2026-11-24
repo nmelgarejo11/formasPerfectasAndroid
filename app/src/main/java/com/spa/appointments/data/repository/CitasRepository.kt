@@ -26,9 +26,10 @@ class CitasRepository @Inject constructor(
         idProfesional: Int,
         idSede: Int,
         fecha: String,
-        duracion: Int
+        duracion: Int,
+        idCitaExcluir: Int? = null
     ): List<SlotDisponible> =
-        api.getDisponibilidad(idProfesional, idSede, fecha, duracion)
+        api.getDisponibilidad(idProfesional, idSede, fecha, duracion, idCitaExcluir)
 
     // Citas
     suspend fun crearCita(request: CrearCitaRequest): CrearCitaResponse =

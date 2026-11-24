@@ -73,7 +73,8 @@ class ReagendamientoViewModel @Inject constructor(
         idProfesional: Int,
         idSede:        Int,
         duracionMin:   Int,
-        fecha:         LocalDate = _fechaDialog.value
+        fecha:         LocalDate = _fechaDialog.value,
+        idCitaExcluir: Int? = null
     ) {
         _fechaDialog.value = fecha
         _slotDialog.value  = null
@@ -84,7 +85,8 @@ class ReagendamientoViewModel @Inject constructor(
                     idProfesional = idProfesional,
                     idSede        = idSede,
                     fecha         = fecha.toString(),
-                    duracion      = duracionMin
+                    duracion      = duracionMin,
+                    idCitaExcluir = idCitaExcluir
                 )
             }
                 .onSuccess { _dispState.value = DisponibilidadDialogState.Loaded(it) }
