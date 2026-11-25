@@ -2,6 +2,7 @@ package com.spa.appointments.ui.citas
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.spa.appointments.core.utils.ApiErrorMapper
 import com.spa.appointments.data.repository.CitasRepository
 import com.spa.appointments.data.repository.ClienteRepository
 import com.spa.appointments.domain.model.AsignarCitaGrupalRequest
@@ -276,7 +277,7 @@ class MisCitasViewModel @Inject constructor(
                 else           _accionState.value = AccionUiState.Error(resp.mensaje)
             } catch (e: Exception) {
                 _accionState.value = AccionUiState.Error(
-                    e.localizedMessage ?: "Error al finalizar la cita"
+                    ApiErrorMapper.parsearMensajeError(e)
                 )
             }
         }
