@@ -222,7 +222,11 @@ class IngresosVsGastosViewModel @Inject constructor(
         if (f.tipoMovimiento != TipoMovimientoFiltro.TODOS && tipo != f.tipoMovimiento) return false
         if (f.idMetodoPago != null && idMetodoPago != f.idMetodoPago) return false
         if (f.conceptoCategoria.isNotBlank() && !concepto.contains(f.conceptoCategoria, ignoreCase = true)) return false
-        if (f.cliente.isNotBlank() && !(cliente?.contains(f.cliente, ignoreCase = true) ?: false)) return false
+        if (f.cliente.isNotBlank()) {
+            val coincideClienteProp = cliente?.contains(f.cliente, ignoreCase = true) ?: false
+            val coincideConcepto = concepto.contains(f.cliente, ignoreCase = true)
+            if (!coincideClienteProp && !coincideConcepto) return false
+        }
         if (f.idProfesional != null && idProfesional != f.idProfesional) return false
         return true
     }
