@@ -875,6 +875,20 @@ private fun FilaMovimientoBalance(mov: MovimientoBalance) {
                             )
                         }
                     }
+                    if (mov.esGrupal || mov.cantidadCitasUnidas > 1) {
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer
+                        ) {
+                            Text(
+                                text     = if (mov.cantidadCitasUnidas > 1) "Grupal (${mov.cantidadCitasUnidas} citas)" else "Grupal",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color    = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp)
+                            )
+                        }
+                    }
                 }
             }
 

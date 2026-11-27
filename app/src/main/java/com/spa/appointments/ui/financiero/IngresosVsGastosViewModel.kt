@@ -186,9 +186,14 @@ class IngresosVsGastosViewModel @Inject constructor(
                         idMetodoPagoDetalle = ing.idMetodoPagoDetalle,
                         metodoPagoDetalle   = ing.metodoPagoDetalle,
                         idSede              = ing.idSede,
-                        sede                = ing.sede
+                        sede                = ing.sede,
+                        idCitaGrupal        = ing.idCitaGrupal,
+                        esGrupal            = ing.esGrupal ?: (ing.idCitaGrupal != null),
+                        cantidadPersonas    = ing.cantidadPersonas
                     )
                 }
+
+                val movsIngresosUnidos = unirMovimientosCompaneros(movsIngresos)
 
                 val movsGastos = gastosRaw.map { gst ->
                     MovimientoBalance(
@@ -206,7 +211,7 @@ class IngresosVsGastosViewModel @Inject constructor(
                     )
                 }
 
-                todosLosMovimientosCache = (movsIngresos + movsGastos).sortedByDescending { it.fecha }
+                todosLosMovimientosCache = (movsIngresosUnidos + movsGastos).sortedByDescending { it.fecha }
                 procesarYEmitirState()
             } catch (e: Exception) {
                 if (ApiErrorMapper.esForbidden(e)) {
@@ -216,6 +221,23 @@ class IngresosVsGastosViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    private fun unirMovimientosCompaneros(movs: List<MovimientoBalance>): List<MovimientoBalance> {
+        val (grupales, individuales) = movs.partition { it.idCitaGrupal != null }
+        if (grupales.isEmpty()) return movs
+
+        val agrupados = grupales.groupBy { it.idCitaGrupal }.map { (idGrupo, lista) ->
+            val primero = lista.first()
+            primero.copy(
+                id = "ING_GRP_${idGrupo}",
+                concepto = if (lista.size > 1) "Cita Grupal (Compañeras x${lista.size}) - ${primero.concepto.removePrefix("Cita #")}" else primero.concepto,
+                valor = lista.sumOf { it.valor },
+                esGrupal = true,
+                cantidadCitasUnidas = lista.size
+            )
+        }
+        return (individuales + agrupados)
     }
 
     private fun MovimientoBalance.cumpleFiltro(f: FiltrosBalance): Boolean {
@@ -277,6 +299,7 @@ class IngresosVsGastosViewModel @Inject constructor(
                 )
                 val fileName = "Reporte_Balance_${sede.nombre.replace(" ", "_")}_${_fechaInicio.value}_${_fechaFin.value}.xlsx"
                 val file = File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), fileName)
+                file.parentFile?.mkdirs()
                 file.writeBytes(bytes)
 
                 val uri = androidx.core.content.FileProvider.getUriForFile(
@@ -303,6 +326,7 @@ class IngresosVsGastosViewModel @Inject constructor(
                 )
                 val fileName = "Reporte_Balance_${sede.nombre.replace(" ", "_")}_${_fechaInicio.value}_${_fechaFin.value}.xlsx"
                 val file = File(context.cacheDir, fileName)
+                file.parentFile?.mkdirs()
                 file.writeBytes(bytes)
 
                 val uri = androidx.core.content.FileProvider.getUriForFile(

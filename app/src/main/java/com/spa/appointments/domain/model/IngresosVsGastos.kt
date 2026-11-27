@@ -23,7 +23,11 @@ data class MovimientoBalance(
     val categoria           : String? = null,
     val cliente             : String? = null,
     val idProfesional       : Int? = null,
-    val profesional         : String? = null
+    val profesional         : String? = null,
+    val idCitaGrupal        : Int? = null,
+    val esGrupal            : Boolean = false,
+    val cantidadPersonas    : Int? = null,
+    val cantidadCitasUnidas : Int = 1
 )
 
 data class FiltrosBalance(

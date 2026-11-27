@@ -20,7 +20,11 @@ data class IngresoResponse(
     val idMetodoPagoDetalle: Int?,
     val metodoPagoDetalle: String?,
     val fechaIngreso: String,
-    val fechaRegistro: String
+    val fechaRegistro: String,
+    val idCitaGrupal: Int? = null,
+    val esGrupal: Boolean? = null,
+    val responsableNombre: String? = null,
+    val cantidadPersonas: Int? = null
 )
 
 data class IngresoResultado(
