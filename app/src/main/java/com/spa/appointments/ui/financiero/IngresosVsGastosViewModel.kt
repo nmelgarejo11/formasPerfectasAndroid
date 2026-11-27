@@ -171,7 +171,7 @@ class IngresosVsGastosViewModel @Inject constructor(
                 )
                 responseOriginalCache = responseVs
 
-                val ingresosRaw = repo.listarIngresos(sede.id, inicioIso, finIso)
+                val ingresosRaw = repo.listarIngresos(sede.id, inicioIso, finIso, incluirCitas = true)
                 val gastosRaw   = repo.listarGastos(sede.id, inicioIso, finIso)
 
                 val movsIngresos = ingresosRaw.map { ing ->

@@ -61,9 +61,10 @@ class FinancieroRepositoryImpl @Inject constructor(
     override suspend fun listarIngresos(
         idSede: Int?,
         fechaDesde: String?,
-        fechaHasta: String?
+        fechaHasta: String?,
+        incluirCitas: Boolean?
     ): List<IngresoResponse> {
-        return runCatching { api.listarIngresos(idSede, fechaDesde, fechaHasta) }.getOrDefault(emptyList())
+        return runCatching { api.listarIngresos(idSede, fechaDesde, fechaHasta, incluirCitas ?: true) }.getOrDefault(emptyList())
     }
 
     override suspend fun listarGastos(

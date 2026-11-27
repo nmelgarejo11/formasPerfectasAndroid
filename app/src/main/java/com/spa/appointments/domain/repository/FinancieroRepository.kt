@@ -23,7 +23,7 @@ interface FinancieroRepository {
         fechaFin    : String
     ): ByteArray
 
-    suspend fun listarIngresos(idSede: Int?, fechaDesde: String?, fechaHasta: String?): List<IngresoResponse>
+    suspend fun listarIngresos(idSede: Int?, fechaDesde: String?, fechaHasta: String?, incluirCitas: Boolean? = true): List<IngresoResponse>
     suspend fun listarGastos(idSede: Int?, fechaDesde: String?, fechaHasta: String?): List<GastoResponse>
     suspend fun getMetodosPago(): List<MetodoPago>
     suspend fun getProfesionales(idSede: Int?): List<Profesional>

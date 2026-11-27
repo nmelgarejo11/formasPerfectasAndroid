@@ -467,7 +467,8 @@ interface ApiService {
     suspend fun listarIngresos(
         @Query("IdSede") idSede: Int?,
         @Query("FechaDesde") fechaDesde: String?,
-        @Query("FechaHasta") fechaHasta: String?
+        @Query("FechaHasta") fechaHasta: String?,
+        @Query("IncluirCitas") incluirCitas: Boolean? = null
     ): List<IngresoResponse>
 
     @POST("Financiero/ingresos")
