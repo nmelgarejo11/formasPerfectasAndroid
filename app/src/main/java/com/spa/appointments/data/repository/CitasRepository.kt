@@ -89,7 +89,7 @@ class CitasRepository @Inject constructor(
                 idCita = idCita,
                 idMetodoPago = idMetodoPago,
                 idMetodoPagoDetalle = idMetodoPagoDetalle,
-                precioFinal = if (precioFinal != null && precioFinal <= 0.0) null else precioFinal,
+                precioFinal = if (precioFinal != null && precioFinal < 0.0) null else precioFinal,
                 observaciones = observaciones
             )
         )

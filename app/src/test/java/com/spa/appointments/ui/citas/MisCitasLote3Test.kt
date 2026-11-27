@@ -35,6 +35,24 @@ class MisCitasLote3Test {
     }
 
     @Test
+    fun testFinalizarCitaRequest_Serializacion_ConPrecioCero() {
+        val req = FinalizarCitaRequest(
+            idCita = 1,
+            idMetodoPago = 1,
+            idMetodoPagoDetalle = null,
+            precioFinal = 0.0,
+            observaciones = "Cita sin costo o cortesia"
+        )
+
+        val adapter = moshi.adapter(FinalizarCitaRequest::class.java)
+        val json = adapter.toJson(req)
+
+        assertNotNull(json)
+        assertEquals(true, json.contains("\"idCita\":1"))
+        assertEquals(true, json.contains("\"precioFinal\":0.0"))
+    }
+
+    @Test
     fun testServicioPrecioRango_Deserializacion() {
         val json = """
             {

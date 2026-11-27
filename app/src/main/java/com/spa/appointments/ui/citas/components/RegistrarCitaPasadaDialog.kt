@@ -667,7 +667,7 @@ fun RegistrarCitaPasadaDialog(
                     todosTienenProf &&
                     metodo != null &&
                     detalleValido &&
-                    precioDouble != null && precioDouble > 0
+                    precioDouble != null && precioDouble >= 0
 
             Button(
                 onClick = {
