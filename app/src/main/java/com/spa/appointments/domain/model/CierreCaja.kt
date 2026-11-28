@@ -25,8 +25,16 @@ data class CierreCajaGasto(
     val fechaGasto : String
 )
 
+data class CierreCajaIngreso(
+    val id          : Int,
+    val concepto    : String,
+    val valor       : Double,
+    val fechaIngreso: String
+)
+
 data class CierreCajaResponse(
-    val resumen       : CierreCajaResumen,
-    val profesionales : List<CierreCajaProfesional>,
-    val ultimosGastos : List<CierreCajaGasto>
+    val resumen         : CierreCajaResumen,
+    val profesionales   : List<CierreCajaProfesional>,
+    val ultimosGastos   : List<CierreCajaGasto>,
+    val ultimosIngresos : List<CierreCajaIngreso>? = emptyList()
 )

@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.spa.appointments.domain.model.CierreCajaGasto
+import com.spa.appointments.domain.model.CierreCajaIngreso
 import com.spa.appointments.domain.model.CierreCajaProfesional
 import com.spa.appointments.domain.model.CierreCajaResumen
 import com.spa.appointments.domain.model.Sede
@@ -187,9 +188,10 @@ fun FinancieroScreen(
                     }
                     is FinancieroUiState.Success -> {
                         CierreCajaContent(
-                            resumen       = state.data.resumen,
-                            profesionales = state.data.profesionales,
-                            ultimosGastos = state.data.ultimosGastos
+                            resumen        = state.data.resumen,
+                            profesionales  = state.data.profesionales,
+                            ultimosGastos  = state.data.ultimosGastos,
+                            ultimosIngresos = state.data.ultimosIngresos ?: emptyList()
                         )
                     }
                     else -> Unit
@@ -351,9 +353,10 @@ private fun SelectorFechaCalendario(
 
 @Composable
 private fun CierreCajaContent(
-    resumen       : CierreCajaResumen,
-    profesionales : List<CierreCajaProfesional>,
-    ultimosGastos : List<CierreCajaGasto>
+    resumen        : CierreCajaResumen,
+    profesionales  : List<CierreCajaProfesional>,
+    ultimosGastos  : List<CierreCajaGasto>,
+    ultimosIngresos : List<CierreCajaIngreso>
 ) {
     LazyColumn(
         modifier            = Modifier.fillMaxSize(),
@@ -382,6 +385,28 @@ private fun CierreCajaContent(
         } else {
             itemsIndexed(profesionales) { index, prof ->
                 FilaProfesional(index + 1, prof)
+            }
+        }
+
+        item { SeccionTitulo("Ingresos del día", Icons.Default.TrendingUp) }
+        if (ultimosIngresos.isEmpty()) {
+            item {
+                Surface(
+                    shape    = RoundedCornerShape(12.dp),
+                    color    = MaterialTheme.colorScheme.surfaceContainerLow,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text     = "Sin ingresos registrados para esta fecha",
+                        color    = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style    = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
+            }
+        } else {
+            itemsIndexed(ultimosIngresos) { _, ingreso ->
+                FilaIngreso(ingreso)
             }
         }
 
@@ -591,6 +616,42 @@ private fun FilaGasto(gasto: CierreCajaGasto) {
                 fontSize   = 14.sp,
                 fontWeight = FontWeight.Bold,
                 color      = MaterialTheme.colorScheme.error
+            )
+        }
+    }
+}
+
+// ─── Lista Ingresos ───────────────────────────────────────────────────────────
+
+@Composable
+private fun FilaIngreso(ingreso: CierreCajaIngreso) {
+    OutlinedCard(
+        modifier = Modifier.fillMaxWidth(),
+        shape    = RoundedCornerShape(14.dp),
+        colors   = CardDefaults.outlinedCardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        ),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+    ) {
+        Row(
+            modifier          = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(ingreso.concepto, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
+                val fechaDisplay = runCatching {
+                    LocalDate.parse(ingreso.fechaIngreso)
+                        .format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+                }.getOrElse { ingreso.fechaIngreso }
+                Text(fechaDisplay, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Text(
+                text       = "$${"%,.0f".format(ingreso.valor)}",
+                fontSize   = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color      = MaterialTheme.colorScheme.primary
             )
         }
     }
