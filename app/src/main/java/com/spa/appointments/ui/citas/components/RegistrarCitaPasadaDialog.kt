@@ -84,6 +84,8 @@ fun RegistrarCitaPasadaDialog(
     // 3. Estado Fecha y Hora
     var fechaSeleccionada by remember { mutableStateOf(LocalDate.now().minusDays(1)) }
     var horaInicio by remember { mutableStateOf(LocalTime.of(10, 0)) }
+    var horaFin by remember { mutableStateOf(LocalTime.of(11, 0)) }
+    var horaFinEditadaManualmente by remember { mutableStateOf(false) }
 
     // 4. Estado Pago y Monto Inicial $0
     var metodoPagoSeleccionado by remember { mutableStateOf<MetodoPago?>(null) }
@@ -96,7 +98,8 @@ fun RegistrarCitaPasadaDialog(
     var expandedDetallePago by remember { mutableStateOf(false) }
 
     var mostrarDatePicker by remember { mutableStateOf(false) }
-    var mostrarTimePicker by remember { mutableStateOf(false) }
+    var mostrarTimePickerInicio by remember { mutableStateOf(false) }
+    var mostrarTimePickerFin by remember { mutableStateOf(false) }
 
     // Filtrados dinámicos de Servicios (Mostrar solo nombre)
     val serviciosFiltrados = remember(servicios, busquedaServicio) {
@@ -119,9 +122,11 @@ fun RegistrarCitaPasadaDialog(
         precioFinalText = if (serviciosAgregados.isEmpty()) "0" else String.format(Locale.US, "%.0f", totalAcumuladoSugerido)
     }
 
-    // Hora de fin según la duración acumulada
-    val horaFin = remember(horaInicio, duracionTotalMinutos) {
-        horaInicio.plusMinutes(duracionTotalMinutos.toLong())
+    // Actualizar horaFin si cambia la duración total o la hora inicial, salvo que el usuario la haya editado manualmente
+    LaunchedEffect(duracionTotalMinutos, horaInicio) {
+        if (!horaFinEditadaManualmente) {
+            horaFin = horaInicio.plusMinutes(duracionTotalMinutos.toLong())
+        }
     }
 
     AlertDialog(
@@ -505,7 +510,7 @@ fun RegistrarCitaPasadaDialog(
                     }
                 }
 
-                // ── 3. Fecha y Hora de la Cita (2 filas separadas) ──────────
+                // ── 3. Fecha y Hora de la Cita (2 opciones/objetos separados) ──────────
                 Text(
                     text = "Fecha y Hora de la Cita *",
                     style = MaterialTheme.typography.labelMedium,
@@ -530,18 +535,77 @@ fun RegistrarCitaPasadaDialog(
                         )
                     }
 
-                    OutlinedButton(
-                        onClick = { mostrarTimePicker = true },
+                    Row(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Icon(Icons.Default.Schedule, null, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            text = "Hora: ${formatearHora12h(horaInicio)} - ${formatearHora12h(horaFin)}",
-                            style = MaterialTheme.typography.bodySmall,
-                            fontWeight = FontWeight.SemiBold
-                        )
+                        OutlinedButton(
+                            onClick = { mostrarTimePickerInicio = true },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp),
+                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    Icons.Default.Schedule,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Column(horizontalAlignment = Alignment.Start) {
+                                    Text(
+                                        text = "Hora Inicio",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontSize = 10.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Text(
+                                        text = formatearHora12h(horaInicio),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 12.sp
+                                    )
+                                }
+                            }
+                        }
+
+                        OutlinedButton(
+                            onClick = { mostrarTimePickerFin = true },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp),
+                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    Icons.Default.Schedule,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Column(horizontalAlignment = Alignment.Start) {
+                                    Text(
+                                        text = "Hora Fin",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontSize = 10.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Text(
+                                        text = formatearHora12h(horaFin),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 12.sp
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -661,13 +725,15 @@ fun RegistrarCitaPasadaDialog(
             val detalleValido = !requiereDetalle || detallePagoSeleccionado != null
             val tieneServicios = serviciosAgregados.isNotEmpty()
             val todosTienenProf = serviciosAgregados.all { it.profesional != null }
+            val horasValidas = horaFin.isAfter(horaInicio)
 
             val formularioValido = cliente != null &&
                     tieneServicios &&
                     todosTienenProf &&
                     metodo != null &&
                     detalleValido &&
-                    precioDouble != null && precioDouble >= 0
+                    precioDouble != null && precioDouble >= 0 &&
+                    horasValidas
 
             Button(
                 onClick = {
@@ -753,19 +819,41 @@ fun RegistrarCitaPasadaDialog(
     }
 
     // Diálogo TimePicker (hora de inicio)
-    if (mostrarTimePicker) {
+    if (mostrarTimePickerInicio) {
         val tpd = TimePickerDialog(
             context,
             { _, hourOfDay, minute ->
-                horaInicio = LocalTime.of(hourOfDay, minute)
-                mostrarTimePicker = false
+                val nuevaHoraInicio = LocalTime.of(hourOfDay, minute)
+                horaInicio = nuevaHoraInicio
+                if (!horaFinEditadaManualmente) {
+                    horaFin = nuevaHoraInicio.plusMinutes(duracionTotalMinutos.toLong())
+                }
+                mostrarTimePickerInicio = false
             },
             horaInicio.hour,
             horaInicio.minute,
             false // 12h AM/PM
         )
-        tpd.setOnCancelListener { mostrarTimePicker = false }
-        tpd.setOnDismissListener { mostrarTimePicker = false }
+        tpd.setOnCancelListener { mostrarTimePickerInicio = false }
+        tpd.setOnDismissListener { mostrarTimePickerInicio = false }
+        LaunchedEffect(Unit) { tpd.show() }
+    }
+
+    // Diálogo TimePicker (hora de fin)
+    if (mostrarTimePickerFin) {
+        val tpd = TimePickerDialog(
+            context,
+            { _, hourOfDay, minute ->
+                horaFin = LocalTime.of(hourOfDay, minute)
+                horaFinEditadaManualmente = true
+                mostrarTimePickerFin = false
+            },
+            horaFin.hour,
+            horaFin.minute,
+            false // 12h AM/PM
+        )
+        tpd.setOnCancelListener { mostrarTimePickerFin = false }
+        tpd.setOnDismissListener { mostrarTimePickerFin = false }
         LaunchedEffect(Unit) { tpd.show() }
     }
 }
